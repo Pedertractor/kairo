@@ -1,22 +1,25 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 
-import { Button } from '@/components/ui/button'
+import { AppLayout } from '@/components/app-layout'
 import { useAuth } from '@/hooks/use-auth'
 import { ChangePasswordPage } from '@/pages/change-password-page'
 import { LoginPage } from '@/pages/login-page'
 
 function HomePage() {
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
 
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center gap-4 p-6">
-      <div className="text-center">
+    <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+      <div className="flex flex-col items-center justify-center gap-2 py-12">
         <p className="text-sm text-muted-foreground">Bem-vindo(a)</p>
         <h1 className="text-2xl font-bold">{user?.name}</h1>
       </div>
-      <Button variant="outline" onClick={() => void logout()}>
-        Sair
-      </Button>
+      <div className="grid auto-rows-min gap-4 md:grid-cols-3">
+        <div className="aspect-video rounded-xl bg-muted/50" />
+        <div className="aspect-video rounded-xl bg-muted/50" />
+        <div className="aspect-video rounded-xl bg-muted/50" />
+      </div>
+      <div className="min-h-[50vh] flex-1 rounded-xl bg-muted/50 md:min-h-min" />
     </div>
   )
 }
@@ -28,7 +31,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" replace />
   }
 
-  return children
+  return <AppLayout>{children}</AppLayout>
 }
 
 function GuestRoute({ children }: { children: React.ReactNode }) {
