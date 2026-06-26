@@ -1,0 +1,45 @@
+---
+description: Usar o handler global de API no frontend e respostas pt-BR no backend
+globs: frontend/**/*,backend/**/*
+alwaysApply: false
+---
+
+# API Handler e respostas pt-BR
+
+## Frontend
+
+Todas as chamadas HTTP à API devem usar `api()` de `@/lib/api-handler`. Não use `fetch` diretamente.
+
+```typescript
+// ❌ BAD
+const res = await fetch('/api/users')
+const data = await res.json()
+
+// ✅ GOOD
+import { api } from '@/lib/api-handler'
+
+const users = await api<User[]>('/users')
+```
+
+- Erros exibem toast automaticamente com `mensagem` da API.
+- Status `>= 500` exibe mensagem genérica: "Ocorreu um erro inesperado. Tente novamente mais tarde."
+- Sucesso com campo `mensagem` exibe toast de sucesso.
+- Para desativar toasts: `api('/path', { toastOnError: false })` ou `toastOnSuccess: false`.
+
+## Backend
+
+Mensagens voltadas ao usuário devem estar em **pt-BR** no campo `mensagem`.
+
+```typescript
+// ❌ BAD
+return reply.status(404).send({ error: 'Not found' })
+
+// ✅ GOOD
+import { sendError, MENSAGENS } from '../utils/response.js'
+
+return sendError(reply, 404, MENSAGENS.NAO_ENCONTRADO)
+```
+
+- Erros: `{ mensagem: string }` via `sendError()`.
+- Sucesso com toast opcional: `sendSuccess(reply, dados, 200, 'Salvo com sucesso')`.
+- Lance `AppError` com mensagens em pt-BR para erros operacionais.

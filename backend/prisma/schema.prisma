@@ -1,0 +1,238 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UnitType {
+  PEDERTRACTOR
+  TRACTOR
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+enum TeamRole {
+  ADMIN
+  MEMBER
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELED
+  EXPIRED
+}
+
+enum CardType {
+  PROJECT
+  ACTIVITY
+}
+
+enum CardStatus {
+  TODO
+  IN_PROGRESS
+  PAUSED
+  DONE
+  CANCELED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELED
+}
+
+enum TimeEntryType {
+  TIMER
+  MANUAL
+}
+
+model User {
+  id           String   @id @default(cuid())
+  employeeId   String   @unique
+  name         String
+  unit         UnitType
+  cardNumber   String
+  passwordHash String
+  role         UserRole
+  active       Boolean  @default(true)
+  firstLogin   Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships  TeamMember[]
+  createdTeams Team[]       @relation("TeamCreator")
+
+  createdCards  Card[] @relation("CardCreator")
+  createdTasks  Task[] @relation("TaskCreator")
+  assignedTasks Task[] @relation("TaskAssignee")
+
+  timeEntries TimeEntry[]
+
+  sentInvites     TeamInvite[] @relation("InviteSender")
+  acceptedInvites TeamInvite[] @relation("InviteAcceptedBy")
+
+  @@unique([unit, cardNumber])
+  @@map("users")
+}
+
+model Team {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+
+  createdById String
+  createdBy   User   @relation("TeamCreator", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members TeamMember[]
+  invites TeamInvite[]
+  cards   Card[]
+
+  @@map("teams")
+}
+
+model TeamMember {
+  id String @id @default(cuid())
+
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  role TeamRole @default(MEMBER)
+
+  joinedAt DateTime @default(now())
+
+  @@unique([teamId, userId])
+  @@map("team_members")
+}
+
+model TeamInvite {
+  id String @id @default(cuid())
+
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  unit       UnitType
+  cardNumber String
+
+  invitedById String
+  invitedBy   User   @relation("InviteSender", fields: [invitedById], references: [id])
+
+  acceptedById String?
+  acceptedBy   User?   @relation("InviteAcceptedBy", fields: [acceptedById], references: [id])
+
+  status InviteStatus @default(PENDING)
+
+  createdAt  DateTime  @default(now())
+  acceptedAt DateTime?
+  expiresAt  DateTime?
+
+  @@unique([teamId, unit, cardNumber])
+  @@map("team_invites")
+}
+
+model Card {
+  id String @id @default(cuid())
+
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  createdById String
+  createdBy   User   @relation("CardCreator", fields: [createdById], references: [id])
+
+  title       String
+  description String?
+
+  type   CardType
+  status CardStatus @default(TODO)
+
+  estimatedHours Decimal? @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tasks       Task[]
+  timeEntries TimeEntry[]
+
+  @@index([teamId])
+  @@index([createdById])
+  @@map("cards")
+}
+
+model Task {
+  id String @id @default(cuid())
+
+  cardId String
+  card   Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  createdById String
+  createdBy   User   @relation("TaskCreator", fields: [createdById], references: [id])
+
+  assignedToId String?
+  assignedTo   User?   @relation("TaskAssignee", fields: [assignedToId], references: [id])
+
+  title       String
+  description String?
+
+  status TaskStatus @default(TODO)
+
+  estimatedHours Decimal? @db.Decimal(10, 2)
+
+  sortOrder Int @default(0)
+
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  timeEntries TimeEntry[]
+
+  @@index([cardId])
+  @@index([assignedToId])
+  @@map("tasks")
+}
+
+model TimeEntry {
+  id String @id @default(cuid())
+
+  cardId String?
+  card   Card?   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  taskId String?
+  task   Task?   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type TimeEntryType @default(TIMER)
+
+  startedAt DateTime
+  endedAt   DateTime?
+
+  durationSeconds Int?
+
+  note String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([cardId])
+  @@index([taskId])
+  @@index([userId])
+  @@index([startedAt])
+  @@map("time_entries")
+}
