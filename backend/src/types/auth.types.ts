@@ -22,6 +22,18 @@ export interface AuthPayload {
   user: SafeUser;
 }
 
+export type LoginResponse =
+  | { token: string; user: SafeUser; requiresPasswordChange?: false }
+  | { user: SafeUser; requiresPasswordChange: true };
+
+export interface ChangePasswordInput {
+  cardNumber: string;
+  unit: UnitType;
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
 export interface JwtPayload {
   sub: string;
 }

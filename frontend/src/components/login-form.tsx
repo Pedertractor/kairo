@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -18,6 +19,7 @@ export function LoginForm({
   ...props
 }: Omit<React.ComponentProps<'form'>, 'onSubmit'>) {
   const { login } = useAuth()
+  const navigate = useNavigate()
   const [unit, setUnit] = useState<UnitType>('PEDERTRACTOR')
   const [cardNumber, setCardNumber] = useState('')
   const [password, setPassword] = useState('')
@@ -28,7 +30,10 @@ export function LoginForm({
     setIsSubmitting(true)
 
     try {
-      await login({ unit, cardNumber, password })
+      const loggedIn = await login({ unit, cardNumber, password })
+      if (loggedIn) {
+        navigate('/')
+      }
     } finally {
       setIsSubmitting(false)
     }

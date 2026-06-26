@@ -16,4 +16,11 @@ export class UserRepository {
       where: { id },
     });
   }
+
+  updatePassword(id: string, passwordHash: string) {
+    return this.prisma.user.update({
+      where: { id },
+      data: { passwordHash, firstLogin: false },
+    });
+  }
 }

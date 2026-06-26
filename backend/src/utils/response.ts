@@ -19,6 +19,10 @@ export const MENSAGENS = {
   CREDENCIAIS_INVALIDAS: 'Número do cartão ou senha inválidos',
   LOGIN_SUCESSO: 'Login realizado com sucesso',
   LOGOUT_SUCESSO: 'Logout realizado com sucesso',
+  PRIMEIRO_LOGIN: 'Defina uma nova senha para continuar',
+  SENHA_ALTERADA_SUCESSO: 'Senha alterada com sucesso',
+  SENHA_IGUAL_PADRAO: 'A nova senha não pode ser igual à senha padrão',
+  SENHAS_NAO_COINCIDEM: 'As senhas não coincidem',
 } as const;
 
 export function sendError(

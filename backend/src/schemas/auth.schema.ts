@@ -5,3 +5,16 @@ export const loginSchema = z.object({
   unit: z.enum(['PEDERTRACTOR', 'TRACTOR']),
   password: z.string().min(1, 'Senha é obrigatória'),
 });
+
+export const changePasswordSchema = z
+  .object({
+    cardNumber: z.string().trim().min(1, 'Número do cartão é obrigatório'),
+    unit: z.enum(['PEDERTRACTOR', 'TRACTOR']),
+    currentPassword: z.string().min(1, 'Senha atual é obrigatória'),
+    newPassword: z.string().min(8, 'A nova senha deve ter pelo menos 8 caracteres'),
+    confirmPassword: z.string().min(1, 'Confirmação de senha é obrigatória'),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'As senhas não coincidem',
+    path: ['confirmPassword'],
+  });
