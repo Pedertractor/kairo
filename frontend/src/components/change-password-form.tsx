@@ -58,7 +58,6 @@ export function ChangePasswordForm({
             value={newPassword}
             onChange={(event) => setNewPassword(event.target.value)}
             required
-            minLength={8}
           />
         </Field>
         <Field>
@@ -71,7 +70,6 @@ export function ChangePasswordForm({
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.target.value)}
             required
-            minLength={8}
           />
         </Field>
         <Field>
