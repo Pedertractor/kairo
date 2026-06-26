@@ -12,7 +12,8 @@ export interface SafeUser {
 }
 
 export interface LoginInput {
-  employeeId: string;
+  cardNumber: string;
+  unit: UnitType;
   password: string;
 }
 

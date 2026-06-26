@@ -16,7 +16,7 @@ export const MENSAGENS = {
   PROIBIDO: 'Acesso negado',
   NAO_ENCONTRADO: 'Recurso não encontrado',
   REQUISICAO_INVALIDA: 'Requisição inválida',
-  CREDENCIAIS_INVALIDAS: 'Matrícula ou senha inválidos',
+  CREDENCIAIS_INVALIDAS: 'Número do cartão ou senha inválidos',
   LOGIN_SUCESSO: 'Login realizado com sucesso',
   LOGOUT_SUCESSO: 'Logout realizado com sucesso',
 } as const;

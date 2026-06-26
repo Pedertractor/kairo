@@ -22,6 +22,7 @@ export interface MeResponse {
 }
 
 export interface LoginCredentials {
-  employeeId: string
+  cardNumber: string
+  unit: UnitType
   password: string
 }

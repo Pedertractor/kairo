@@ -1,11 +1,13 @@
-import type { PrismaClient } from '../generated/client.js';
+import type { PrismaClient, UnitType } from '../generated/client.js';
 
 export class UserRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  findByEmployeeId(employeeId: string) {
+  findByUnitAndCardNumber(unit: UnitType, cardNumber: string) {
     return this.prisma.user.findUnique({
-      where: { employeeId },
+      where: {
+        unit_cardNumber: { unit, cardNumber },
+      },
     });
   }
 

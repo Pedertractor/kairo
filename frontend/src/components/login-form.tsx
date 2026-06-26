@@ -9,13 +9,17 @@ import {
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/hooks/use-auth'
 import { cn } from '@/lib/utils'
+import type { UnitType } from '@/types/auth'
+
+const UNITS: UnitType[] = ['PEDERTRACTOR', 'TRACTOR']
 
 export function LoginForm({
   className,
   ...props
 }: Omit<React.ComponentProps<'form'>, 'onSubmit'>) {
   const { login } = useAuth()
-  const [employeeId, setEmployeeId] = useState('')
+  const [unit, setUnit] = useState<UnitType>('PEDERTRACTOR')
+  const [cardNumber, setCardNumber] = useState('')
   const [password, setPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -24,7 +28,7 @@ export function LoginForm({
     setIsSubmitting(true)
 
     try {
-      await login({ employeeId, password })
+      await login({ unit, cardNumber, password })
     } finally {
       setIsSubmitting(false)
     }
@@ -40,18 +44,33 @@ export function LoginForm({
         <div className="flex flex-col items-center gap-1 text-center">
           <h1 className="text-2xl font-bold">Entrar na sua conta</h1>
           <p className="text-sm text-balance text-muted-foreground">
-            Informe sua matrícula e senha para acessar o Kairo
+            Selecione a unidade e informe seu cartão e senha
           </p>
         </div>
         <Field>
-          <FieldLabel htmlFor="employeeId">Matrícula</FieldLabel>
+          <FieldLabel>Unidade</FieldLabel>
+          <div className="grid grid-cols-2 gap-2">
+            {UNITS.map((option) => (
+              <Button
+                key={option}
+                type="button"
+                variant={unit === option ? 'default' : 'outline'}
+                onClick={() => setUnit(option)}
+              >
+                {option}
+              </Button>
+            ))}
+          </div>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="cardNumber">Número do cartão</FieldLabel>
           <Input
-            id="employeeId"
-            name="employeeId"
+            id="cardNumber"
+            name="cardNumber"
             autoComplete="username"
             placeholder="12345"
-            value={employeeId}
-            onChange={(event) => setEmployeeId(event.target.value)}
+            value={cardNumber}
+            onChange={(event) => setCardNumber(event.target.value)}
             required
           />
         </Field>

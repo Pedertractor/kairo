@@ -9,8 +9,8 @@ import { toSafeUser } from '../utils/user.js';
 export class AuthService {
   constructor(private readonly userRepository: UserRepository) {}
 
-  async login({ employeeId, password }: LoginInput) {
-    const user = await this.userRepository.findByEmployeeId(employeeId);
+  async login({ cardNumber, unit, password }: LoginInput) {
+    const user = await this.userRepository.findByUnitAndCardNumber(unit, cardNumber);
 
     if (!user || !user.active) {
       throw new AppError(401, MENSAGENS.CREDENCIAIS_INVALIDAS);
