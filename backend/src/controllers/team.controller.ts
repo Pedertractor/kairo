@@ -1,5 +1,9 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import { createTeamSchema, teamIdParamSchema } from '../schemas/team.schema.js';
+import {
+  createTeamSchema,
+  teamIdParamSchema,
+  teamMemberParamSchema,
+} from '../schemas/team.schema.js';
 import { TeamService } from '../services/team.service.js';
 import { AppError, handleControllerError } from '../utils/errors.js';
 import { MENSAGENS, sendSuccess } from '../utils/response.js';
@@ -30,6 +34,26 @@ export class TeamController {
       );
 
       return sendSuccess(reply, { team });
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  removeMember = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const parsed = teamMemberParamSchema.safeParse(request.params);
+
+      if (!parsed.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const team = await this.service.removeMember(
+        parsed.data.id,
+        request.user.sub,
+        parsed.data.userId,
+      );
+
+      return sendSuccess(reply, { team }, 200, MENSAGENS.MEMBRO_REMOVIDO_SUCESSO);
     } catch (error) {
       return handleControllerError(error, reply);
     }

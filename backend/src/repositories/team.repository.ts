@@ -38,6 +38,20 @@ export class TeamRepository {
     });
   }
 
+  countAdminsByTeamId(teamId: string) {
+    return this.prisma.teamMember.count({
+      where: { teamId, role: 'ADMIN' },
+    });
+  }
+
+  deleteMember(teamId: string, userId: string) {
+    return this.prisma.teamMember.delete({
+      where: {
+        teamId_userId: { teamId, userId },
+      },
+    });
+  }
+
   createTeamWithCreatorMember(
     name: string,
     description: string | undefined,

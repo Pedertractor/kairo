@@ -64,6 +64,46 @@ export class TeamService {
     return toTeamSummary(membership.team, membership.role);
   }
 
+  async removeMember(
+    teamId: string,
+    actorUserId: string,
+    targetUserId: string,
+  ): Promise<TeamSummary> {
+    const actorMembership = await this.teamRepository.findMembershipByTeamAndUser(
+      teamId,
+      actorUserId,
+    );
+
+    if (!actorMembership) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    if (actorMembership.role !== TeamRole.ADMIN) {
+      throw new AppError(403, MENSAGENS.PROIBIDO);
+    }
+
+    const targetMembership = await this.teamRepository.findMembershipByTeamAndUser(
+      teamId,
+      targetUserId,
+    );
+
+    if (!targetMembership) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    if (targetMembership.role === TeamRole.ADMIN) {
+      const adminCount = await this.teamRepository.countAdminsByTeamId(teamId);
+
+      if (adminCount <= 1) {
+        throw new AppError(400, MENSAGENS.ULTIMO_ADMIN_NAO_PODE_SER_REMOVIDO);
+      }
+    }
+
+    await this.teamRepository.deleteMember(teamId, targetUserId);
+
+    return this.getTeamForMember(teamId, actorUserId);
+  }
+
   async createTeam(
     userId: string,
     name: string,

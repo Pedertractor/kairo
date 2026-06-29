@@ -8,3 +8,8 @@ export const createTeamSchema = z.object({
 export const teamIdParamSchema = z.object({
   id: z.string().min(1),
 });
+
+export const teamMemberParamSchema = z.object({
+  id: z.string().min(1),
+  userId: z.string().min(1),
+});

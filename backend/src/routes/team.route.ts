@@ -14,6 +14,11 @@ export async function teamRoutes(app: FastifyInstance) {
 
   app.get('/teams', { preHandler: [app.authenticate] }, controller.list);
   app.get('/teams/:id', { preHandler: [app.authenticate] }, controller.getById);
+  app.delete(
+    '/teams/:id/members/:userId',
+    { preHandler: [app.authenticate] },
+    controller.removeMember,
+  );
   app.post(
     '/teams',
     { preHandler: [app.authenticate, requireAdmin] },
