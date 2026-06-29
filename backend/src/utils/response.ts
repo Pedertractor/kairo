@@ -23,6 +23,7 @@ export const MENSAGENS = {
   SENHA_ALTERADA_SUCESSO: 'Senha alterada com sucesso',
   SENHA_IGUAL_PADRAO: 'A nova senha não pode ser igual à senha padrão',
   SENHAS_NAO_COINCIDEM: 'As senhas não coincidem',
+  EQUIPE_CRIADA_SUCESSO: 'Equipe criada com sucesso',
 } as const;
 
 export function sendError(

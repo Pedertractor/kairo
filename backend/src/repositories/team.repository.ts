@@ -1,0 +1,66 @@
+import type { PrismaClient, TeamRole } from '../generated/client.js';
+
+export class TeamRepository {
+  constructor(private readonly prisma: PrismaClient) {}
+
+  findMembershipsByUserId(userId: string) {
+    return this.prisma.teamMember.findMany({
+      where: { userId },
+      include: {
+        team: {
+          include: {
+            _count: { select: { members: true } },
+          },
+        },
+      },
+      orderBy: { team: { name: 'asc' } },
+    });
+  }
+
+  findMembershipByTeamAndUser(teamId: string, userId: string) {
+    return this.prisma.teamMember.findUnique({
+      where: {
+        teamId_userId: { teamId, userId },
+      },
+      include: {
+        team: {
+          include: {
+            _count: { select: { members: true } },
+          },
+        },
+      },
+    });
+  }
+
+  createTeamWithCreatorMember(
+    name: string,
+    description: string | undefined,
+    createdById: string,
+    creatorRole: TeamRole,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const team = await tx.team.create({
+        data: {
+          name,
+          description: description || null,
+          createdById,
+        },
+      });
+
+      await tx.teamMember.create({
+        data: {
+          teamId: team.id,
+          userId: createdById,
+          role: creatorRole,
+        },
+      });
+
+      return tx.team.findUniqueOrThrow({
+        where: { id: team.id },
+        include: {
+          _count: { select: { members: true } },
+        },
+      });
+    });
+  }
+}

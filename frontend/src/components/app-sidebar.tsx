@@ -1,4 +1,5 @@
 import type { ComponentProps } from 'react'
+import { useLocation } from 'react-router-dom'
 
 import { NavMain } from '@/components/nav-main'
 import { NavUser } from '@/components/nav-user'
@@ -12,24 +13,37 @@ import {
 } from '@/components/ui/sidebar'
 import { useAuth } from '@/hooks/use-auth'
 import type { UnitType } from '@/types/auth'
-import { HomeIcon } from 'lucide-react'
+import { HomeIcon, UsersIcon } from 'lucide-react'
 
 const UNIT_LABELS: Record<UnitType, string> = {
   PEDERTRACTOR: 'Pedertractor',
   TRACTOR: 'Tractor',
 }
 
-const navMain = [
+const navItems = [
   {
     title: 'Início',
     url: '/',
     icon: <HomeIcon />,
-    isActive: true,
+  },
+  {
+    title: 'Equipes',
+    url: '/equipes',
+    icon: <UsersIcon />,
   },
 ]
 
 export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   const { user } = useAuth()
+  const { pathname } = useLocation()
+
+  const navMain = navItems.map((item) => ({
+    ...item,
+    isActive:
+      item.url === '/'
+        ? pathname === '/'
+        : pathname === item.url || pathname.startsWith(`${item.url}/`),
+  }))
 
   return (
     <Sidebar collapsible="icon" {...props}>

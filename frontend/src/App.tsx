@@ -4,6 +4,8 @@ import { AppLayout } from '@/components/app-layout'
 import { useAuth } from '@/hooks/use-auth'
 import { ChangePasswordPage } from '@/pages/change-password-page'
 import { LoginPage } from '@/pages/login-page'
+import { TeamDetailPage } from '@/pages/team-detail-page'
+import { TeamsPage } from '@/pages/teams-page'
 
 function HomePage() {
   const { user } = useAuth()
@@ -24,14 +26,20 @@ function HomePage() {
   )
 }
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function ProtectedRoute({
+  children,
+  title = 'Início',
+}: {
+  children: React.ReactNode
+  title?: string
+}) {
   const { isAuthenticated } = useAuth()
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
   }
 
-  return <AppLayout>{children}</AppLayout>
+  return <AppLayout title={title}>{children}</AppLayout>
 }
 
 function GuestRoute({ children }: { children: React.ReactNode }) {
@@ -74,6 +82,22 @@ function App() {
         element={
           <ProtectedRoute>
             <HomePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/equipes"
+        element={
+          <ProtectedRoute title="Equipes">
+            <TeamsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/equipes/:teamId"
+        element={
+          <ProtectedRoute title="Equipe">
+            <TeamDetailPage />
           </ProtectedRoute>
         }
       />

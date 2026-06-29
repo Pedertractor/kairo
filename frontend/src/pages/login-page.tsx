@@ -1,3 +1,4 @@
+import loginImage from '@/assets/login-image.png'
 import { KairoBrand } from '@/components/kairo-brand'
 import { LoginForm } from '@/components/login-form'
 
@@ -16,7 +17,7 @@ export function LoginPage() {
       </div>
       <div className="relative hidden bg-muted lg:block">
         <img
-          src="/placeholder.svg"
+          src={loginImage}
           alt=""
           className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
         />
