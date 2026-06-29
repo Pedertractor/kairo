@@ -11,7 +11,7 @@ function HomePage() {
   const { user } = useAuth()
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+    <div className="flex flex-1 flex-col gap-4">
       <div className="flex flex-col items-center justify-center gap-2 py-12">
         <p className="text-sm text-muted-foreground">Bem-vindo(a)</p>
         <h1 className="text-2xl font-bold">{user?.name}</h1>

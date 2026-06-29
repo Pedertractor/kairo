@@ -18,16 +18,8 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar'
 import { useAuth } from '@/hooks/use-auth'
+import { getInitials } from '@/lib/initials'
 import { ChevronsUpDownIcon, LogOutIcon } from 'lucide-react'
-
-function getInitials(name: string) {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('')
-}
 
 export function NavUser() {
   const { user, logout } = useAuth()

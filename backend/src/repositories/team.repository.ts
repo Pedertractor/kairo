@@ -1,5 +1,15 @@
 import type { PrismaClient, TeamRole } from '../generated/client.js';
 
+const memberInclude = {
+  members: {
+    include: {
+      user: { select: { id: true, name: true } },
+    },
+    orderBy: { joinedAt: 'asc' as const },
+  },
+  _count: { select: { members: true } },
+};
+
 export class TeamRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
@@ -8,9 +18,7 @@ export class TeamRepository {
       where: { userId },
       include: {
         team: {
-          include: {
-            _count: { select: { members: true } },
-          },
+          include: memberInclude,
         },
       },
       orderBy: { team: { name: 'asc' } },
@@ -24,9 +32,7 @@ export class TeamRepository {
       },
       include: {
         team: {
-          include: {
-            _count: { select: { members: true } },
-          },
+          include: memberInclude,
         },
       },
     });
@@ -57,9 +63,7 @@ export class TeamRepository {
 
       return tx.team.findUniqueOrThrow({
         where: { id: team.id },
-        include: {
-          _count: { select: { members: true } },
-        },
+        include: memberInclude,
       });
     });
   }

@@ -4,12 +4,9 @@ import { Link, useParams } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { TeamMemberAvatars } from '@/components/team-member-avatars'
 import { api } from '@/lib/api-handler'
 import type { TeamResponse } from '@/types/team'
-
-function formatMemberCount(count: number) {
-  return count === 1 ? '1 membro' : `${count} membros`
-}
 
 export function TeamDetailPage() {
   const { teamId } = useParams<{ teamId: string }>()
@@ -47,7 +44,7 @@ export function TeamDetailPage() {
   }, [teamId])
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 pt-0">
+    <div className="flex flex-1 flex-col gap-6">
       <div>
         <Button variant="ghost" size="sm" render={<Link to="/equipes" />}>
           <ArrowLeft />
@@ -67,9 +64,7 @@ export function TeamDetailPage() {
           {team.description ? (
             <p className="text-muted-foreground">{team.description}</p>
           ) : null}
-          <p className="text-sm text-muted-foreground">
-            {formatMemberCount(team.memberCount)}
-          </p>
+          <TeamMemberAvatars members={team.members} />
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">Equipe não encontrada.</p>

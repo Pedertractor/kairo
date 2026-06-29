@@ -1,6 +1,7 @@
 import { Crown } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
+import { TeamMemberAvatars } from '@/components/team-member-avatars'
 import {
   Card,
   CardContent,
@@ -14,10 +15,6 @@ import type { TeamSummary } from '@/types/team'
 interface TeamCardProps {
   team: TeamSummary
   isCreator: boolean
-}
-
-function formatMemberCount(count: number) {
-  return count === 1 ? '1 membro' : `${count} membros`
 }
 
 export function TeamCard({ team, isCreator }: TeamCardProps) {
@@ -44,9 +41,7 @@ export function TeamCard({ team, isCreator }: TeamCardProps) {
             ) : null}
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-muted-foreground">
-              {formatMemberCount(team.memberCount)}
-            </p>
+            <TeamMemberAvatars members={team.members} />
           </CardContent>
         </Card>
       </Link>

@@ -32,7 +32,7 @@ export function TeamsPage() {
   const isAdmin = user?.role === 'ADMIN'
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 pt-0">
+    <div className="flex flex-1 flex-col gap-6">
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">Minhas Equipes</h1>
         {isAdmin ? (

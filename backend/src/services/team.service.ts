@@ -1,26 +1,38 @@
 import { TeamRole } from '../generated/client.js';
 import { TeamRepository } from '../repositories/team.repository.js';
-import type { TeamSummary } from '../types/team.types.js';
+import type { TeamMemberSummary, TeamSummary } from '../types/team.types.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 
-function toTeamSummary(
-  team: {
-    id: string;
-    name: string;
-    description: string | null;
-    createdById: string;
-    createdAt: Date;
-    _count: { members: number };
-  },
-  role: TeamRole,
-): TeamSummary {
+type TeamWithMembers = {
+  id: string;
+  name: string;
+  description: string | null;
+  createdById: string;
+  createdAt: Date;
+  _count: { members: number };
+  members: Array<{
+    user: { id: string; name: string };
+  }>;
+};
+
+function toTeamMembers(
+  members: TeamWithMembers['members'],
+): TeamMemberSummary[] {
+  return members.map((member) => ({
+    id: member.user.id,
+    name: member.user.name,
+  }));
+}
+
+function toTeamSummary(team: TeamWithMembers, role: TeamRole): TeamSummary {
   return {
     id: team.id,
     name: team.name,
     description: team.description,
     createdById: team.createdById,
     memberCount: team._count.members,
+    members: toTeamMembers(team.members),
     role,
     createdAt: team.createdAt.toISOString(),
   };
