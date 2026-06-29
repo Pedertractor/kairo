@@ -12,6 +12,7 @@ type TeamWithMembers = {
   createdAt: Date;
   _count: { members: number };
   members: Array<{
+    role: TeamRole;
     user: { id: string; name: string };
   }>;
 };
@@ -22,6 +23,7 @@ function toTeamMembers(
   return members.map((member) => ({
     id: member.user.id,
     name: member.user.name,
+    role: member.role,
   }));
 }
 

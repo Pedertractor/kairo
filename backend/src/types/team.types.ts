@@ -3,6 +3,7 @@ import type { TeamRole } from '../generated/client.js';
 export interface TeamMemberSummary {
   id: string;
   name: string;
+  role: TeamRole;
 }
 
 export interface TeamSummary {

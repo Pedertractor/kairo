@@ -3,6 +3,7 @@ export type TeamRole = 'ADMIN' | 'MEMBER'
 export interface TeamMemberSummary {
   id: string
   name: string
+  role: TeamRole
 }
 
 export interface TeamSummary {
