@@ -38,6 +38,22 @@ export class TeamRepository {
     });
   }
 
+  findById(teamId: string) {
+    return this.prisma.team.findUnique({
+      where: { id: teamId },
+    });
+  }
+
+  addMember(teamId: string, userId: string, role: TeamRole) {
+    return this.prisma.teamMember.create({
+      data: {
+        teamId,
+        userId,
+        role,
+      },
+    });
+  }
+
   countAdminsByTeamId(teamId: string) {
     return this.prisma.teamMember.count({
       where: { teamId, role: 'ADMIN' },

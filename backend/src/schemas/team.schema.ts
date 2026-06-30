@@ -13,3 +13,7 @@ export const teamMemberParamSchema = z.object({
   id: z.string().min(1),
   userId: z.string().min(1),
 });
+
+export const addTeamMemberSchema = z.object({
+  userId: z.string().min(1, 'Usuário é obrigatório'),
+});

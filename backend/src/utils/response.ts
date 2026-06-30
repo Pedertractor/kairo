@@ -27,6 +27,9 @@ export const MENSAGENS = {
   MEMBRO_REMOVIDO_SUCESSO: 'Membro removido com sucesso',
   ULTIMO_ADMIN_NAO_PODE_SER_REMOVIDO:
     'Não é possível remover o único administrador da equipe',
+  MEMBRO_ADICIONADO_SUCESSO: 'Membro adicionado com sucesso',
+  USUARIO_JA_E_MEMBRO: 'Este usuário já faz parte da equipe',
+  USUARIO_NAO_ENCONTRADO: 'Usuário não encontrado',
 } as const;
 
 export function sendError(

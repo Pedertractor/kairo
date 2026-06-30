@@ -6,6 +6,12 @@ export interface TeamMemberSummary {
   role: TeamRole;
 }
 
+export interface TeamUserOption {
+  id: string;
+  name: string;
+  employeeId: string;
+}
+
 export interface TeamSummary {
   id: string;
   name: string;

@@ -102,6 +102,7 @@ export function TeamDetailPage() {
             <TabsContent value='membros'>
               <TeamMembersSection
                 teamId={team.id}
+                createdById={team.createdById}
                 members={team.members}
                 currentUserRole={team.role}
                 onTeamUpdated={setTeam}

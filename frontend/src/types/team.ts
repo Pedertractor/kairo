@@ -29,3 +29,17 @@ export interface CreateTeamInput {
   name: string
   description?: string
 }
+
+export interface AddTeamMemberInput {
+  userId: string
+}
+
+export interface TeamUserOption {
+  id: string
+  name: string
+  employeeId: string
+}
+
+export interface AvailableTeamMembersResponse {
+  users: TeamUserOption[]
+}

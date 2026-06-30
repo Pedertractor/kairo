@@ -1,6 +1,7 @@
 import { TeamRole } from '../generated/client.js';
 import { TeamRepository } from '../repositories/team.repository.js';
-import type { TeamMemberSummary, TeamSummary } from '../types/team.types.js';
+import { UserRepository } from '../repositories/user.repository.js';
+import type { TeamMemberSummary, TeamSummary, TeamUserOption } from '../types/team.types.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 
@@ -41,7 +42,10 @@ function toTeamSummary(team: TeamWithMembers, role: TeamRole): TeamSummary {
 }
 
 export class TeamService {
-  constructor(private readonly teamRepository: TeamRepository) {}
+  constructor(
+    private readonly teamRepository: TeamRepository,
+    private readonly userRepository: UserRepository,
+  ) {}
 
   async listUserTeams(userId: string): Promise<TeamSummary[]> {
     const memberships = await this.teamRepository.findMembershipsByUserId(userId);
@@ -102,6 +106,71 @@ export class TeamService {
     await this.teamRepository.deleteMember(teamId, targetUserId);
 
     return this.getTeamForMember(teamId, actorUserId);
+  }
+
+  async addMember(
+    teamId: string,
+    actorUserId: string,
+    targetUserId: string,
+  ): Promise<TeamSummary> {
+    const team = await this.teamRepository.findById(teamId);
+
+    if (!team) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    if (team.createdById !== actorUserId) {
+      throw new AppError(403, MENSAGENS.PROIBIDO);
+    }
+
+    const actor = await this.userRepository.findById(actorUserId);
+
+    if (!actor) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    const targetUser = await this.userRepository.findById(targetUserId);
+
+    if (!targetUser || !targetUser.active || targetUser.unit !== actor.unit) {
+      throw new AppError(404, MENSAGENS.USUARIO_NAO_ENCONTRADO);
+    }
+
+    const existingMembership =
+      await this.teamRepository.findMembershipByTeamAndUser(
+        teamId,
+        targetUser.id,
+      );
+
+    if (existingMembership) {
+      throw new AppError(400, MENSAGENS.USUARIO_JA_E_MEMBRO);
+    }
+
+    await this.teamRepository.addMember(teamId, targetUser.id, TeamRole.MEMBER);
+
+    return this.getTeamForMember(teamId, actorUserId);
+  }
+
+  async listAvailableMembers(
+    teamId: string,
+    actorUserId: string,
+  ): Promise<TeamUserOption[]> {
+    const team = await this.teamRepository.findById(teamId);
+
+    if (!team) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    if (team.createdById !== actorUserId) {
+      throw new AppError(403, MENSAGENS.PROIBIDO);
+    }
+
+    const actor = await this.userRepository.findById(actorUserId);
+
+    if (!actor) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    return this.userRepository.findAvailableForTeam(teamId, actor.unit);
   }
 
   async createTeam(

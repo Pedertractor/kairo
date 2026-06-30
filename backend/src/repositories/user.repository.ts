@@ -17,6 +17,24 @@ export class UserRepository {
     });
   }
 
+  findAvailableForTeam(teamId: string, unit: UnitType) {
+    return this.prisma.user.findMany({
+      where: {
+        unit,
+        active: true,
+        memberships: {
+          none: { teamId },
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        employeeId: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+  }
+
   updatePassword(id: string, passwordHash: string) {
     return this.prisma.user.update({
       where: { id },
