@@ -1,6 +1,14 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 
 import { Button } from '@/components/ui/button'
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from '@/components/ui/combobox'
 import {
   Dialog,
   DialogContent,
@@ -10,13 +18,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { api } from '@/lib/api-handler'
 import type {
@@ -26,11 +27,23 @@ import type {
   TeamUserOption,
 } from '@/types/team'
 
+type UserComboboxOption = {
+  value: string
+  label: string
+}
+
 interface AddTeamMemberDialogProps {
   teamId: string
   open: boolean
   onOpenChange: (open: boolean) => void
   onAdded: (team: TeamResponse['team']) => void
+}
+
+function toComboboxOption(user: TeamUserOption): UserComboboxOption {
+  return {
+    value: user.id,
+    label: `${user.name} (${user.employeeId})`,
+  }
 }
 
 export function AddTeamMemberDialog({
@@ -40,12 +53,19 @@ export function AddTeamMemberDialog({
   onAdded,
 }: AddTeamMemberDialogProps) {
   const [users, setUsers] = useState<TeamUserOption[]>([])
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const [selectedUser, setSelectedUser] = useState<UserComboboxOption | null>(
+    null,
+  )
   const [isLoadingUsers, setIsLoadingUsers] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  const userOptions = useMemo(
+    () => users.map(toComboboxOption),
+    [users],
+  )
+
   function resetForm() {
-    setSelectedUserId(null)
+    setSelectedUser(null)
     setUsers([])
   }
 
@@ -89,14 +109,14 @@ export function AddTeamMemberDialog({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (!selectedUserId) {
+    if (!selectedUser) {
       return
     }
 
     setIsSubmitting(true)
 
     try {
-      const payload: AddTeamMemberInput = { userId: selectedUserId }
+      const payload: AddTeamMemberInput = { userId: selectedUser.value }
       const data = await api<TeamResponse>(`/teams/${teamId}/members`, {
         method: 'POST',
         body: JSON.stringify(payload),
@@ -125,7 +145,8 @@ export function AddTeamMemberDialog({
           <DialogHeader>
             <DialogTitle>Adicionar membro</DialogTitle>
             <DialogDescription>
-              Selecione um usuário da sua unidade para adicionar à equipe.
+              Busque e selecione um usuário da sua unidade para adicionar à
+              equipe.
             </DialogDescription>
           </DialogHeader>
 
@@ -139,22 +160,32 @@ export function AddTeamMemberDialog({
                   Nenhum usuário disponível para adicionar.
                 </p>
               ) : (
-                <Select
-                  value={selectedUserId}
-                  onValueChange={(value) => setSelectedUserId(value)}
+                <Combobox
+                  items={userOptions}
+                  value={selectedUser}
+                  onValueChange={setSelectedUser}
+                  itemToStringLabel={(item) => item.label}
+                  isItemEqualToValue={(a, b) => a.value === b.value}
                   disabled={isSubmitting}
                 >
-                  <SelectTrigger id="member-user" className="w-full">
-                    <SelectValue placeholder="Selecione um usuário" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {users.map((user) => (
-                      <SelectItem key={user.id} value={user.id}>
-                        {user.name} ({user.employeeId})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <ComboboxInput
+                    id="member-user"
+                    className="w-full"
+                    placeholder="Buscar por nome..."
+                    showClear
+                    disabled={isSubmitting}
+                  />
+                  <ComboboxContent>
+                    <ComboboxEmpty>Nenhum usuário encontrado.</ComboboxEmpty>
+                    <ComboboxList>
+                      {(item) => (
+                        <ComboboxItem key={item.value} value={item}>
+                          {item.label}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
               )}
             </Field>
           </FieldGroup>
@@ -173,7 +204,7 @@ export function AddTeamMemberDialog({
               disabled={
                 isSubmitting ||
                 isLoadingUsers ||
-                !selectedUserId ||
+                !selectedUser ||
                 users.length === 0
               }
             >
