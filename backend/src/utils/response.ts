@@ -30,6 +30,7 @@ export const MENSAGENS = {
   MEMBRO_ADICIONADO_SUCESSO: 'Membro adicionado com sucesso',
   USUARIO_JA_E_MEMBRO: 'Este usuário já faz parte da equipe',
   USUARIO_NAO_ENCONTRADO: 'Usuário não encontrado',
+  ATIVIDADE_CRIADA_SUCESSO: 'Atividade criada com sucesso',
 } as const;
 
 export function sendError(

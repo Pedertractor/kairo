@@ -1,24 +1,24 @@
-import type { ComponentProps } from 'react'
-import { useLocation } from 'react-router-dom'
+import type { ComponentProps } from 'react';
+import { useLocation } from 'react-router-dom';
 
-import { NavMain } from '@/components/nav-main'
-import { NavUser } from '@/components/nav-user'
-import { SidebarBrand } from '@/components/sidebar-brand'
+import { NavMain } from '@/components/nav-main';
+import { NavUser } from '@/components/nav-user';
+import { SidebarBrand } from '@/components/sidebar-brand';
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
   SidebarRail,
-} from '@/components/ui/sidebar'
-import { useAuth } from '@/hooks/use-auth'
-import type { UnitType } from '@/types/auth'
-import { HomeIcon, UsersIcon } from 'lucide-react'
+} from '@/components/ui/sidebar';
+import { useAuth } from '@/hooks/use-auth';
+import type { UnitType } from '@/types/auth';
+import { HomeIcon, UsersIcon } from 'lucide-react';
 
 const UNIT_LABELS: Record<UnitType, string> = {
   PEDERTRACTOR: 'Pedertractor',
   TRACTOR: 'Tractor',
-}
+};
 
 const navItems = [
   {
@@ -31,11 +31,11 @@ const navItems = [
     url: '/equipes',
     icon: <UsersIcon />,
   },
-]
+];
 
 export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
-  const { user } = useAuth()
-  const { pathname } = useLocation()
+  const { user } = useAuth();
+  const { pathname } = useLocation();
 
   const navMain = navItems.map((item) => ({
     ...item,
@@ -43,13 +43,13 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
       item.url === '/'
         ? pathname === '/'
         : pathname === item.url || pathname.startsWith(`${item.url}/`),
-  }))
+  }));
 
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar collapsible='icon' {...props}>
       <SidebarHeader>
         {user ? (
-          <SidebarBrand name="Kairo" subtitle={UNIT_LABELS[user.unit]} />
+          <SidebarBrand name='kairo' subtitle={UNIT_LABELS[user.unit]} />
         ) : null}
       </SidebarHeader>
       <SidebarContent>
@@ -60,5 +60,5 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
-  )
+  );
 }

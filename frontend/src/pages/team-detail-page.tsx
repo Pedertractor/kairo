@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
+import { TeamActivitiesSection } from '@/components/team-activities-section';
 import { TeamMembersSection } from '@/components/team-members-section';
 import { TeamSectionPlaceholder } from '@/components/team-section-placeholder';
 import { Button } from '@/components/ui/button';
@@ -9,13 +10,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { api } from '@/lib/api-handler';
 import type { TeamResponse } from '@/types/team';
 
-type TeamTab = 'membros' | 'apontamentos' | 'timeline';
+type TeamTab =
+  | 'atividades'
+  | 'projetos'
+  | 'membros'
+  | 'apontamentos'
+  | 'timeline';
 
 export function TeamDetailPage() {
   const { teamId } = useParams<{ teamId: string }>();
   const [team, setTeam] = useState<TeamResponse['team'] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<TeamTab>('membros');
+  const [activeTab, setActiveTab] = useState<TeamTab>('atividades');
 
   useEffect(() => {
     if (!teamId) {
@@ -48,7 +54,7 @@ export function TeamDetailPage() {
   }, [teamId]);
 
   return (
-    <div className='flex flex-1 flex-col gap-6'>
+    <div className='flex min-w-0 flex-1 flex-col gap-6'>
       <div>
         <Button variant='ghost' size='sm' render={<Link to='/equipes' />}>
           <ArrowLeft />
@@ -76,9 +82,21 @@ export function TeamDetailPage() {
           <Tabs
             value={activeTab}
             onValueChange={(value) => setActiveTab(value as TeamTab)}
-            className='flex-1'
+            className='min-w-0 flex-1'
           >
             <TabsList className='border-sidebar-border'>
+              <TabsTrigger
+                value='atividades'
+                className='data-[state=active]:border-sidebar-primary data-[state=active]:text-sidebar-primary'
+              >
+                Atividades
+              </TabsTrigger>
+              <TabsTrigger
+                value='projetos'
+                className='data-[state=active]:border-sidebar-primary data-[state=active]:text-sidebar-primary'
+              >
+                Projetos
+              </TabsTrigger>
               <TabsTrigger
                 value='membros'
                 className='data-[state=active]:border-sidebar-primary data-[state=active]:text-sidebar-primary'
@@ -107,6 +125,10 @@ export function TeamDetailPage() {
                 currentUserRole={team.role}
                 onTeamUpdated={setTeam}
               />
+            </TabsContent>
+
+            <TabsContent value='atividades'>
+              <TeamActivitiesSection teamId={team.id} />
             </TabsContent>
 
             <TabsContent value='apontamentos'>

@@ -32,7 +32,7 @@ function Tabs({
 }) {
   return (
     <TabsContext.Provider value={{ value, onValueChange }}>
-      <div data-slot="tabs" className={cn('flex flex-col gap-4', className)}>
+      <div data-slot="tabs" className={cn('flex min-w-0 flex-col gap-4', className)}>
         {children}
       </div>
     </TabsContext.Provider>
@@ -47,7 +47,10 @@ function TabsList({
     <div
       data-slot="tabs-list"
       role="tablist"
-      className={cn('flex gap-6 border-b', className)}
+      className={cn(
+        'no-scrollbar flex max-w-full gap-4 overflow-x-auto overscroll-x-contain border-b sm:gap-6',
+        className,
+      )}
     >
       {children}
     </div>
@@ -74,7 +77,7 @@ function TabsTrigger({
       data-slot="tabs-trigger"
       data-state={isActive ? 'active' : 'inactive'}
       className={cn(
-        '-mb-px border-b-2 px-1 pb-3 text-sm font-medium transition-colors',
+        '-mb-px shrink-0 whitespace-nowrap border-b-2 px-1 pb-3 text-sm font-medium transition-colors',
         isActive
           ? 'border-primary text-foreground'
           : 'border-transparent text-muted-foreground hover:text-foreground',
