@@ -19,6 +19,11 @@ export async function timeEntryRoutes(app: FastifyInstance) {
     { preHandler: [app.authenticate] },
     controller.getActive,
   );
+  app.get(
+    '/time-entries/recent',
+    { preHandler: [app.authenticate] },
+    controller.getRecent,
+  );
   app.post(
     '/time-entries/active/pause',
     { preHandler: [app.authenticate] },

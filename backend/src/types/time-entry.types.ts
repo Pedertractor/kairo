@@ -24,3 +24,18 @@ export interface ActiveTimer {
   timeEntry: TimeEntrySummary;
   activity: ActiveTimerActivity;
 }
+
+export type RecentWorkItemKind = 'ACTIVITY' | 'PROJECT' | 'TASK';
+
+export interface RecentWorkItem {
+  kind: RecentWorkItemKind;
+  id: string;
+  title: string;
+  teamId: string;
+  teamName: string;
+  status: string;
+  parentTitle: string | null;
+  lastWorkedAt: string;
+  canStartTimer: boolean;
+  activityId: string | null;
+}

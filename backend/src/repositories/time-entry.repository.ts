@@ -37,4 +37,40 @@ export class TimeEntryRepository {
       },
     });
   }
+
+  findRecentByUserId(userId: string, take = 50) {
+    return this.prisma.timeEntry.findMany({
+      where: { userId },
+      orderBy: { startedAt: 'desc' },
+      take,
+      include: {
+        card: {
+          select: {
+            id: true,
+            title: true,
+            type: true,
+            teamId: true,
+            status: true,
+            team: { select: { name: true } },
+          },
+        },
+        task: {
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            card: {
+              select: {
+                id: true,
+                title: true,
+                type: true,
+                teamId: true,
+                team: { select: { name: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+  }
 }

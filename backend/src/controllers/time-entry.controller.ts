@@ -59,4 +59,14 @@ export class TimeEntryController {
       return handleControllerError(error, reply);
     }
   };
+
+  getRecent = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const items = await this.service.getRecentWorkItems(request.user.sub);
+
+      return sendSuccess(reply, { items });
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
 }

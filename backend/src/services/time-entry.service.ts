@@ -4,6 +4,8 @@ import { TeamRepository } from '../repositories/team.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
 import type {
   ActiveTimer,
+  RecentWorkItem,
+  RecentWorkItemKind,
   TimeEntrySummary,
 } from '../types/time-entry.types.js';
 import { AppError } from '../utils/errors.js';
@@ -46,6 +48,56 @@ function toActiveTimer(entry: ActiveEntryWithCard): ActiveTimer | null {
       title: entry.card.title,
       teamId: entry.card.teamId,
     },
+  };
+}
+
+type RecentEntry = Awaited<
+  ReturnType<TimeEntryRepository['findRecentByUserId']>
+>[number];
+
+function mapRecentEntry(entry: RecentEntry): RecentWorkItem | null {
+  if (entry.task) {
+    const parentCard = entry.task.card;
+
+    if (!parentCard) {
+      return null;
+    }
+
+    return {
+      kind: 'TASK',
+      id: entry.task.id,
+      title: entry.task.title,
+      teamId: parentCard.teamId,
+      teamName: parentCard.team.name,
+      status: entry.task.status,
+      parentTitle: parentCard.title,
+      lastWorkedAt: entry.startedAt.toISOString(),
+      canStartTimer: false,
+      activityId: null,
+    };
+  }
+
+  if (!entry.card) {
+    return null;
+  }
+
+  const kind = entry.card.type as RecentWorkItemKind;
+
+  if (kind !== 'ACTIVITY' && kind !== 'PROJECT') {
+    return null;
+  }
+
+  return {
+    kind,
+    id: entry.card.id,
+    title: entry.card.title,
+    teamId: entry.card.teamId,
+    teamName: entry.card.team.name,
+    status: entry.card.status,
+    parentTitle: null,
+    lastWorkedAt: entry.startedAt.toISOString(),
+    canStartTimer: kind === 'ACTIVITY',
+    activityId: kind === 'ACTIVITY' ? entry.card.id : null,
   };
 }
 
@@ -127,5 +179,38 @@ export class TimeEntryService {
     );
 
     return toTimeEntrySummary(stopped);
+  }
+
+  async getRecentWorkItems(
+    userId: string,
+    limit = 8,
+  ): Promise<RecentWorkItem[]> {
+    const entries = await this.timeEntryRepository.findRecentByUserId(userId);
+    const seen = new Set<string>();
+    const items: RecentWorkItem[] = [];
+
+    for (const entry of entries) {
+      const item = mapRecentEntry(entry);
+
+      if (!item) {
+        continue;
+      }
+
+      const key =
+        item.kind === 'TASK' ? `task:${item.id}` : `card:${item.id}`;
+
+      if (seen.has(key)) {
+        continue;
+      }
+
+      seen.add(key);
+      items.push(item);
+
+      if (items.length >= limit) {
+        break;
+      }
+    }
+
+    return items;
   }
 }

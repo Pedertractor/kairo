@@ -3,29 +3,11 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from '@/components/app-layout'
 import { useAuth } from '@/hooks/use-auth'
 import { ChangePasswordPage } from '@/pages/change-password-page'
+import { HomePage } from '@/pages/home-page'
 import { LoginPage } from '@/pages/login-page'
 import { ActivityDetailPage } from '@/pages/activity-detail-page'
 import { TeamDetailPage } from '@/pages/team-detail-page'
 import { TeamsPage } from '@/pages/teams-page'
-
-function HomePage() {
-  const { user } = useAuth()
-
-  return (
-    <div className="flex flex-1 flex-col gap-4">
-      <div className="flex flex-col items-center justify-center gap-2 py-12">
-        <p className="text-sm text-muted-foreground">Bem-vindo(a)</p>
-        <h1 className="text-2xl font-bold">{user?.name}</h1>
-      </div>
-      <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-        <div className="aspect-video rounded-xl bg-muted/50" />
-        <div className="aspect-video rounded-xl bg-muted/50" />
-        <div className="aspect-video rounded-xl bg-muted/50" />
-      </div>
-      <div className="min-h-[50vh] flex-1 rounded-xl bg-muted/50 md:min-h-min" />
-    </div>
-  )
-}
 
 function ProtectedRoute({
   children,
