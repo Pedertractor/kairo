@@ -1,4 +1,8 @@
-import type { CardStatus, CardType, PrismaClient } from '../generated/client.js';
+import type {
+  CardStatus,
+  CardType,
+  PrismaClient,
+} from '../generated/client.js';
 
 export class CardRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -7,6 +11,19 @@ export class CardRepository {
     return this.prisma.card.findMany({
       where: { teamId, type: 'ACTIVITY' as CardType },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  findActivityById(activityId: string) {
+    return this.prisma.card.findUnique({
+      where: { id: activityId },
+    });
+  }
+
+  updateActivityStatus(activityId: string, status: CardStatus) {
+    return this.prisma.card.update({
+      where: { id: activityId },
+      data: { status },
     });
   }
 

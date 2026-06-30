@@ -17,9 +17,19 @@ export async function cardRoutes(app: FastifyInstance) {
     { preHandler: [app.authenticate] },
     controller.listActivities,
   );
+  app.get(
+    '/teams/:teamId/activities/:activityId',
+    { preHandler: [app.authenticate] },
+    controller.getActivity,
+  );
   app.post(
     '/teams/:teamId/activities',
     { preHandler: [app.authenticate] },
     controller.createActivity,
+  );
+  app.patch(
+    '/teams/:teamId/activities/:activityId',
+    { preHandler: [app.authenticate] },
+    controller.updateActivityStatus,
   );
 }

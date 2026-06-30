@@ -4,6 +4,7 @@ import { AppLayout } from '@/components/app-layout'
 import { useAuth } from '@/hooks/use-auth'
 import { ChangePasswordPage } from '@/pages/change-password-page'
 import { LoginPage } from '@/pages/login-page'
+import { ActivityDetailPage } from '@/pages/activity-detail-page'
 import { TeamDetailPage } from '@/pages/team-detail-page'
 import { TeamsPage } from '@/pages/teams-page'
 
@@ -98,6 +99,14 @@ function App() {
         element={
           <ProtectedRoute title="Equipe">
             <TeamDetailPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/equipes/:teamId/atividades/:activityId"
+        element={
+          <ProtectedRoute title="Atividade">
+            <ActivityDetailPage />
           </ProtectedRoute>
         }
       />

@@ -1,4 +1,4 @@
-import type { Card } from '../generated/client.js';
+import type { Card, CardStatus } from '../generated/client.js';
 import { CardRepository } from '../repositories/card.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
 import type { ActivitySummary } from '../types/card.types.js';
@@ -47,6 +47,22 @@ export class CardService {
     return cards.map(toActivitySummary);
   }
 
+  async getActivity(
+    teamId: string,
+    activityId: string,
+    userId: string,
+  ): Promise<ActivitySummary> {
+    await this.assertTeamMember(teamId, userId);
+
+    const card = await this.cardRepository.findActivityById(activityId);
+
+    if (!card || card.teamId !== teamId || card.type !== 'ACTIVITY') {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    return toActivitySummary(card);
+  }
+
   async createActivity(
     teamId: string,
     userId: string,
@@ -65,5 +81,27 @@ export class CardService {
     });
 
     return toActivitySummary(card);
+  }
+
+  async updateActivityStatus(
+    teamId: string,
+    activityId: string,
+    userId: string,
+    status: CardStatus,
+  ): Promise<ActivitySummary> {
+    await this.assertTeamMember(teamId, userId);
+
+    const card = await this.cardRepository.findActivityById(activityId);
+
+    if (!card || card.teamId !== teamId || card.type !== 'ACTIVITY') {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    const updated = await this.cardRepository.updateActivityStatus(
+      activityId,
+      status,
+    );
+
+    return toActivitySummary(updated);
   }
 }
