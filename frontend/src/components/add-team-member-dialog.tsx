@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useState, type FormEvent } from 'react'
+import { Loader2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -18,7 +19,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { Skeleton } from '@/components/ui/skeleton'
 import { api } from '@/lib/api-handler'
 import type {
   AddTeamMemberInput,
@@ -69,6 +69,12 @@ export function AddTeamMemberDialog({
     setUsers([])
   }
 
+  useLayoutEffect(() => {
+    if (open) {
+      setIsLoadingUsers(true)
+    }
+  }, [open, teamId])
+
   useEffect(() => {
     if (!open) {
       return
@@ -77,8 +83,6 @@ export function AddTeamMemberDialog({
     let cancelled = false
 
     async function loadUsers() {
-      setIsLoadingUsers(true)
-
       try {
         const data = await api<AvailableTeamMembersResponse>(
           `/teams/${teamId}/available-members`,
@@ -143,7 +147,7 @@ export function AddTeamMemberDialog({
       <DialogContent>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Adicionar membro</DialogTitle>
+            <DialogTitle>Adicionar membro </DialogTitle>
             <DialogDescription>
               Busque e selecione um usuário da sua unidade para adicionar à
               equipe.
@@ -154,7 +158,10 @@ export function AddTeamMemberDialog({
             <Field>
               <FieldLabel htmlFor="member-user">Usuário</FieldLabel>
               {isLoadingUsers ? (
-                <Skeleton className="h-8 w-full" />
+                <div className="flex h-8 items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin" />
+                  Carregando usuários...
+                </div>
               ) : users.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   Nenhum usuário disponível para adicionar.
@@ -201,6 +208,7 @@ export function AddTeamMemberDialog({
             </Button>
             <Button
               type="submit"
+              className="bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90"
               disabled={
                 isSubmitting ||
                 isLoadingUsers ||
