@@ -111,12 +111,14 @@ export async function api<T>(
 ): Promise<T> {
   const { toastOnSuccess, toastOnError, ...init } = options
   const token = getStoredToken()
+  const hasBody =
+    init.body !== undefined && init.body !== null && init.body !== ''
 
   const response = await fetch(`${BASE_URL}${path}`, {
     ...init,
     headers: {
-      'Content-Type': 'application/json',
       Accept: 'application/json',
+      ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init.headers,
     },

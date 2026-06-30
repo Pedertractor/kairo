@@ -2,15 +2,15 @@ import { useState } from 'react'
 import { Crown, UserPlus, X } from 'lucide-react'
 
 import { AddTeamMemberDialog } from '@/components/add-team-member-dialog'
+import { RemoveTeamMemberDialog } from '@/components/remove-team-member-dialog'
 import {
   Avatar,
   AvatarFallback,
 } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/use-auth'
-import { api } from '@/lib/api-handler'
 import { getInitials } from '@/lib/initials'
-import type { TeamMemberSummary, TeamResponse, TeamRole, TeamSummary } from '@/types/team'
+import type { TeamMemberSummary, TeamRole, TeamSummary } from '@/types/team'
 
 const ROLE_LABELS: Record<TeamMemberSummary['role'], string> = {
   ADMIN: 'Administrador',
@@ -33,24 +33,12 @@ export function TeamMembersSection({
   onTeamUpdated,
 }: TeamMembersSectionProps) {
   const { user } = useAuth()
-  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null)
+  const [memberToRemove, setMemberToRemove] = useState<TeamMemberSummary | null>(
+    null,
+  )
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const canManageMembers = currentUserRole === 'ADMIN'
   const isCreator = user?.id === createdById
-
-  async function handleRemoveMember(memberId: string) {
-    setRemovingMemberId(memberId)
-
-    try {
-      const data = await api<TeamResponse>(
-        `/teams/${teamId}/members/${memberId}`,
-        { method: 'DELETE' },
-      )
-      onTeamUpdated(data.team)
-    } finally {
-      setRemovingMemberId(null)
-    }
-  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -68,6 +56,18 @@ export function TeamMembersSection({
           />
         </div>
       ) : null}
+
+      <RemoveTeamMemberDialog
+        teamId={teamId}
+        member={memberToRemove}
+        open={memberToRemove !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setMemberToRemove(null)
+          }
+        }}
+        onRemoved={onTeamUpdated}
+      />
 
       {members.length === 0 ? (
         <p className="text-sm text-muted-foreground">
@@ -111,9 +111,8 @@ export function TeamMembersSection({
                     variant="ghost"
                     size="icon-xs"
                     className="shrink-0 text-muted-foreground hover:text-destructive"
-                    disabled={removingMemberId === member.id}
                     aria-label={`Remover ${member.name}`}
-                    onClick={() => void handleRemoveMember(member.id)}
+                    onClick={() => setMemberToRemove(member)}
                   >
                     <X />
                   </Button>
