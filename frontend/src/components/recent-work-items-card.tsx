@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ClipboardList,
@@ -8,17 +7,12 @@ import {
 } from 'lucide-react'
 
 import { StartActivityTimerButton } from '@/components/start-activity-timer-button'
+import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { STATUS_LABELS } from '@/lib/card-status'
-import { formatRelativeDate } from '@/lib/greeting'
-import { api } from '@/lib/api-handler'
 import { cn } from '@/lib/utils'
 import { useActiveTimer } from '@/hooks/use-active-timer'
-import type {
-  RecentWorkItem,
-  RecentWorkItemKind,
-  RecentWorkItemsResponse,
-} from '@/types/time-entry'
+import type { RecentWorkItem, RecentWorkItemKind } from '@/types/time-entry'
 
 const KIND_CONFIG: Record<
   RecentWorkItemKind,
@@ -27,7 +21,7 @@ const KIND_CONFIG: Record<
   ACTIVITY: {
     label: 'Atividade',
     icon: ClipboardList,
-    className: 'bg-sky-500/10 text-sky-700 dark:text-sky-300',
+    className: 'bg-sidebar-primary/10 text-sidebar-primary',
   },
   PROJECT: {
     label: 'Projeto',
@@ -64,22 +58,23 @@ function getItemHref(item: RecentWorkItem): string | null {
   return `/equipes/${item.teamId}`
 }
 
-function RecentWorkItemRow({ item }: { item: RecentWorkItem }) {
+function isCompletedStatus(status: string): boolean {
+  return status === 'DONE'
+}
+
+function RecentWorkItemCard({ item }: { item: RecentWorkItem }) {
   const { isActivityActive } = useActiveTimer()
   const config = KIND_CONFIG[item.kind]
   const Icon = config.icon
   const href = getItemHref(item)
   const isTimerActive =
     item.activityId !== null && isActivityActive(item.activityId)
+  const statusLabel = isTimerActive ? 'Em andamento' : getStatusLabel(item)
+  const isCompleted = !isTimerActive && isCompletedStatus(item.status)
 
   return (
-    <li
-      className={cn(
-        'group flex flex-col gap-3 py-3 transition-colors sm:flex-row sm:items-center sm:justify-between',
-        isTimerActive && 'text-sidebar-primary',
-      )}
-    >
-      <div className="flex min-w-0 flex-1 items-start gap-3">
+    <Card className="gap-0 rounded-2xl border border-border/60 bg-card py-0 shadow-sm">
+      <CardContent className="flex items-center gap-3 py-3.5">
         <div
           className={cn(
             'flex size-10 shrink-0 items-center justify-center rounded-lg',
@@ -89,132 +84,110 @@ function RecentWorkItemRow({ item }: { item: RecentWorkItem }) {
           <Icon className="size-4.5" />
         </div>
 
-        <div className="min-w-0 flex-1 space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              {config.label}
-            </span>
-            <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-              {getStatusLabel(item)}
-            </span>
-          </div>
-
+        <div className="min-w-0 flex-1">
           {href ? (
             <Link
               to={href}
-              className="block truncate text-sm font-medium hover:underline sm:text-base"
+              className="block truncate text-sm font-medium hover:underline"
             >
               {item.title}
             </Link>
           ) : (
-            <p className="truncate text-sm font-medium sm:text-base">
-              {item.title}
-            </p>
+            <p className="truncate text-sm font-medium">{item.title}</p>
+          )}
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          {item.canStartTimer && item.activityId ? (
+            isTimerActive ? null : (
+              <StartActivityTimerButton
+                teamId={item.teamId}
+                activityId={item.activityId}
+                size="icon-sm"
+                className="size-8 text-muted-foreground hover:text-sidebar-primary"
+              />
+            )
+          ) : (
+            <span className="flex size-8 items-center justify-center text-muted-foreground">
+              <Play className="size-4" />
+            </span>
           )}
 
-          <p className="text-xs text-muted-foreground sm:text-sm">
-            {item.parentTitle ? (
-              <>
-                <span className="font-medium text-foreground/80">
-                  {item.parentTitle}
-                </span>
-                <span className="mx-1.5">·</span>
-              </>
-            ) : null}
-            {item.teamName}
-            <span className="mx-1.5">·</span>
-            {formatRelativeDate(item.lastWorkedAt)}
-          </p>
+          <span
+            className={cn(
+              'rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap',
+              isCompleted
+                ? 'bg-sidebar-primary/10 text-sidebar-primary'
+                : 'bg-muted text-muted-foreground',
+            )}
+          >
+            {statusLabel}
+          </span>
         </div>
-      </div>
-
-      <div className="flex shrink-0 items-center justify-end gap-2 sm:pl-2">
-        {item.canStartTimer && item.activityId ? (
-          isTimerActive ? (
-            <span className="inline-flex items-center gap-1.5 rounded-md bg-sidebar-primary/15 px-3 py-1.5 text-xs font-medium text-sidebar-primary">
-              <Play className="size-3.5 fill-current" />
-              Em andamento
-            </span>
-          ) : (
-            <StartActivityTimerButton
-              teamId={item.teamId}
-              activityId={item.activityId}
-              size="icon-sm"
-              className="size-9 text-muted-foreground hover:text-sidebar-primary"
-            />
-          )
-        ) : null}
-      </div>
-    </li>
+      </CardContent>
+    </Card>
   )
 }
 
-export function RecentWorkItemsCard() {
-  const [items, setItems] = useState<RecentWorkItem[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const { activeTimer } = useActiveTimer()
-
-  const loadItems = useCallback(async () => {
-    setIsLoading(true)
-
-    try {
-      const data = await api<RecentWorkItemsResponse>('/time-entries/recent', {
-        toastOnError: false,
-      })
-      setItems(data.items)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    void loadItems()
-  }, [loadItems, activeTimer?.timeEntry.id])
+export function RecentWorkItemsCard({
+  items,
+  isLoading,
+}: {
+  items: RecentWorkItem[]
+  isLoading: boolean
+}) {
+  const activityItems = items.filter((item) => item.kind === 'ACTIVITY')
+  const displayItems = (activityItems.length > 0 ? activityItems : items).slice(
+    0,
+    3,
+  )
 
   return (
     <section className="flex flex-col gap-4">
-      <div>
-        <h2 className="text-base font-medium">Suas tarefas mais recentes</h2>
-        <p className="text-sm text-muted-foreground">
-          Atividades, projetos e tarefas em que você registrou tempo recentemente.
-        </p>
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="text-base font-semibold">Suas atividades recentes</h2>
+        <Link
+          to="/equipes"
+          className="text-sm font-medium text-sidebar-primary hover:underline"
+        >
+          Ver tudo
+        </Link>
       </div>
 
       {isLoading ? (
-        <ul className="flex flex-col divide-y">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <li key={index} className="py-3">
-              <div className="flex items-start gap-3">
+        <div className="flex flex-col gap-3">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <Card key={index} className="gap-0 rounded-2xl border border-border/60 bg-card py-0 shadow-sm">
+              <CardContent className="flex items-center gap-3 py-3.5">
                 <Skeleton className="size-10 rounded-lg" />
-                <div className="flex flex-1 flex-col gap-2">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-5 w-48" />
-                  <Skeleton className="h-3 w-36" />
-                </div>
-              </div>
-            </li>
+                <Skeleton className="h-5 flex-1" />
+                <Skeleton className="h-7 w-24 rounded-full" />
+              </CardContent>
+            </Card>
           ))}
-        </ul>
-      ) : items.length === 0 ? (
-        <div className="flex min-h-36 flex-col items-center justify-center gap-2 py-8 text-center">
-          <ClipboardList className="size-7 text-muted-foreground/70" />
-          <p className="text-sm font-medium">Nenhum registro recente</p>
-          <p className="max-w-sm text-sm text-muted-foreground">
-            Quando você apontar tempo em uma atividade, ela aparecerá aqui.
-          </p>
-          <Link
-            to="/equipes"
-            className="mt-1 text-sm font-medium text-sidebar-primary hover:underline"
-          >
-            Ir para equipes
-          </Link>
         </div>
+      ) : displayItems.length === 0 ? (
+        <Card className="gap-0 rounded-2xl border border-border/60 bg-card py-0 shadow-sm">
+          <CardContent className="flex min-h-28 flex-col items-center justify-center gap-2 py-8 text-center">
+            <ClipboardList className="size-7 text-muted-foreground/70" />
+            <p className="text-sm font-medium">Nenhuma atividade recente</p>
+            <p className="max-w-sm text-sm text-muted-foreground">
+              Quando você apontar tempo em uma atividade, ela aparecerá aqui.
+            </p>
+            <Link
+              to="/equipes"
+              className="mt-1 text-sm font-medium text-sidebar-primary hover:underline"
+            >
+              Ir para equipes
+            </Link>
+          </CardContent>
+        </Card>
       ) : (
-        <ul className="flex flex-col divide-y">
-          {items.map((item) => (
-            <RecentWorkItemRow key={`${item.kind}-${item.id}`} item={item} />
+        <div className="flex flex-col gap-3">
+          {displayItems.map((item) => (
+            <RecentWorkItemCard key={`${item.kind}-${item.id}`} item={item} />
           ))}
-        </ul>
+        </div>
       )}
     </section>
   )

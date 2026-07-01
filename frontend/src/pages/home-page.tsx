@@ -1,35 +1,55 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Plus } from 'lucide-react'
 
+import { DayTimeline } from '@/components/day-timeline'
+import { HomeDashboardHeader } from '@/components/home-dashboard-header'
+import { HomeStatsCards } from '@/components/home-stats-cards'
 import { RecentWorkItemsCard } from '@/components/recent-work-items-card'
 import { Button } from '@/components/ui/button'
-import {
-  formatLongDate,
-  getFirstName,
-  getGreeting,
-} from '@/lib/greeting'
-import { useAuth } from '@/hooks/use-auth'
+import { useHomeData } from '@/hooks/use-home-data'
+import { useActiveTimer } from '@/hooks/use-active-timer'
+import { toDateKey } from '@/lib/date'
+import { cn } from '@/lib/utils'
 
 export function HomePage() {
-  const { user } = useAuth()
-  const greeting = getGreeting()
-  const firstName = user?.name ? getFirstName(user.name) : ''
-  const todayLabel = formatLongDate()
+  const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date()))
+  const {
+    todayStats,
+    timelineBlocks,
+    recentItems,
+    isLoadingToday,
+    isLoadingTimeline,
+    isLoadingRecent,
+  } = useHomeData(selectedDate)
+  const { isActive } = useActiveTimer()
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col gap-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="space-y-1">
-          <p className="text-sm capitalize text-muted-foreground">{todayLabel}</p>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            {greeting}
-            {firstName ? `, ${firstName}` : ''}
-          </h1>
-        </div>
+    <div className="relative flex min-w-0 flex-1 flex-col gap-5 pb-4">
+      <HomeDashboardHeader />
 
-        <Button render={<Link to="/equipes" />}>Ver equipes</Button>
-      </div>
+      <HomeStatsCards stats={todayStats} isLoading={isLoadingToday} />
 
-      <RecentWorkItemsCard />
+      <DayTimeline
+        blocks={timelineBlocks}
+        selectedDate={selectedDate}
+        onDateChange={setSelectedDate}
+        isLoading={isLoadingTimeline}
+      />
+
+      <RecentWorkItemsCard items={recentItems} isLoading={isLoadingRecent} />
+
+      <Button
+        render={<Link to="/equipes" />}
+        size="icon-lg"
+        className={cn(
+          'fixed right-6 z-20 size-14 rounded-full bg-sidebar-primary text-sidebar-primary-foreground shadow-lg hover:bg-sidebar-primary/90 lg:right-10',
+          isActive ? 'bottom-24' : 'bottom-6',
+        )}
+        aria-label="Ir para equipes"
+      >
+        <Plus className="size-6" />
+      </Button>
     </div>
   )
 }

@@ -12,9 +12,13 @@ import { TeamsPage } from '@/pages/teams-page'
 function ProtectedRoute({
   children,
   title = 'Início',
+  hideHeader = false,
+  mainClassName,
 }: {
   children: React.ReactNode
   title?: string
+  hideHeader?: boolean
+  mainClassName?: string
 }) {
   const { isAuthenticated } = useAuth()
 
@@ -22,7 +26,15 @@ function ProtectedRoute({
     return <Navigate to="/login" replace />
   }
 
-  return <AppLayout title={title}>{children}</AppLayout>
+  return (
+    <AppLayout
+      title={title}
+      hideHeader={hideHeader}
+      mainClassName={mainClassName}
+    >
+      {children}
+    </AppLayout>
+  )
 }
 
 function GuestRoute({ children }: { children: React.ReactNode }) {
@@ -63,7 +75,7 @@ function App() {
       <Route
         path="/"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute hideHeader mainClassName="bg-[#F8F9FB]">
             <HomePage />
           </ProtectedRoute>
         }

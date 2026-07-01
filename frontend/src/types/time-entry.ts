@@ -55,3 +55,25 @@ export interface RecentWorkItem {
 export interface RecentWorkItemsResponse {
   items: RecentWorkItem[]
 }
+
+export interface DayTimelineBlock {
+  id: string
+  title: string
+  kind: RecentWorkItemKind
+  teamId: string
+  startedAt: string
+  endedAt: string | null
+  isActive: boolean
+}
+
+export interface DayDashboardStats {
+  loggedSeconds: number
+  changePercent: number | null
+  uniqueCategories: number
+}
+
+export interface DayDashboard {
+  date: string
+  stats: DayDashboardStats
+  blocks: DayTimelineBlock[]
+}

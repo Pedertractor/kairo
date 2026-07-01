@@ -21,35 +21,46 @@ import { cn } from '@/lib/utils'
 interface AppLayoutProps {
   children: ReactNode
   title?: string
+  hideHeader?: boolean
+  mainClassName?: string
 }
 
-function AppLayoutContent({ children, title = 'Início' }: AppLayoutProps) {
+function AppLayoutContent({
+  children,
+  title = 'Início',
+  hideHeader = false,
+  mainClassName,
+}: AppLayoutProps) {
   const { isActive } = useActiveTimer()
 
   return (
     <>
       <AppSidebar />
       <SidebarInset className="min-h-svh">
-        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-          <div className="flex items-center gap-2 px-6 lg:px-10">
-            <SidebarTrigger className="-ml-1" />
-            <Separator
-              orientation="vertical"
-              className="mr-2 data-[orientation=vertical]:h-4"
-            />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbPage>{title}</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </div>
-        </header>
+        {hideHeader ? null : (
+          <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+            <div className="flex items-center gap-2 px-6 lg:px-10">
+              <SidebarTrigger className="-ml-1" />
+              <Separator
+                orientation="vertical"
+                className="mr-2 data-[orientation=vertical]:h-4"
+              />
+              <Breadcrumb>
+                <BreadcrumbList>
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>{title}</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </BreadcrumbList>
+              </Breadcrumb>
+            </div>
+          </header>
+        )}
         <main
           className={cn(
             'flex flex-1 flex-col px-6 pb-6 lg:px-10',
+            hideHeader && 'pt-6',
             isActive && 'pb-8',
+            mainClassName,
           )}
         >
           {children}
@@ -60,11 +71,22 @@ function AppLayoutContent({ children, title = 'Início' }: AppLayoutProps) {
   )
 }
 
-export function AppLayout({ children, title = 'Início' }: AppLayoutProps) {
+export function AppLayout({
+  children,
+  title = 'Início',
+  hideHeader = false,
+  mainClassName,
+}: AppLayoutProps) {
   return (
     <SidebarProvider>
       <ActiveTimerProvider>
-        <AppLayoutContent title={title}>{children}</AppLayoutContent>
+        <AppLayoutContent
+          title={title}
+          hideHeader={hideHeader}
+          mainClassName={mainClassName}
+        >
+          {children}
+        </AppLayoutContent>
       </ActiveTimerProvider>
     </SidebarProvider>
   )

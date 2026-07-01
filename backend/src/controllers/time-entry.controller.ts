@@ -1,5 +1,6 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { activityParamSchema } from '../schemas/card.schema.js';
+import { dayDashboardQuerySchema } from '../schemas/time-entry.schema.js';
 import { TimeEntryService } from '../services/time-entry.service.js';
 import { AppError, handleControllerError } from '../utils/errors.js';
 import { MENSAGENS, sendSuccess } from '../utils/response.js';
@@ -65,6 +66,25 @@ export class TimeEntryController {
       const items = await this.service.getRecentWorkItems(request.user.sub);
 
       return sendSuccess(reply, { items });
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  getDayDashboard = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const parsed = dayDashboardQuerySchema.safeParse(request.query);
+
+      if (!parsed.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const dashboard = await this.service.getDayDashboard(
+        request.user.sub,
+        parsed.data.date,
+      );
+
+      return sendSuccess(reply, dashboard);
     } catch (error) {
       return handleControllerError(error, reply);
     }

@@ -9,6 +9,7 @@ import {
 } from 'react'
 
 import { api } from '@/lib/api-handler'
+import { invalidateHomeData } from '@/lib/home-data-invalidation'
 import type {
   ActiveTimer,
   ActiveTimerResponse,
@@ -76,6 +77,7 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
           { method: 'POST' },
         )
         setActiveTimer(data.activeTimer)
+        invalidateHomeData()
       } finally {
         setIsStarting(false)
       }
@@ -91,6 +93,7 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
         method: 'POST',
       })
       setActiveTimer(null)
+      invalidateHomeData()
     } finally {
       setIsPausing(false)
     }

@@ -73,4 +73,39 @@ export class TimeEntryRepository {
       },
     });
   }
+
+  findOverlappingDay(userId: string, dayStart: Date, dayEnd: Date) {
+    return this.prisma.timeEntry.findMany({
+      where: {
+        userId,
+        startedAt: { lt: dayEnd },
+        OR: [{ endedAt: { gt: dayStart } }, { endedAt: null }],
+      },
+      orderBy: { startedAt: 'asc' },
+      include: {
+        card: {
+          select: {
+            id: true,
+            title: true,
+            type: true,
+            teamId: true,
+          },
+        },
+        task: {
+          select: {
+            id: true,
+            title: true,
+            card: {
+              select: {
+                id: true,
+                title: true,
+                type: true,
+                teamId: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
 }
