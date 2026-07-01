@@ -6,8 +6,9 @@ import { Minus, Plus } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
+import { TimelineBlock } from '@/components/timeline-block'
 import { toDateKey } from '@/lib/date'
-import { formatCurrentTime, formatTimeRange } from '@/lib/format-time'
+import { formatCurrentTime } from '@/lib/format-time'
 import { cn } from '@/lib/utils'
 import type { DayTimelineBlock } from '@/types/time-entry'
 
@@ -19,7 +20,7 @@ const TIMELINE_VIEWPORT_HEIGHT = 440
 const TIMELINE_EDGE_PADDING = 14
 const BASE_HOUR_HEIGHT = 58
 const MIN_ZOOM = 1
-const MAX_ZOOM = 4
+const MAX_ZOOM = 10
 const ZOOM_STEP = 0.25
 
 interface DayTimelineProps {
@@ -80,11 +81,26 @@ function formatTickLabel(minutes: number): string {
 }
 
 function getTickInterval(zoom: number): number {
+  if (zoom >= 8) return 1
+  if (zoom >= 6) return 5
+  if (zoom >= 4) return 10
   if (zoom >= 3) return 15
   if (zoom >= 2) return 30
   if (zoom >= 1.5) return 30
 
   return 60
+}
+
+function shouldShowTickLabel(minutes: number, zoom: number): boolean {
+  const major = minutes % 60 === 0
+
+  if (major) return true
+  if (zoom >= 8) return minutes % 5 === 0
+  if (zoom >= 6) return minutes % 5 === 0
+  if (zoom >= 4) return minutes % 10 === 0
+  if (zoom >= 2) return minutes % 30 === 0
+
+  return false
 }
 
 function buildTicks(zoom: number): TimelineTick[] {
@@ -99,7 +115,9 @@ function buildTicks(zoom: number): TimelineTick[] {
     ticks.push({
       minutes,
       major,
-      label: major || zoom >= 2 ? formatTickLabel(minutes) : null,
+      label: shouldShowTickLabel(minutes, zoom)
+        ? formatTickLabel(minutes)
+        : null,
     })
   }
 
@@ -116,7 +134,7 @@ function getBlockStyle(block: DayTimelineBlock, hourHeight: number) {
 
   const top =
     TIMELINE_EDGE_PADDING + ((start - rangeStart) / 60) * hourHeight
-  const height = Math.max(((end - start) / 60) * hourHeight, Math.min(28, hourHeight * 0.45))
+  const height = Math.max(((end - start) / 60) * hourHeight, 3)
 
   return { top, height }
 }
@@ -338,7 +356,11 @@ export function DayTimeline({
                     key={tick.minutes}
                     className={cn(
                       'absolute right-0 left-0 border-t',
-                      tick.major ? 'border-border/70' : 'border-border/35',
+                      tick.major
+                        ? 'border-border/70'
+                        : tick.minutes % 60 === 0 || tick.minutes % 15 === 0
+                          ? 'border-border/45'
+                          : 'border-border/20',
                     )}
                     style={{ top: minutesToTop(tick.minutes) }}
                   />
@@ -349,19 +371,13 @@ export function DayTimeline({
                   const colors = getBlockColors(block, isToday, now)
 
                   return (
-                    <div
+                    <TimelineBlock
                       key={block.id}
-                      className={cn(
-                        'absolute right-0 left-0 overflow-hidden rounded-xl px-3 py-2',
-                        colors.bar,
-                      )}
-                      style={{ top, height }}
-                    >
-                      <p className="truncate text-sm font-semibold">{block.title}</p>
-                      <p className={cn('truncate text-xs', colors.subtext)}>
-                        {formatTimeRange(block.startedAt, block.endedAt)}
-                      </p>
-                    </div>
+                      block={block}
+                      top={top}
+                      height={height}
+                      colors={colors}
+                    />
                   )
                 })}
 
@@ -392,7 +408,8 @@ export function DayTimeline({
 
         {!isLoading ? (
           <p className="mt-2 text-[11px] text-muted-foreground">
-            Use Ctrl + scroll ou os botões +/- para ampliar e ver intervalos menores.
+            Use Ctrl + scroll ou os botões +/- para ampliar até 1000% e ver
+            intervalos de minutos.
           </p>
         ) : null}
       </CardContent>
