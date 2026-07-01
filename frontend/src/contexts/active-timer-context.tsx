@@ -6,103 +6,127 @@ import {
   useMemo,
   useState,
   type ReactNode,
-} from 'react'
+} from 'react';
 
-import { api } from '@/lib/api-handler'
-import { invalidateHomeData } from '@/lib/home-data-invalidation'
+import { api } from '@/lib/api-handler';
+import { invalidateHomeData } from '@/lib/home-data-invalidation';
 import type {
   ActiveTimer,
   ActiveTimerResponse,
   PauseTimerResponse,
   StartTimerResponse,
-} from '@/types/time-entry'
+} from '@/types/time-entry';
 
 interface ActiveTimerContextValue {
-  activeTimer: ActiveTimer | null
-  elapsedSeconds: number
-  isActive: boolean
-  isStarting: boolean
-  isPausing: boolean
-  refresh: () => Promise<void>
-  startTimer: (teamId: string, activityId: string) => Promise<void>
-  pauseTimer: () => Promise<void>
-  isActivityActive: (activityId: string) => boolean
+  activeTimer: ActiveTimer | null;
+  elapsedSeconds: number;
+  isActive: boolean;
+  isStarting: boolean;
+  isPausing: boolean;
+  refresh: () => Promise<void>;
+  startTimer: (teamId: string, activityId: string) => Promise<void>;
+  startTaskTimer: (projectId: string, taskId: string) => Promise<void>;
+  pauseTimer: () => Promise<void>;
+  isActivityActive: (activityId: string) => boolean;
+  isTaskActive: (taskId: string) => boolean;
 }
 
-const ActiveTimerContext = createContext<ActiveTimerContextValue | null>(null)
+const ActiveTimerContext = createContext<ActiveTimerContextValue | null>(null);
 
 export function ActiveTimerProvider({ children }: { children: ReactNode }) {
-  const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(null)
-  const [elapsedSeconds, setElapsedSeconds] = useState(0)
-  const [isStarting, setIsStarting] = useState(false)
-  const [isPausing, setIsPausing] = useState(false)
+  const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [isStarting, setIsStarting] = useState(false);
+  const [isPausing, setIsPausing] = useState(false);
 
   const refresh = useCallback(async () => {
     const data = await api<ActiveTimerResponse>('/time-entries/active', {
       toastOnError: false,
-    })
-    setActiveTimer(data.activeTimer)
-  }, [])
+    });
+    setActiveTimer(data.activeTimer);
+  }, []);
 
   useEffect(() => {
-    void refresh()
-  }, [refresh])
+    void refresh();
+  }, [refresh]);
 
   useEffect(() => {
     if (!activeTimer) {
-      setElapsedSeconds(0)
-      return
+      setElapsedSeconds(0);
+      return;
     }
 
     const updateElapsed = () => {
-      const startedAt = new Date(activeTimer.timeEntry.startedAt).getTime()
-      setElapsedSeconds(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)))
-    }
+      const startedAt = new Date(activeTimer.timeEntry.startedAt).getTime();
+      setElapsedSeconds(
+        Math.max(0, Math.floor((Date.now() - startedAt) / 1000)),
+      );
+    };
 
-    updateElapsed()
-    const intervalId = window.setInterval(updateElapsed, 1000)
+    updateElapsed();
+    const intervalId = window.setInterval(updateElapsed, 1000);
 
     return () => {
-      window.clearInterval(intervalId)
-    }
-  }, [activeTimer])
+      window.clearInterval(intervalId);
+    };
+  }, [activeTimer]);
 
-  const startTimer = useCallback(
-    async (teamId: string, activityId: string) => {
-      setIsStarting(true)
+  const startTimer = useCallback(async (teamId: string, activityId: string) => {
+    setIsStarting(true);
+
+    try {
+      const data = await api<StartTimerResponse>(
+        `/teams/${teamId}/activities/${activityId}/time-entries`,
+        { method: 'POST' },
+      );
+      setActiveTimer(data.activeTimer);
+      invalidateHomeData();
+    } finally {
+      setIsStarting(false);
+    }
+  }, []);
+
+  const startTaskTimer = useCallback(
+    async (projectId: string, taskId: string) => {
+      setIsStarting(true);
 
       try {
         const data = await api<StartTimerResponse>(
-          `/teams/${teamId}/activities/${activityId}/time-entries`,
+          `/projects/${projectId}/tasks/${taskId}/time-entries`,
           { method: 'POST' },
-        )
-        setActiveTimer(data.activeTimer)
-        invalidateHomeData()
+        );
+        setActiveTimer(data.activeTimer);
+        invalidateHomeData();
       } finally {
-        setIsStarting(false)
+        setIsStarting(false);
       }
     },
     [],
-  )
+  );
 
   const pauseTimer = useCallback(async () => {
-    setIsPausing(true)
+    setIsPausing(true);
 
     try {
       await api<PauseTimerResponse>('/time-entries/active/pause', {
         method: 'POST',
-      })
-      setActiveTimer(null)
-      invalidateHomeData()
+      });
+      setActiveTimer(null);
+      invalidateHomeData();
     } finally {
-      setIsPausing(false)
+      setIsPausing(false);
     }
-  }, [])
+  }, []);
 
   const isActivityActive = useCallback(
-    (activityId: string) => activeTimer?.activity.id === activityId,
+    (activityId: string) => activeTimer?.activity?.id === activityId,
     [activeTimer],
-  )
+  );
+
+  const isTaskActive = useCallback(
+    (taskId: string) => activeTimer?.task?.id === taskId,
+    [activeTimer],
+  );
 
   const value = useMemo(
     () => ({
@@ -113,8 +137,10 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
       isPausing,
       refresh,
       startTimer,
+      startTaskTimer,
       pauseTimer,
       isActivityActive,
+      isTaskActive,
     }),
     [
       activeTimer,
@@ -123,24 +149,28 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
       isPausing,
       refresh,
       startTimer,
+      startTaskTimer,
       pauseTimer,
       isActivityActive,
+      isTaskActive,
     ],
-  )
+  );
 
   return (
     <ActiveTimerContext.Provider value={value}>
       {children}
     </ActiveTimerContext.Provider>
-  )
+  );
 }
 
 export function useActiveTimer() {
-  const context = useContext(ActiveTimerContext)
+  const context = useContext(ActiveTimerContext);
 
   if (!context) {
-    throw new Error('useActiveTimer deve ser usado dentro de ActiveTimerProvider')
+    throw new Error(
+      'useActiveTimer deve ser usado dentro de ActiveTimerProvider',
+    );
   }
 
-  return context
+  return context;
 }

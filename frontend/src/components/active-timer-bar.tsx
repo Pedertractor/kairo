@@ -1,45 +1,61 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Pause } from 'lucide-react'
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Pause } from 'lucide-react';
 
-import { Button } from '@/components/ui/button'
-import { useActiveTimer } from '@/contexts/active-timer-context'
-import { formatElapsed } from '@/lib/format-elapsed'
-import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button';
+import { useActiveTimer } from '@/contexts/active-timer-context';
+import { formatElapsed } from '@/lib/format-elapsed';
+import { cn } from '@/lib/utils';
 
-const PROXIMITY_THRESHOLD_PX = 88
+const PROXIMITY_THRESHOLD_PX = 88;
 
 export function ActiveTimerBar() {
   const { activeTimer, elapsedSeconds, isPausing, pauseTimer } =
-    useActiveTimer()
-  const [isHovered, setIsHovered] = useState(false)
-  const [isNearBottom, setIsNearBottom] = useState(false)
+    useActiveTimer();
+  const [isHovered, setIsHovered] = useState(false);
+  const [isNearBottom, setIsNearBottom] = useState(false);
 
-  const isExpanded = isHovered || isNearBottom
+  const isExpanded = isHovered || isNearBottom;
 
   useEffect(() => {
     if (!activeTimer) {
-      setIsNearBottom(false)
-      return
+      setIsNearBottom(false);
+      return;
     }
 
     function handleMouseMove(event: MouseEvent) {
-      const distanceFromBottom = window.innerHeight - event.clientY
-      setIsNearBottom(distanceFromBottom <= PROXIMITY_THRESHOLD_PX)
+      const distanceFromBottom = window.innerHeight - event.clientY;
+      setIsNearBottom(distanceFromBottom <= PROXIMITY_THRESHOLD_PX);
     }
 
-    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mousemove', handleMouseMove);
 
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove)
-    }
-  }, [activeTimer])
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [activeTimer]);
 
   if (!activeTimer) {
-    return null
+    return null;
   }
 
-  const { activity } = activeTimer
+  const timerLink = activeTimer.task
+    ? {
+        to: `/projetos/${activeTimer.task.projectId}`,
+        title: activeTimer.task.title,
+        subtitle: activeTimer.task.projectTitle,
+      }
+    : activeTimer.activity
+      ? {
+          to: `/equipes/${activeTimer.activity.teamId}/atividades/${activeTimer.activity.id}`,
+          title: activeTimer.activity.title,
+          subtitle: 'Timer em andamento',
+        }
+      : null;
+
+  if (!timerLink) {
+    return null;
+  }
 
   return (
     <div
@@ -47,7 +63,9 @@ export function ActiveTimerBar() {
         'sticky bottom-0 z-50 w-full shrink-0 border-t transition-all duration-300 ease-out',
         'border-white/50 bg-background/55 backdrop-blur-md',
         'dark:border-white/10 dark:bg-background/45',
-        isExpanded ? 'py-5 shadow-[0_-8px_30px_-12px_rgba(0,0,0,0.15)]' : 'py-2.5',
+        isExpanded
+          ? 'py-5 shadow-[0_-8px_30px_-12px_rgba(0,0,0,0.15)]'
+          : 'py-2.5',
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -58,18 +76,15 @@ export function ActiveTimerBar() {
           isExpanded ? 'gap-6' : 'gap-4',
         )}
       >
-        <div className="min-w-0">
+        <div className='min-w-0'>
           <p
             className={cn(
               'truncate font-medium text-sidebar-primary transition-all duration-300 ease-out',
               isExpanded ? 'text-base' : 'text-sm',
             )}
           >
-            <Link
-              to={`/equipes/${activity.teamId}/atividades/${activity.id}`}
-              className="hover:underline"
-            >
-              {activity.title}
+            <Link to={timerLink.to} className='hover:underline'>
+              {timerLink.title}
             </Link>
           </p>
           <p
@@ -80,7 +95,7 @@ export function ActiveTimerBar() {
                 : 'max-h-0 overflow-hidden text-xs opacity-0',
             )}
           >
-            Timer em andamento
+            {timerLink.subtitle}
           </p>
         </div>
 
@@ -99,9 +114,9 @@ export function ActiveTimerBar() {
             {formatElapsed(elapsedSeconds)}
           </span>
           <Button
-            type="button"
+            type='button'
             size={isExpanded ? 'default' : 'sm'}
-            variant="outline"
+            variant='outline'
             className={cn(
               'border-border/60 bg-background/70 transition-all duration-300 ease-out hover:bg-background',
               isExpanded && 'h-10 px-4',
@@ -115,5 +130,5 @@ export function ActiveTimerBar() {
         </div>
       </div>
     </div>
-  )
+  );
 }

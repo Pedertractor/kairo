@@ -1,5 +1,6 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { activityParamSchema } from '../schemas/card.schema.js';
+import { taskParamSchema } from '../schemas/task.schema.js';
 import { dayDashboardQuerySchema } from '../schemas/time-entry.schema.js';
 import { TimeEntryService } from '../services/time-entry.service.js';
 import { AppError, handleControllerError } from '../utils/errors.js';
@@ -18,10 +19,7 @@ export class TimeEntryController {
     }
   };
 
-  startActivityTimer = async (
-    request: FastifyRequest,
-    reply: FastifyReply,
-  ) => {
+  startActivityTimer = async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const parsed = activityParamSchema.safeParse(request.params);
 
@@ -32,6 +30,31 @@ export class TimeEntryController {
       const activeTimer = await this.service.startActivityTimer(
         parsed.data.teamId,
         parsed.data.activityId,
+        request.user.sub,
+      );
+
+      return sendSuccess(
+        reply,
+        { activeTimer },
+        201,
+        MENSAGENS.TIMER_INICIADO_SUCESSO,
+      );
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  startTaskTimer = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const parsed = taskParamSchema.safeParse(request.params);
+
+      if (!parsed.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const activeTimer = await this.service.startTaskTimer(
+        parsed.data.projectId,
+        parsed.data.taskId,
         request.user.sub,
       );
 

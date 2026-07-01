@@ -12,6 +12,7 @@ export interface ActivitySummary {
   description: string | null;
   status: CardStatus;
   estimatedHours: string | null;
+  loggedSeconds: number;
   createdById: string;
   createdAt: string;
   updatedAt: string;
@@ -43,6 +44,7 @@ export interface ProjectSummary {
   description: string | null;
   status: CardStatus;
   estimatedHours: string | null;
+  loggedSeconds: number;
   createdById: string;
   createdAt: string;
   updatedAt: string;

@@ -20,9 +20,18 @@ export interface ActiveTimerActivity {
   teamId: string;
 }
 
+export interface ActiveTimerTask {
+  id: string;
+  title: string;
+  teamId: string;
+  projectId: string;
+  projectTitle: string;
+}
+
 export interface ActiveTimer {
   timeEntry: TimeEntrySummary;
-  activity: ActiveTimerActivity;
+  activity?: ActiveTimerActivity;
+  task?: ActiveTimerTask;
 }
 
 export type RecentWorkItemKind = 'ACTIVITY' | 'PROJECT' | 'TASK';

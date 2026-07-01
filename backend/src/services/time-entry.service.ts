@@ -1,5 +1,6 @@
 import type { TimeEntry } from '../generated/client.js';
 import { CardRepository } from '../repositories/card.repository.js';
+import { TaskRepository } from '../repositories/task.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
 import type {
@@ -29,16 +30,45 @@ function toTimeEntrySummary(entry: TimeEntry): TimeEntrySummary {
   };
 }
 
-type ActiveEntryWithCard = TimeEntry & {
+type ActiveEntryWithRelations = TimeEntry & {
   card: {
     id: string;
     title: string;
     teamId: string;
     type: string;
   } | null;
+  task: {
+    id: string;
+    title: string;
+    card: {
+      id: string;
+      title: string;
+      teamId: string;
+      type: string;
+    };
+  } | null;
 };
 
-function toActiveTimer(entry: ActiveEntryWithCard): ActiveTimer | null {
+function toActiveTimer(entry: ActiveEntryWithRelations): ActiveTimer | null {
+  if (entry.taskId && entry.task) {
+    const parentCard = entry.task.card;
+
+    if (!parentCard || parentCard.type !== 'PROJECT') {
+      return null;
+    }
+
+    return {
+      timeEntry: toTimeEntrySummary(entry),
+      task: {
+        id: entry.task.id,
+        title: entry.task.title,
+        teamId: parentCard.teamId,
+        projectId: parentCard.id,
+        projectTitle: parentCard.title,
+      },
+    };
+  }
+
   if (!entry.cardId || !entry.card || entry.card.type !== 'ACTIVITY') {
     return null;
   }
@@ -99,9 +129,7 @@ function mapDayEntryToBlock(
   const overlapStart = new Date(
     Math.max(entry.startedAt.getTime(), dayStart.getTime()),
   );
-  const overlapEnd = new Date(
-    Math.min(entryEnd.getTime(), dayEnd.getTime()),
-  );
+  const overlapEnd = new Date(Math.min(entryEnd.getTime(), dayEnd.getTime()));
 
   if (overlapStart >= overlapEnd) {
     return null;
@@ -209,6 +237,7 @@ export class TimeEntryService {
     private readonly timeEntryRepository: TimeEntryRepository,
     private readonly cardRepository: CardRepository,
     private readonly teamRepository: TeamRepository,
+    private readonly taskRepository: TaskRepository,
   ) {}
 
   async getActiveTimer(userId: string): Promise<ActiveTimer | null> {
@@ -241,7 +270,8 @@ export class TimeEntryService {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
     }
 
-    const activeEntry = await this.timeEntryRepository.findActiveByUserId(userId);
+    const activeEntry =
+      await this.timeEntryRepository.findActiveByUserId(userId);
 
     if (activeEntry?.cardId === activityId) {
       throw new AppError(400, MENSAGENS.TIMER_JA_ATIVO);
@@ -269,8 +299,65 @@ export class TimeEntryService {
     };
   }
 
+  async startTaskTimer(
+    projectId: string,
+    taskId: string,
+    userId: string,
+  ): Promise<ActiveTimer> {
+    const task = await this.taskRepository.findById(taskId);
+
+    if (
+      !task ||
+      task.cardId !== projectId ||
+      !task.card ||
+      task.card.type !== 'PROJECT'
+    ) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    const membership = await this.teamRepository.findMembershipByTeamAndUser(
+      task.card.teamId,
+      userId,
+    );
+
+    if (!membership) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    const activeEntry =
+      await this.timeEntryRepository.findActiveByUserId(userId);
+
+    if (activeEntry?.taskId === taskId) {
+      throw new AppError(400, MENSAGENS.TIMER_JA_ATIVO);
+    }
+
+    const startedAt = new Date();
+
+    if (activeEntry) {
+      await this.timeEntryRepository.stopEntry(activeEntry, startedAt);
+    }
+
+    const entry = await this.timeEntryRepository.startTaskTimer({
+      taskId,
+      userId,
+      startedAt,
+    });
+
+    return {
+      timeEntry: toTimeEntrySummary(entry),
+      task: {
+        id: task.id,
+        title: task.title,
+        teamId: task.card.teamId,
+        projectId: task.card.id,
+        projectTitle: task.card.title,
+      },
+    };
+  }
+
   async pauseActiveTimer(userId: string): Promise<TimeEntrySummary> {
-    const activeEntry = await this.timeEntryRepository.findActiveByUserId(userId);
+    const activeEntry =
+      await this.timeEntryRepository.findActiveByUserId(userId);
 
     if (!activeEntry) {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
@@ -299,8 +386,7 @@ export class TimeEntryService {
         continue;
       }
 
-      const key =
-        item.kind === 'TASK' ? `task:${item.id}` : `card:${item.id}`;
+      const key = item.kind === 'TASK' ? `task:${item.id}` : `card:${item.id}`;
 
       if (seen.has(key)) {
         continue;
@@ -325,7 +411,8 @@ export class TimeEntryService {
     const previousDay = new Date(dayStart);
     previousDay.setDate(previousDay.getDate() - 1);
     const previousDate = formatDateKey(previousDay);
-    const { dayStart: prevStart, dayEnd: prevEnd } = parseDayBounds(previousDate);
+    const { dayStart: prevStart, dayEnd: prevEnd } =
+      parseDayBounds(previousDate);
 
     const [entries, previousEntries] = await Promise.all([
       this.timeEntryRepository.findOverlappingDay(userId, dayStart, dayEnd),

@@ -7,6 +7,7 @@ import { ActivityStatusActions } from '@/components/activity-status-actions'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { api } from '@/lib/api-handler'
+import { CardTimeBudget } from '@/components/card-time-budget'
 import type { ActivityResponse, ActivitySummary } from '@/types/card'
 
 export function ActivityDetailPage() {
@@ -97,11 +98,11 @@ export function ActivityDetailPage() {
             {activity.description ? (
               <p className="text-muted-foreground">{activity.description}</p>
             ) : null}
-            {activity.estimatedHours ? (
-              <p className="text-sm text-muted-foreground">
-                {activity.estimatedHours}h estimadas
-              </p>
-            ) : null}
+            <CardTimeBudget
+              loggedSeconds={activity.loggedSeconds}
+              estimatedHours={activity.estimatedHours}
+              className="text-sm"
+            />
           </div>
 
           {teamId ? (

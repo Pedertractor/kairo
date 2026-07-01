@@ -1,79 +1,88 @@
-export type TimeEntryType = 'TIMER' | 'MANUAL'
+export type TimeEntryType = 'TIMER' | 'MANUAL';
 
 export interface TimeEntrySummary {
-  id: string
-  cardId: string | null
-  taskId: string | null
-  userId: string
-  type: TimeEntryType
-  startedAt: string
-  endedAt: string | null
-  durationSeconds: number | null
-  note: string | null
-  createdAt: string
-  updatedAt: string
+  id: string;
+  cardId: string | null;
+  taskId: string | null;
+  userId: string;
+  type: TimeEntryType;
+  startedAt: string;
+  endedAt: string | null;
+  durationSeconds: number | null;
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ActiveTimerActivity {
-  id: string
-  title: string
-  teamId: string
+  id: string;
+  title: string;
+  teamId: string;
+}
+
+export interface ActiveTimerTask {
+  id: string;
+  title: string;
+  teamId: string;
+  projectId: string;
+  projectTitle: string;
 }
 
 export interface ActiveTimer {
-  timeEntry: TimeEntrySummary
-  activity: ActiveTimerActivity
+  timeEntry: TimeEntrySummary;
+  activity?: ActiveTimerActivity;
+  task?: ActiveTimerTask;
 }
 
 export interface ActiveTimerResponse {
-  activeTimer: ActiveTimer | null
+  activeTimer: ActiveTimer | null;
 }
 
 export interface StartTimerResponse {
-  activeTimer: ActiveTimer
+  activeTimer: ActiveTimer;
 }
 
 export interface PauseTimerResponse {
-  timeEntry: TimeEntrySummary
+  timeEntry: TimeEntrySummary;
 }
 
-export type RecentWorkItemKind = 'ACTIVITY' | 'PROJECT' | 'TASK'
+export type RecentWorkItemKind = 'ACTIVITY' | 'PROJECT' | 'TASK';
 
 export interface RecentWorkItem {
-  kind: RecentWorkItemKind
-  id: string
-  title: string
-  teamId: string
-  teamName: string
-  status: string
-  parentTitle: string | null
-  lastWorkedAt: string
-  canStartTimer: boolean
-  activityId: string | null
+  kind: RecentWorkItemKind;
+  id: string;
+  title: string;
+  teamId: string;
+  teamName: string;
+  status: string;
+  parentTitle: string | null;
+  lastWorkedAt: string;
+  canStartTimer: boolean;
+  activityId: string | null;
 }
 
 export interface RecentWorkItemsResponse {
-  items: RecentWorkItem[]
+  items: RecentWorkItem[];
 }
 
 export interface DayTimelineBlock {
-  id: string
-  title: string
-  kind: RecentWorkItemKind
-  teamId: string
-  startedAt: string
-  endedAt: string | null
-  isActive: boolean
+  id: string;
+  title: string;
+  kind: RecentWorkItemKind;
+  teamId: string;
+  startedAt: string;
+  endedAt: string | null;
+  isActive: boolean;
 }
 
 export interface DayDashboardStats {
-  loggedSeconds: number
-  changePercent: number | null
-  uniqueCategories: number
+  loggedSeconds: number;
+  changePercent: number | null;
+  uniqueCategories: number;
 }
 
 export interface DayDashboard {
-  date: string
-  stats: DayDashboardStats
-  blocks: DayTimelineBlock[]
+  date: string;
+  stats: DayDashboardStats;
+  blocks: DayTimelineBlock[];
 }

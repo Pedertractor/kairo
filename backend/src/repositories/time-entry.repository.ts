@@ -1,4 +1,8 @@
 import type { PrismaClient, TimeEntry } from '../generated/client.js';
+import {
+  getEntryDurationSeconds,
+  sumEntryDurations,
+} from '../utils/time-entry-duration.js';
 
 export class TimeEntryRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -10,6 +14,20 @@ export class TimeEntryRepository {
       include: {
         card: {
           select: { id: true, title: true, teamId: true, type: true },
+        },
+        task: {
+          select: {
+            id: true,
+            title: true,
+            card: {
+              select: {
+                id: true,
+                title: true,
+                teamId: true,
+                type: true,
+              },
+            },
+          },
         },
       },
     });
@@ -31,6 +49,17 @@ export class TimeEntryRepository {
     return this.prisma.timeEntry.create({
       data: {
         cardId: data.cardId,
+        userId: data.userId,
+        type: 'TIMER',
+        startedAt: data.startedAt,
+      },
+    });
+  }
+
+  startTaskTimer(data: { taskId: string; userId: string; startedAt: Date }) {
+    return this.prisma.timeEntry.create({
+      data: {
+        taskId: data.taskId,
         userId: data.userId,
         type: 'TIMER',
         startedAt: data.startedAt,
@@ -107,5 +136,86 @@ export class TimeEntryRepository {
         },
       },
     });
+  }
+
+  async getLoggedSecondsByCardIds(
+    cardIds: string[],
+  ): Promise<Map<string, number>> {
+    if (cardIds.length === 0) {
+      return new Map();
+    }
+
+    const entries = await this.prisma.timeEntry.findMany({
+      where: { cardId: { in: cardIds } },
+      select: {
+        cardId: true,
+        startedAt: true,
+        endedAt: true,
+        durationSeconds: true,
+      },
+    });
+
+    const totals = new Map<string, number>();
+
+    for (const entry of entries) {
+      if (!entry.cardId) {
+        continue;
+      }
+
+      const current = totals.get(entry.cardId) ?? 0;
+      totals.set(
+        entry.cardId,
+        current + getEntryDurationSeconds(entry),
+      );
+    }
+
+    return totals;
+  }
+
+  async getLoggedSecondsByProjectIds(
+    projectIds: string[],
+  ): Promise<Map<string, number>> {
+    if (projectIds.length === 0) {
+      return new Map();
+    }
+
+    const [directEntries, taskEntries] = await Promise.all([
+      this.prisma.timeEntry.findMany({
+        where: { cardId: { in: projectIds } },
+        select: {
+          cardId: true,
+          startedAt: true,
+          endedAt: true,
+          durationSeconds: true,
+        },
+      }),
+      this.prisma.timeEntry.findMany({
+        where: { task: { cardId: { in: projectIds } } },
+        select: {
+          startedAt: true,
+          endedAt: true,
+          durationSeconds: true,
+          task: { select: { cardId: true } },
+        },
+      }),
+    ]);
+
+    const totals = new Map<string, number>();
+
+    for (const projectId of projectIds) {
+      const direct = directEntries.filter(
+        (entry) => entry.cardId === projectId,
+      );
+      const viaTasks = taskEntries.filter(
+        (entry) => entry.task?.cardId === projectId,
+      );
+
+      totals.set(
+        projectId,
+        sumEntryDurations([...direct, ...viaTasks]),
+      );
+    }
+
+    return totals;
   }
 }

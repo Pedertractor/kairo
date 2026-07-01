@@ -3,6 +3,22 @@ import type { PrismaClient } from '../generated/client.js';
 export class TaskRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
+  findById(taskId: string) {
+    return this.prisma.task.findUnique({
+      where: { id: taskId },
+      include: {
+        card: {
+          select: {
+            id: true,
+            title: true,
+            type: true,
+            teamId: true,
+          },
+        },
+      },
+    });
+  }
+
   findByProjectId(projectId: string) {
     return this.prisma.task.findMany({
       where: { cardId: projectId },

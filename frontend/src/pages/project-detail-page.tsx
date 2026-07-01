@@ -8,6 +8,7 @@ import { UpdateProjectStatusDialog } from '@/components/update-project-status-di
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { api } from '@/lib/api-handler'
+import { CardTimeBudget } from '@/components/card-time-budget'
 import type { ProjectResponse, ProjectSummary } from '@/types/card'
 
 export function ProjectDetailPage() {
@@ -95,11 +96,11 @@ export function ProjectDetailPage() {
             {project.description ? (
               <p className="text-muted-foreground">{project.description}</p>
             ) : null}
-            {project.estimatedHours ? (
-              <p className="text-sm text-muted-foreground">
-                {project.estimatedHours}h estimadas
-              </p>
-            ) : null}
+            <CardTimeBudget
+              loggedSeconds={project.loggedSeconds}
+              estimatedHours={project.estimatedHours}
+              className="text-sm"
+            />
           </div>
 
           <UpdateProjectStatusDialog

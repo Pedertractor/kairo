@@ -7,6 +7,7 @@ import { UpdateProjectStatusDialog } from '@/components/update-project-status-di
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { api } from '@/lib/api-handler'
+import { CardTimeBudget } from '@/components/card-time-budget'
 import type { ProjectSummary, ProjectsListResponse } from '@/types/card'
 
 interface TeamProjectsSectionProps {
@@ -107,11 +108,10 @@ export function TeamProjectsSection({ teamId }: TeamProjectsSectionProps) {
                   {project.description}
                 </p>
               ) : null}
-              {project.estimatedHours ? (
-                <p className="text-xs text-muted-foreground">
-                  {project.estimatedHours}h estimadas
-                </p>
-              ) : null}
+              <CardTimeBudget
+                loggedSeconds={project.loggedSeconds}
+                estimatedHours={project.estimatedHours}
+              />
             </li>
           ))}
         </ul>

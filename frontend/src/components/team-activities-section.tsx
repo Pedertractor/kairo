@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useActiveTimer } from '@/hooks/use-active-timer';
 import { api } from '@/lib/api-handler';
+import { CardTimeBudget } from '@/components/card-time-budget';
 import { cn } from '@/lib/utils';
 import type { ActivitiesListResponse, ActivitySummary } from '@/types/card';
 
@@ -118,11 +119,10 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
                   {activity.description}
                 </p>
               ) : null}
-              {activity.estimatedHours ? (
-                <p className='text-xs text-muted-foreground'>
-                  {activity.estimatedHours}h estimadas
-                </p>
-              ) : null}
+              <CardTimeBudget
+                loggedSeconds={activity.loggedSeconds}
+                estimatedHours={activity.estimatedHours}
+              />
             </li>
             );
           })}

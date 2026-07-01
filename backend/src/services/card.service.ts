@@ -1,11 +1,15 @@
 import type { Card, CardStatus } from '../generated/client.js';
 import { CardRepository } from '../repositories/card.repository.js';
+import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
 import type { ActivitySummary, ProjectSummary } from '../types/card.types.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 
-function toActivitySummary(card: Card): ActivitySummary {
+function toActivitySummary(
+  card: Card,
+  loggedSeconds = 0,
+): ActivitySummary {
   return {
     id: card.id,
     teamId: card.teamId,
@@ -13,6 +17,7 @@ function toActivitySummary(card: Card): ActivitySummary {
     description: card.description,
     status: card.status,
     estimatedHours: card.estimatedHours?.toString() ?? null,
+    loggedSeconds,
     createdById: card.createdById,
     createdAt: card.createdAt.toISOString(),
     updatedAt: card.updatedAt.toISOString(),
@@ -21,6 +26,7 @@ function toActivitySummary(card: Card): ActivitySummary {
 
 function toProjectSummary(
   card: Card,
+  loggedSeconds = 0,
   teamName?: string,
 ): ProjectSummary {
   return {
@@ -31,6 +37,7 @@ function toProjectSummary(
     description: card.description,
     status: card.status,
     estimatedHours: card.estimatedHours?.toString() ?? null,
+    loggedSeconds,
     createdById: card.createdById,
     createdAt: card.createdAt.toISOString(),
     updatedAt: card.updatedAt.toISOString(),
@@ -41,6 +48,7 @@ export class CardService {
   constructor(
     private readonly cardRepository: CardRepository,
     private readonly teamRepository: TeamRepository,
+    private readonly timeEntryRepository: TimeEntryRepository,
   ) {}
 
   private async assertTeamMember(teamId: string, userId: string) {
@@ -61,8 +69,14 @@ export class CardService {
     await this.assertTeamMember(teamId, userId);
 
     const cards = await this.cardRepository.findActivitiesByTeamId(teamId);
+    const loggedByCard =
+      await this.timeEntryRepository.getLoggedSecondsByCardIds(
+        cards.map((card) => card.id),
+      );
 
-    return cards.map(toActivitySummary);
+    return cards.map((card) =>
+      toActivitySummary(card, loggedByCard.get(card.id) ?? 0),
+    );
   }
 
   async getActivity(
@@ -78,7 +92,10 @@ export class CardService {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
     }
 
-    return toActivitySummary(card);
+    const loggedByCard =
+      await this.timeEntryRepository.getLoggedSecondsByCardIds([activityId]);
+
+    return toActivitySummary(card, loggedByCard.get(activityId) ?? 0);
   }
 
   async createActivity(
@@ -120,7 +137,13 @@ export class CardService {
       status,
     );
 
-    return toActivitySummary(updated);
+    const loggedByCard =
+      await this.timeEntryRepository.getLoggedSecondsByCardIds([activityId]);
+
+    return toActivitySummary(
+      updated,
+      loggedByCard.get(activityId) ?? 0,
+    );
   }
 
   async listProjects(
@@ -130,15 +153,29 @@ export class CardService {
     await this.assertTeamMember(teamId, userId);
 
     const cards = await this.cardRepository.findProjectsByTeamId(teamId);
+    const loggedByProject =
+      await this.timeEntryRepository.getLoggedSecondsByProjectIds(
+        cards.map((card) => card.id),
+      );
 
-    return cards.map((card) => toProjectSummary(card));
+    return cards.map((card) =>
+      toProjectSummary(card, loggedByProject.get(card.id) ?? 0),
+    );
   }
 
   async listAllProjects(userId: string): Promise<ProjectSummary[]> {
     const cards = await this.cardRepository.findProjectsByUserId(userId);
+    const loggedByProject =
+      await this.timeEntryRepository.getLoggedSecondsByProjectIds(
+        cards.map((card) => card.id),
+      );
 
     return cards.map((card) =>
-      toProjectSummary(card, card.team.name),
+      toProjectSummary(
+        card,
+        loggedByProject.get(card.id) ?? 0,
+        card.team.name,
+      ),
     );
   }
 
@@ -155,7 +192,14 @@ export class CardService {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
     }
 
-    return toProjectSummary(card, card.team.name);
+    const loggedByProject =
+      await this.timeEntryRepository.getLoggedSecondsByProjectIds([projectId]);
+
+    return toProjectSummary(
+      card,
+      loggedByProject.get(projectId) ?? 0,
+      card.team.name,
+    );
   }
 
   async getProjectById(
@@ -170,7 +214,14 @@ export class CardService {
 
     await this.assertTeamMember(card.teamId, userId);
 
-    return toProjectSummary(card, card.team.name);
+    const loggedByProject =
+      await this.timeEntryRepository.getLoggedSecondsByProjectIds([projectId]);
+
+    return toProjectSummary(
+      card,
+      loggedByProject.get(projectId) ?? 0,
+      card.team.name,
+    );
   }
 
   async createProject(
@@ -212,6 +263,12 @@ export class CardService {
       status,
     );
 
-    return toProjectSummary(updated);
+    const loggedByProject =
+      await this.timeEntryRepository.getLoggedSecondsByProjectIds([projectId]);
+
+    return toProjectSummary(
+      updated,
+      loggedByProject.get(projectId) ?? 0,
+    );
   }
 }
