@@ -16,6 +16,7 @@ dayjs.locale('pt-br')
 const TIMELINE_START_HOUR = 5
 const TIMELINE_END_HOUR = 18
 const TIMELINE_VIEWPORT_HEIGHT = 440
+const TIMELINE_EDGE_PADDING = 14
 const BASE_HOUR_HEIGHT = 58
 const MIN_ZOOM = 1
 const MAX_ZOOM = 4
@@ -113,7 +114,8 @@ function getBlockStyle(block: DayTimelineBlock, hourHeight: number) {
     ? Math.min(getMinutesFromMidnight(block.endedAt), rangeEnd)
     : Math.min(getMinutesFromMidnight(new Date().toISOString()), rangeEnd)
 
-  const top = ((start - rangeStart) / 60) * hourHeight
+  const top =
+    TIMELINE_EDGE_PADDING + ((start - rangeStart) / 60) * hourHeight
   const height = Math.max(((end - start) / 60) * hourHeight, Math.min(28, hourHeight * 0.45))
 
   return { top, height }
@@ -158,13 +160,16 @@ export function DayTimeline({
   zoomRef.current = zoom
 
   const hourHeight = BASE_HOUR_HEIGHT * zoom
-  const contentHeight = (TIMELINE_END_HOUR - TIMELINE_START_HOUR) * hourHeight
+  const timelineSpanHours = TIMELINE_END_HOUR - TIMELINE_START_HOUR
+  const contentHeight =
+    timelineSpanHours * hourHeight + TIMELINE_EDGE_PADDING * 2
   const rangeStart = TIMELINE_START_HOUR * 60
   const rangeEnd = TIMELINE_END_HOUR * 60
   const ticks = useMemo(() => buildTicks(zoom), [zoom])
 
   const minutesToTop = useCallback(
-    (minutes: number) => ((minutes - rangeStart) / 60) * hourHeight,
+    (minutes: number) =>
+      TIMELINE_EDGE_PADDING + ((minutes - rangeStart) / 60) * hourHeight,
     [hourHeight, rangeStart],
   )
 
