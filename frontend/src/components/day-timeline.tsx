@@ -21,7 +21,8 @@ const TIMELINE_EDGE_PADDING = 14
 const BASE_HOUR_HEIGHT = 58
 const MIN_ZOOM = 1
 const MAX_ZOOM = 10
-const ZOOM_STEP = 0.25
+const ZOOM_IN_FACTOR = 1.45
+const ZOOM_OUT_FACTOR = 1 / ZOOM_IN_FACTOR
 
 interface DayTimelineProps {
   blocks: DayTimelineBlock[]
@@ -81,12 +82,11 @@ function formatTickLabel(minutes: number): string {
 }
 
 function getTickInterval(zoom: number): number {
-  if (zoom >= 8) return 1
-  if (zoom >= 6) return 5
-  if (zoom >= 4) return 10
-  if (zoom >= 3) return 15
-  if (zoom >= 2) return 30
-  if (zoom >= 1.5) return 30
+  if (zoom >= 6) return 1
+  if (zoom >= 4) return 5
+  if (zoom >= 2.5) return 10
+  if (zoom >= 1.75) return 15
+  if (zoom >= 1.2) return 30
 
   return 60
 }
@@ -95,10 +95,10 @@ function shouldShowTickLabel(minutes: number, zoom: number): boolean {
   const major = minutes % 60 === 0
 
   if (major) return true
-  if (zoom >= 8) return minutes % 5 === 0
   if (zoom >= 6) return minutes % 5 === 0
-  if (zoom >= 4) return minutes % 10 === 0
-  if (zoom >= 2) return minutes % 30 === 0
+  if (zoom >= 4) return minutes % 5 === 0
+  if (zoom >= 2.5) return minutes % 10 === 0
+  if (zoom >= 1.2) return minutes % 30 === 0
 
   return false
 }
@@ -174,6 +174,8 @@ export function DayTimeline({
   const [zoom, setZoom] = useState(MIN_ZOOM)
   const scrollRef = useRef<HTMLDivElement>(null)
   const zoomRef = useRef(zoom)
+  const pointerYRef = useRef(TIMELINE_VIEWPORT_HEIGHT / 2)
+  const isHoveringRef = useRef(false)
 
   zoomRef.current = zoom
 
@@ -191,29 +193,33 @@ export function DayTimeline({
     [hourHeight, rangeStart],
   )
 
-  const setZoomPreservingScroll = useCallback((nextZoom: number) => {
-    const container = scrollRef.current
-    const clamped = clampZoom(nextZoom)
+  const setZoomAtPointer = useCallback(
+    (nextZoom: number, cursorY = pointerYRef.current) => {
+      const container = scrollRef.current
+      const clamped = clampZoom(nextZoom)
 
-    if (!container) {
+      if (!container) {
+        setZoom(clamped)
+        return
+      }
+
+      const anchorY = Math.max(0, Math.min(cursorY, container.clientHeight))
+      const oldScrollHeight = Math.max(container.scrollHeight, 1)
+      const anchorContentY = container.scrollTop + anchorY
+
       setZoom(clamped)
-      return
-    }
 
-    const centerRatio =
-      (container.scrollTop + container.clientHeight / 2) /
-      Math.max(container.scrollHeight, 1)
-
-    setZoom(clamped)
-
-    requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        const nextScrollHeight = Math.max(container.scrollHeight, 1)
-        container.scrollTop =
-          centerRatio * nextScrollHeight - container.clientHeight / 2
+        requestAnimationFrame(() => {
+          const newScrollHeight = Math.max(container.scrollHeight, 1)
+          const anchorRatio = anchorContentY / oldScrollHeight
+
+          container.scrollTop = anchorRatio * newScrollHeight - anchorY
+        })
       })
-    })
-  }, [])
+    },
+    [],
+  )
 
   useEffect(() => {
     if (!isToday) {
@@ -228,27 +234,57 @@ export function DayTimeline({
   useEffect(() => {
     const container = scrollRef.current
 
-    if (!container) {
+    if (!container || isLoading) {
       return
     }
 
-    const handleWheel = (event: WheelEvent) => {
-      if (!event.ctrlKey && !event.metaKey) {
+    const isZoomWheel = (event: WheelEvent) =>
+      event.ctrlKey || event.metaKey || event.altKey
+
+    const handlePointerEnter = () => {
+      isHoveringRef.current = true
+    }
+
+    const handlePointerLeave = () => {
+      isHoveringRef.current = false
+    }
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const rect = container.getBoundingClientRect()
+      pointerYRef.current = event.clientY - rect.top
+    }
+
+    const handleWheelZoom = (event: WheelEvent) => {
+      if (!isHoveringRef.current || !isZoomWheel(event)) {
         return
       }
 
       event.preventDefault()
+      event.stopPropagation()
 
-      const delta = event.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP
-      setZoomPreservingScroll(zoomRef.current + delta)
+      const rect = container.getBoundingClientRect()
+      const cursorY = event.clientY - rect.top
+      pointerYRef.current = cursorY
+
+      const factor = event.deltaY > 0 ? ZOOM_OUT_FACTOR : ZOOM_IN_FACTOR
+      setZoomAtPointer(zoomRef.current * factor, cursorY)
     }
 
-    container.addEventListener('wheel', handleWheel, { passive: false })
+    container.addEventListener('pointerenter', handlePointerEnter)
+    container.addEventListener('pointerleave', handlePointerLeave)
+    container.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('wheel', handleWheelZoom, {
+      passive: false,
+      capture: true,
+    })
 
     return () => {
-      container.removeEventListener('wheel', handleWheel)
+      container.removeEventListener('pointerenter', handlePointerEnter)
+      container.removeEventListener('pointerleave', handlePointerLeave)
+      container.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('wheel', handleWheelZoom, { capture: true })
     }
-  }, [setZoomPreservingScroll])
+  }, [isLoading, setZoomAtPointer])
 
   const currentMinutes = now.getHours() * 60 + now.getMinutes()
   const showNowLine =
@@ -269,7 +305,7 @@ export function DayTimeline({
               className="size-7 rounded-full"
               aria-label="Diminuir zoom"
               disabled={zoom <= MIN_ZOOM}
-              onClick={() => setZoomPreservingScroll(zoom - ZOOM_STEP)}
+              onClick={() => setZoomAtPointer(zoom * ZOOM_OUT_FACTOR)}
             >
               <Minus className="size-3.5" />
             </Button>
@@ -283,7 +319,7 @@ export function DayTimeline({
               className="size-7 rounded-full"
               aria-label="Aumentar zoom"
               disabled={zoom >= MAX_ZOOM}
-              onClick={() => setZoomPreservingScroll(zoom + ZOOM_STEP)}
+              onClick={() => setZoomAtPointer(zoom * ZOOM_IN_FACTOR)}
             >
               <Plus className="size-3.5" />
             </Button>
@@ -324,7 +360,7 @@ export function DayTimeline({
         ) : (
           <div
             ref={scrollRef}
-            className="overflow-y-auto overscroll-contain rounded-lg"
+            className="overflow-y-auto overscroll-contain rounded-lg [touch-action:pan-y]"
             style={{ height: TIMELINE_VIEWPORT_HEIGHT }}
           >
             <div
@@ -408,8 +444,8 @@ export function DayTimeline({
 
         {!isLoading ? (
           <p className="mt-2 text-[11px] text-muted-foreground">
-            Use Ctrl + scroll ou os botões +/- para ampliar até 1000% e ver
-            intervalos de minutos.
+            Com o mouse sobre o gráfico, use Ctrl + scroll (ou Alt + scroll) para
+            ampliar no ponteiro.
           </p>
         ) : null}
       </CardContent>
