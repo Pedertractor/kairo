@@ -7,6 +7,7 @@ import { HomePage } from '@/pages/home-page'
 import { LoginPage } from '@/pages/login-page'
 import { ActivityDetailPage } from '@/pages/activity-detail-page'
 import { TeamDetailPage } from '@/pages/team-detail-page'
+import { ProjectDetailPage } from '@/pages/project-detail-page'
 import { ProjetosPage } from '@/pages/projetos-page'
 import { TeamsPage } from '@/pages/teams-page'
 
@@ -94,6 +95,14 @@ function App() {
         element={
           <ProtectedRoute title="Projetos">
             <ProjetosPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/projetos/:projectId"
+        element={
+          <ProtectedRoute title="Projeto">
+            <ProjectDetailPage />
           </ProtectedRoute>
         }
       />

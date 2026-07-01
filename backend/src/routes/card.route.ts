@@ -32,4 +32,35 @@ export async function cardRoutes(app: FastifyInstance) {
     { preHandler: [app.authenticate] },
     controller.updateActivityStatus,
   );
+
+  app.get(
+    '/projects',
+    { preHandler: [app.authenticate] },
+    controller.listAllProjects,
+  );
+  app.get(
+    '/projects/:projectId',
+    { preHandler: [app.authenticate] },
+    controller.getProjectById,
+  );
+  app.get(
+    '/teams/:teamId/projects',
+    { preHandler: [app.authenticate] },
+    controller.listProjects,
+  );
+  app.get(
+    '/teams/:teamId/projects/:projectId',
+    { preHandler: [app.authenticate] },
+    controller.getProject,
+  );
+  app.post(
+    '/teams/:teamId/projects',
+    { preHandler: [app.authenticate] },
+    controller.createProject,
+  );
+  app.patch(
+    '/teams/:teamId/projects/:projectId',
+    { preHandler: [app.authenticate] },
+    controller.updateProjectStatus,
+  );
 }

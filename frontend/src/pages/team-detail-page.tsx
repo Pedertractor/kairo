@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { TeamActivitiesSection } from '@/components/team-activities-section';
 import { TeamMembersSection } from '@/components/team-members-section';
+import { TeamProjectsSection } from '@/components/team-projects-section';
 import { TeamSectionPlaceholder } from '@/components/team-section-placeholder';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -129,6 +130,10 @@ export function TeamDetailPage() {
 
             <TabsContent value='atividades'>
               <TeamActivitiesSection teamId={team.id} />
+            </TabsContent>
+
+            <TabsContent value='projetos'>
+              <TeamProjectsSection teamId={team.id} />
             </TabsContent>
 
             <TabsContent value='apontamentos'>

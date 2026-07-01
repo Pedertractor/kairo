@@ -34,3 +34,34 @@ export interface CreateActivityInput {
 export interface UpdateActivityStatusInput {
   status: CardStatus;
 }
+
+export interface ProjectSummary {
+  id: string;
+  teamId: string;
+  teamName?: string;
+  title: string;
+  description: string | null;
+  status: CardStatus;
+  estimatedHours: string | null;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectsListResponse {
+  projects: ProjectSummary[];
+}
+
+export interface ProjectResponse {
+  project: ProjectSummary;
+}
+
+export interface CreateProjectInput {
+  title: string;
+  description?: string;
+  estimatedHours?: number;
+}
+
+export interface UpdateProjectStatusInput {
+  status: CardStatus;
+}

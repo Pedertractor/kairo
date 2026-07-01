@@ -9,6 +9,15 @@ export const activityParamSchema = z.object({
   activityId: z.string().min(1),
 });
 
+export const projectParamSchema = z.object({
+  teamId: z.string().min(1),
+  projectId: z.string().min(1),
+});
+
+export const projectIdParamSchema = z.object({
+  projectId: z.string().min(1),
+});
+
 export const cardStatusSchema = z.enum([
   'TODO',
   'IN_PROGRESS',
@@ -29,3 +38,7 @@ export const createActivitySchema = z.object({
     .positive('Horas estimadas deve ser um valor positivo')
     .optional(),
 });
+
+export const createProjectSchema = createActivitySchema;
+
+export const updateProjectStatusSchema = updateActivityStatusSchema;

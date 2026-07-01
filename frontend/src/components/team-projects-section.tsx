@@ -1,38 +1,74 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
+import { CreateProjectDialog } from '@/components/create-project-dialog'
+import { ProjectStatusActions } from '@/components/project-status-actions'
+import { UpdateProjectStatusDialog } from '@/components/update-project-status-dialog'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { api } from '@/lib/api-handler'
-import { STATUS_LABELS } from '@/lib/card-status'
 import type { ProjectSummary, ProjectsListResponse } from '@/types/card'
 
-export function ProjetosPage() {
+interface TeamProjectsSectionProps {
+  teamId: string
+}
+
+export function TeamProjectsSection({ teamId }: TeamProjectsSectionProps) {
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [projectToUpdate, setProjectToUpdate] =
+    useState<ProjectSummary | null>(null)
 
   const loadProjects = useCallback(async () => {
     setIsLoading(true)
 
     try {
-      const data = await api<ProjectsListResponse>('/projects')
+      const data = await api<ProjectsListResponse>(
+        `/teams/${teamId}/projects`,
+      )
       setProjects(data.projects)
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [teamId])
 
   useEffect(() => {
     void loadProjects()
   }, [loadProjects])
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-bold">Projetos</h1>
-        <p className="text-sm text-muted-foreground">
-          Projetos das suas equipes.
-        </p>
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium">Projetos</p>
+          <p className="text-sm text-muted-foreground">
+            Gerencie os projetos desta equipe.
+          </p>
+        </div>
+        <Button onClick={() => setIsCreateDialogOpen(true)}>
+          Criar novo projeto
+        </Button>
       </div>
+
+      <CreateProjectDialog
+        teamId={teamId}
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onCreated={loadProjects}
+      />
+
+      <UpdateProjectStatusDialog
+        teamId={teamId}
+        project={projectToUpdate}
+        open={projectToUpdate !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setProjectToUpdate(null)
+          }
+        }}
+        onUpdated={loadProjects}
+      />
 
       {isLoading ? (
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -44,7 +80,7 @@ export function ProjetosPage() {
         <div className="flex min-h-48 flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/30 p-8 text-center">
           <p className="text-sm font-medium">Nenhum projeto ainda</p>
           <p className="max-w-sm text-sm text-muted-foreground">
-            Os projetos das suas equipes aparecerão aqui.
+            Os projetos desta equipe aparecerão aqui.
           </p>
         </div>
       ) : (
@@ -61,15 +97,11 @@ export function ProjetosPage() {
                 >
                   {project.title}
                 </Link>
-                <span className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                  {STATUS_LABELS[project.status]}
-                </span>
+                <ProjectStatusActions
+                  project={project}
+                  onStatusClick={() => setProjectToUpdate(project)}
+                />
               </div>
-              {project.teamName ? (
-                <p className="text-xs text-muted-foreground">
-                  {project.teamName}
-                </p>
-              ) : null}
               {project.description ? (
                 <p className="line-clamp-2 text-xs text-muted-foreground">
                   {project.description}

@@ -2,8 +2,12 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import {
   activityParamSchema,
   createActivitySchema,
+  createProjectSchema,
+  projectIdParamSchema,
+  projectParamSchema,
   teamIdParamSchema,
   updateActivityStatusSchema,
+  updateProjectStatusSchema,
 } from '../schemas/card.schema.js';
 import { CardService } from '../services/card.service.js';
 import { AppError, handleControllerError } from '../utils/errors.js';
@@ -103,6 +107,132 @@ export class CardController {
         { activity },
         200,
         MENSAGENS.ATIVIDADE_ATUALIZADA_SUCESSO,
+      );
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  listProjects = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const parsed = teamIdParamSchema.safeParse(request.params);
+
+      if (!parsed.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const projects = await this.service.listProjects(
+        parsed.data.teamId,
+        request.user.sub,
+      );
+
+      return sendSuccess(reply, { projects });
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  listAllProjects = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const projects = await this.service.listAllProjects(request.user.sub);
+
+      return sendSuccess(reply, { projects });
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  getProject = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const parsed = projectParamSchema.safeParse(request.params);
+
+      if (!parsed.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const project = await this.service.getProject(
+        parsed.data.teamId,
+        parsed.data.projectId,
+        request.user.sub,
+      );
+
+      return sendSuccess(reply, { project });
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  getProjectById = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const parsed = projectIdParamSchema.safeParse(request.params);
+
+      if (!parsed.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const project = await this.service.getProjectById(
+        parsed.data.projectId,
+        request.user.sub,
+      );
+
+      return sendSuccess(reply, { project });
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  createProject = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const params = teamIdParamSchema.safeParse(request.params);
+      const body = createProjectSchema.safeParse(request.body);
+
+      if (!params.success || !body.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const project = await this.service.createProject(
+        params.data.teamId,
+        request.user.sub,
+        body.data.title,
+        body.data.description,
+        body.data.estimatedHours,
+      );
+
+      return sendSuccess(
+        reply,
+        { project },
+        201,
+        MENSAGENS.PROJETO_CRIADO_SUCESSO,
+      );
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  updateProjectStatus = async (
+    request: FastifyRequest,
+    reply: FastifyReply,
+  ) => {
+    try {
+      const params = projectParamSchema.safeParse(request.params);
+      const body = updateProjectStatusSchema.safeParse(request.body);
+
+      if (!params.success || !body.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const project = await this.service.updateProjectStatus(
+        params.data.teamId,
+        params.data.projectId,
+        request.user.sub,
+        body.data.status,
+      );
+
+      return sendSuccess(
+        reply,
+        { project },
+        200,
+        MENSAGENS.PROJETO_ATUALIZADO_SUCESSO,
       );
     } catch (error) {
       return handleControllerError(error, reply);
