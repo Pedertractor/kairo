@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/use-auth';
 import type { UnitType } from '@/types/auth';
-import { HomeIcon, UsersIcon } from 'lucide-react';
+import { FolderKanbanIcon, HomeIcon, UsersIcon } from 'lucide-react';
 
 const UNIT_LABELS: Record<UnitType, string> = {
   PEDERTRACTOR: 'Pedertractor',
@@ -30,6 +30,11 @@ const navItems = [
     title: 'Equipes',
     url: '/equipes',
     icon: <UsersIcon />,
+  },
+  {
+    title: 'Projetos',
+    url: '/projetos',
+    icon: <FolderKanbanIcon />,
   },
 ];
 

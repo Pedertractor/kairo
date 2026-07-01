@@ -7,6 +7,7 @@ import { HomePage } from '@/pages/home-page'
 import { LoginPage } from '@/pages/login-page'
 import { ActivityDetailPage } from '@/pages/activity-detail-page'
 import { TeamDetailPage } from '@/pages/team-detail-page'
+import { ProjetosPage } from '@/pages/projetos-page'
 import { TeamsPage } from '@/pages/teams-page'
 
 function ProtectedRoute({
@@ -85,6 +86,14 @@ function App() {
         element={
           <ProtectedRoute title="Equipes">
             <TeamsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/projetos"
+        element={
+          <ProtectedRoute title="Projetos">
+            <ProjetosPage />
           </ProtectedRoute>
         }
       />
