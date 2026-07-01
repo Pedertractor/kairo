@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 
 import { ProjectStatusActions } from '@/components/project-status-actions'
+import { ProjectTasksSection } from '@/components/project-tasks-section'
 import { UpdateProjectStatusDialog } from '@/components/update-project-status-dialog'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -108,6 +109,8 @@ export function ProjectDetailPage() {
             onOpenChange={setIsStatusDialogOpen}
             onUpdated={reloadProject}
           />
+
+          <ProjectTasksSection projectId={project.id} />
         </>
       ) : (
         <p className="text-sm text-muted-foreground">Projeto não encontrado.</p>

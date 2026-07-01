@@ -34,6 +34,7 @@ export const MENSAGENS = {
   ATIVIDADE_ATUALIZADA_SUCESSO: 'Atividade atualizada com sucesso',
   PROJETO_CRIADO_SUCESSO: 'Projeto criado com sucesso',
   PROJETO_ATUALIZADO_SUCESSO: 'Projeto atualizado com sucesso',
+  TAREFA_CRIADA_SUCESSO: 'Tarefa criada com sucesso',
   TIMER_INICIADO_SUCESSO: 'Timer iniciado com sucesso',
   TIMER_JA_ATIVO: 'Já existe um timer ativo para esta atividade',
   TIMER_PAUSADO_SUCESSO: 'Timer pausado com sucesso',
