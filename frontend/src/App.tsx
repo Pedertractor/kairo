@@ -9,6 +9,7 @@ import { ActivityDetailPage } from '@/pages/activity-detail-page'
 import { TeamDetailPage } from '@/pages/team-detail-page'
 import { ProjectDetailPage } from '@/pages/project-detail-page'
 import { TaskDetailPage } from '@/pages/task-detail-page'
+import { ApontamentosPage } from '@/pages/apontamentos-page'
 import { ProjetosPage } from '@/pages/projetos-page'
 import { TeamsPage } from '@/pages/teams-page'
 import { UsuariosPage } from '@/pages/usuarios-page'
@@ -103,6 +104,14 @@ function App() {
         element={
           <ProtectedRoute title="Projetos">
             <ProjetosPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/apontamentos"
+        element={
+          <ProtectedRoute title="Apontamentos">
+            <ApontamentosPage />
           </ProtectedRoute>
         }
       />

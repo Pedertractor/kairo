@@ -14,6 +14,7 @@ import {
 import { useAuth } from '@/hooks/use-auth';
 import type { UnitType } from '@/types/auth';
 import {
+  ClockIcon,
   FolderKanbanIcon,
   HomeIcon,
   UserCogIcon,
@@ -40,6 +41,11 @@ const baseNavItems = [
     title: 'Projetos',
     url: '/projetos',
     icon: <FolderKanbanIcon />,
+  },
+  {
+    title: 'Apontamentos',
+    url: '/apontamentos',
+    icon: <ClockIcon />,
   },
 ];
 
