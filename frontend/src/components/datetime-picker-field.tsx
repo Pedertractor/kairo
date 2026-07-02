@@ -1,19 +1,13 @@
 import { useEffect, useState } from 'react'
-import { format } from 'date-fns'
-import { ptBR as dateFnsPtBR } from 'date-fns/locale'
-import { CalendarIcon } from 'lucide-react'
-import { ptBR as dayPickerPtBR } from 'react-day-picker/locale'
+import { Clock2 } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
-import { Calendar } from '@/components/ui/calendar'
+import { DatePicker } from '@/components/date-picker'
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from '@/components/ui/input-group'
 import {
   Select,
   SelectContent,
@@ -22,7 +16,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { mergeDateTimeValue, splitDateTimeValue } from '@/lib/datetime-value'
-import { cn } from '@/lib/utils'
 
 type EndMode = 'active' | 'set'
 
@@ -50,7 +43,6 @@ export function DateTimePickerField({
   description,
   disabled = false,
 }: DateTimePickerFieldProps) {
-  const [dateOpen, setDateOpen] = useState(false)
   const [{ date, time }, setDateTime] = useState(() => splitDateTimeValue(value))
   const endMode: EndMode = optional && !value ? 'active' : 'set'
 
@@ -62,11 +54,10 @@ export function DateTimePickerField({
     onChange(mergeDateTimeValue(nextDate, nextTime))
   }
 
-  function handleDateSelect(selectedDate: Date | undefined) {
+  function handleDateChange(selectedDate: Date | undefined) {
     const next = { date: selectedDate, time }
     setDateTime(next)
     emitChange(next.date, next.time)
-    setDateOpen(false)
   }
 
   function handleTimeChange(nextTime: string) {
@@ -115,50 +106,32 @@ export function DateTimePickerField({
 
       {(!optional || endMode === 'set') && (
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor={`${id}-date`}>Data</Label>
-            <Popover open={dateOpen} onOpenChange={setDateOpen}>
-              <PopoverTrigger
-                disabled={disabled}
-                render={
-                  <Button
-                    id={`${id}-date`}
-                    type="button"
-                    variant="outline"
-                    className={cn(
-                      'w-full justify-start text-left font-normal',
-                      !date && 'text-muted-foreground',
-                    )}
-                  />
-                }
-              >
-                <CalendarIcon />
-                {date
-                  ? format(date, 'PPP', { locale: dateFnsPtBR })
-                  : 'Selecionar data'}
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={handleDateSelect}
-                  locale={dayPickerPtBR}
-                  autoFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <Label htmlFor={`${id}-time`}>Hora</Label>
-            <Input
-              id={`${id}-time`}
-              type="time"
-              value={time}
+          <Field>
+            <FieldLabel htmlFor={`${id}-date`}>Data</FieldLabel>
+            <DatePicker
+              id={`${id}-date`}
+              date={date}
+              onDateChange={handleDateChange}
               disabled={disabled}
-              onChange={(event) => handleTimeChange(event.target.value)}
             />
-          </div>
+          </Field>
+
+          <Field>
+            <FieldLabel htmlFor={`${id}-time`}>Hora</FieldLabel>
+            <InputGroup>
+              <InputGroupInput
+                id={`${id}-time`}
+                type="time"
+                value={time}
+                disabled={disabled}
+                className="appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                onChange={(event) => handleTimeChange(event.target.value)}
+              />
+              <InputGroupAddon align="inline-end">
+                <Clock2 className="text-muted-foreground" />
+              </InputGroupAddon>
+            </InputGroup>
+          </Field>
         </div>
       )}
 
