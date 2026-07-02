@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 
+import { DateTimeSelectField } from '@/components/datetime-select-field'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -9,13 +10,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { FieldGroup } from '@/components/ui/field'
 import { api } from '@/lib/api-handler'
-import {
-  fromDatetimeLocalValue,
-  toDatetimeLocalValue,
-} from '@/lib/time-format'
 import type {
   TaskTimeEntrySummary,
   UpdateTaskTimeEntryResponse,
@@ -38,14 +34,14 @@ export function EditTaskTimeEntryDialog({
   onOpenChange,
   onUpdated,
 }: EditTaskTimeEntryDialogProps) {
-  const [startedAt, setStartedAt] = useState('')
-  const [endedAt, setEndedAt] = useState('')
+  const [startedAt, setStartedAt] = useState<string | null>(null)
+  const [endedAt, setEndedAt] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     if (entry) {
-      setStartedAt(toDatetimeLocalValue(entry.startedAt))
-      setEndedAt(entry.endedAt ? toDatetimeLocalValue(entry.endedAt) : '')
+      setStartedAt(entry.startedAt)
+      setEndedAt(entry.endedAt)
     }
   }, [entry])
 
@@ -62,8 +58,8 @@ export function EditTaskTimeEntryDialog({
         {
           method: 'PATCH',
           body: JSON.stringify({
-            startedAt: fromDatetimeLocalValue(startedAt),
-            endedAt: endedAt ? fromDatetimeLocalValue(endedAt) : null,
+            startedAt,
+            endedAt,
           }),
         },
       )
@@ -85,30 +81,25 @@ export function EditTaskTimeEntryDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="started-at">Início</Label>
-            <Input
-              id="started-at"
-              type="datetime-local"
-              value={startedAt}
-              onChange={(event) => setStartedAt(event.target.value)}
-            />
-          </div>
+        <FieldGroup className="py-2">
+          <DateTimeSelectField
+            id="started-at"
+            label="Início"
+            value={startedAt}
+            onChange={setStartedAt}
+            disabled={isSubmitting}
+          />
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="ended-at">Fim</Label>
-            <Input
-              id="ended-at"
-              type="datetime-local"
-              value={endedAt}
-              onChange={(event) => setEndedAt(event.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-              Deixe em branco se o apontamento ainda estiver em andamento.
-            </p>
-          </div>
-        </div>
+          <DateTimeSelectField
+            id="ended-at"
+            label="Fim"
+            value={endedAt}
+            onChange={setEndedAt}
+            optional
+            disabled={isSubmitting}
+            description="Selecione em andamento quando o apontamento ainda não tiver sido finalizado."
+          />
+        </FieldGroup>
 
         <DialogFooter>
           <Button
