@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-import { DateTimeSelectField } from '@/components/datetime-select-field'
+import { DateTimePickerField } from '@/components/datetime-picker-field'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -82,7 +82,7 @@ export function EditTaskTimeEntryDialog({
         </DialogHeader>
 
         <FieldGroup className="py-2">
-          <DateTimeSelectField
+          <DateTimePickerField
             id="started-at"
             label="Início"
             value={startedAt}
@@ -90,7 +90,7 @@ export function EditTaskTimeEntryDialog({
             disabled={isSubmitting}
           />
 
-          <DateTimeSelectField
+          <DateTimePickerField
             id="ended-at"
             label="Fim"
             value={endedAt}
