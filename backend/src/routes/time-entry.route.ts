@@ -4,6 +4,7 @@ import { CardRepository } from '../repositories/card.repository.js';
 import { TaskRepository } from '../repositories/task.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
+import { UserRepository } from '../repositories/user.repository.js';
 import { TimeEntryService } from '../services/time-entry.service.js';
 
 export async function timeEntryRoutes(app: FastifyInstance) {
@@ -13,6 +14,7 @@ export async function timeEntryRoutes(app: FastifyInstance) {
       new CardRepository(app.prisma),
       new TeamRepository(app.prisma),
       new TaskRepository(app.prisma),
+      new UserRepository(app.prisma),
     ),
   );
 
@@ -40,6 +42,16 @@ export async function timeEntryRoutes(app: FastifyInstance) {
     '/teams/:teamId/activities/:activityId/time-entries',
     { preHandler: [app.authenticate] },
     controller.startActivityTimer,
+  );
+  app.get(
+    '/projects/:projectId/tasks/:taskId/time-entries',
+    { preHandler: [app.authenticate] },
+    controller.listTaskTimeEntries,
+  );
+  app.patch(
+    '/projects/:projectId/tasks/:taskId/time-entries/:timeEntryId',
+    { preHandler: [app.authenticate] },
+    controller.updateTaskTimeEntry,
   );
   app.post(
     '/projects/:projectId/tasks/:taskId/time-entries',

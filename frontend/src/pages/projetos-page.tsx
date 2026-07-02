@@ -51,35 +51,32 @@ export function ProjetosPage() {
       ) : (
         <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {projects.map((project) => (
-            <li
-              key={project.id}
-              className="flex flex-col gap-2 rounded-lg border bg-card p-3 transition-colors"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <Link
-                  to={`/projetos/${project.id}`}
-                  className="text-sm font-medium hover:underline"
-                >
-                  {project.title}
-                </Link>
-                <span className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                  {STATUS_LABELS[project.status]}
-                </span>
-              </div>
-              {project.teamName ? (
-                <p className="text-xs text-muted-foreground">
-                  {project.teamName}
-                </p>
-              ) : null}
-              {project.description ? (
-                <p className="line-clamp-2 text-xs text-muted-foreground">
-                  {project.description}
-                </p>
-              ) : null}
-              <CardTimeBudget
-                loggedSeconds={project.loggedSeconds}
-                estimatedHours={project.estimatedHours}
-              />
+            <li key={project.id}>
+              <Link
+                to={`/projetos/${project.id}`}
+                className="flex flex-col gap-2 rounded-lg border bg-card p-3 transition-colors hover:bg-muted/50"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-sm font-medium">{project.title}</span>
+                  <span className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                    {STATUS_LABELS[project.status]}
+                  </span>
+                </div>
+                {project.teamName ? (
+                  <p className="text-xs text-muted-foreground">
+                    {project.teamName}
+                  </p>
+                ) : null}
+                {project.description ? (
+                  <p className="line-clamp-2 text-xs text-muted-foreground">
+                    {project.description}
+                  </p>
+                ) : null}
+                <CardTimeBudget
+                  loggedSeconds={project.loggedSeconds}
+                  estimatedHours={project.estimatedHours}
+                />
+              </Link>
             </li>
           ))}
         </ul>

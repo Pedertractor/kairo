@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import { CreateTaskDialog } from '@/components/create-task-dialog';
 import { StartTaskTimerButton } from '@/components/start-task-timer-button';
@@ -78,38 +79,44 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
               <li
                 key={task.id}
                 className={cn(
-                  'flex flex-col gap-1.5 rounded-lg border bg-card p-2.5 transition-colors',
+                  'group relative rounded-lg border bg-card transition-colors',
                   isTimerActive &&
                     'border-sidebar-primary bg-sidebar-primary/10',
                 )}
               >
-                <div className='flex items-start justify-between gap-1'>
-                  <p className='line-clamp-2 text-sm font-medium leading-snug'>
+                <Link
+                  to={`/projetos/${projectId}/tarefas/${task.id}`}
+                  className="flex flex-col gap-1.5 p-2.5 pr-20 hover:bg-muted/30"
+                >
+                  <p className="line-clamp-2 text-sm font-medium leading-snug">
                     {task.title}
                   </p>
-                  <div className='flex shrink-0 items-center gap-0.5'>
-                    <StartTaskTimerButton
-                      projectId={projectId}
-                      taskId={task.id}
-                      className='text-muted-foreground hover:text-sidebar-primary'
-                    />
-                    <span className='rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground'>
-                      {TASK_STATUS_LABELS[task.status]}
-                    </span>
+                  {task.description ? (
+                    <p className='line-clamp-2 text-[11px] text-muted-foreground'>
+                      {task.description}
+                    </p>
+                  ) : null}
+                  <div className='flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground'>
+                    {task.estimatedHours ? (
+                      <span>{task.estimatedHours}h</span>
+                    ) : null}
+                    {task.assignedToName ? (
+                      <span className='truncate'>{task.assignedToName}</span>
+                    ) : null}
                   </div>
-                </div>
-                {task.description ? (
-                  <p className='line-clamp-2 text-[11px] text-muted-foreground'>
-                    {task.description}
-                  </p>
-                ) : null}
-                <div className='flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground'>
-                  {task.estimatedHours ? (
-                    <span>{task.estimatedHours}h</span>
-                  ) : null}
-                  {task.assignedToName ? (
-                    <span className='truncate'>{task.assignedToName}</span>
-                  ) : null}
+                </Link>
+                <div
+                  className="absolute top-2.5 right-2.5 flex shrink-0 items-center gap-0.5"
+                  onClick={(event) => event.preventDefault()}
+                >
+                  <StartTaskTimerButton
+                    projectId={projectId}
+                    taskId={task.id}
+                    className='text-muted-foreground hover:text-sidebar-primary'
+                  />
+                  <span className='rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground'>
+                    {TASK_STATUS_LABELS[task.status]}
+                  </span>
                 </div>
               </li>
             );

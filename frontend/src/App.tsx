@@ -8,24 +8,32 @@ import { LoginPage } from '@/pages/login-page'
 import { ActivityDetailPage } from '@/pages/activity-detail-page'
 import { TeamDetailPage } from '@/pages/team-detail-page'
 import { ProjectDetailPage } from '@/pages/project-detail-page'
+import { TaskDetailPage } from '@/pages/task-detail-page'
 import { ProjetosPage } from '@/pages/projetos-page'
 import { TeamsPage } from '@/pages/teams-page'
+import { UsuariosPage } from '@/pages/usuarios-page'
 
 function ProtectedRoute({
   children,
   title = 'Início',
   hideHeader = false,
   mainClassName,
+  requireAdmin = false,
 }: {
   children: React.ReactNode
   title?: string
   hideHeader?: boolean
   mainClassName?: string
+  requireAdmin?: boolean
 }) {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
+  }
+
+  if (requireAdmin && user?.role !== 'ADMIN') {
+    return <Navigate to="/" replace />
   }
 
   return (
@@ -95,6 +103,22 @@ function App() {
         element={
           <ProtectedRoute title="Projetos">
             <ProjetosPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/usuarios"
+        element={
+          <ProtectedRoute title="Usuários" requireAdmin>
+            <UsuariosPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/projetos/:projectId/tarefas/:taskId"
+        element={
+          <ProtectedRoute title="Tarefa">
+            <TaskDetailPage />
           </ProtectedRoute>
         }
       />

@@ -1,7 +1,12 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { activityParamSchema } from '../schemas/card.schema.js';
 import { taskParamSchema } from '../schemas/task.schema.js';
-import { dayDashboardQuerySchema } from '../schemas/time-entry.schema.js';
+import {
+  dayDashboardQuerySchema,
+  listTaskTimeEntriesQuerySchema,
+  taskTimeEntryParamSchema,
+  updateTaskTimeEntrySchema,
+} from '../schemas/time-entry.schema.js';
 import { TimeEntryService } from '../services/time-entry.service.js';
 import { AppError, handleControllerError } from '../utils/errors.js';
 import { MENSAGENS, sendSuccess } from '../utils/response.js';
@@ -63,6 +68,57 @@ export class TimeEntryController {
         { activeTimer },
         201,
         MENSAGENS.TIMER_INICIADO_SUCESSO,
+      );
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  listTaskTimeEntries = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const params = taskParamSchema.safeParse(request.params);
+      const query = listTaskTimeEntriesQuerySchema.safeParse(request.query);
+
+      if (!params.success || !query.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const result = await this.service.listTaskTimeEntries(
+        params.data.projectId,
+        params.data.taskId,
+        request.user.sub,
+        query.data,
+      );
+
+      return sendSuccess(reply, result);
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  updateTaskTimeEntry = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const params = taskTimeEntryParamSchema.safeParse(request.params);
+      const body = updateTaskTimeEntrySchema.safeParse(request.body);
+
+      if (!params.success || !body.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const timeEntry = await this.service.updateTaskTimeEntry(
+        params.data.projectId,
+        params.data.taskId,
+        params.data.timeEntryId,
+        request.user.sub,
+        body.data.startedAt,
+        body.data.endedAt,
+      );
+
+      return sendSuccess(
+        reply,
+        { timeEntry },
+        200,
+        MENSAGENS.APONTAMENTO_ATUALIZADO_SUCESSO,
       );
     } catch (error) {
       return handleControllerError(error, reply);

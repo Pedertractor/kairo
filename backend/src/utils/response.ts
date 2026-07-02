@@ -38,6 +38,15 @@ export const MENSAGENS = {
   TIMER_INICIADO_SUCESSO: 'Timer iniciado com sucesso',
   TIMER_JA_ATIVO: 'Já existe um timer ativo para esta atividade',
   TIMER_PAUSADO_SUCESSO: 'Timer pausado com sucesso',
+  APONTAMENTO_ATUALIZADO_SUCESSO: 'Apontamento atualizado com sucesso',
+  USUARIO_ROLE_ATUALIZADO_SUCESSO: 'Função do usuário atualizada com sucesso',
+  USUARIO_SENHA_REPOSTA_SUCESSO: 'Senha reposta com sucesso',
+  USUARIO_DESATIVADO_SUCESSO: 'Usuário removido da aplicação com sucesso',
+  USUARIO_REATIVADO_SUCESSO: 'Usuário reativado com sucesso',
+  ULTIMO_ADMIN_NAO_PODE_SER_ALTERADO:
+    'Não é possível alterar o único administrador ativo',
+  NAO_PODE_ALTERAR_PROPRIO_ACESSO:
+    'Você não pode remover ou desativar sua própria conta',
 } as const;
 
 export function sendError(

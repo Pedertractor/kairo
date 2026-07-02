@@ -5,6 +5,27 @@ export function formatDuration(seconds: number): string {
   return `${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m`
 }
 
+export function formatDateTime(iso: string): string {
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(iso))
+}
+
+export function toDatetimeLocalValue(iso: string): string {
+  const date = new Date(iso)
+  const pad = (value: number) => String(value).padStart(2, '0')
+
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+export function fromDatetimeLocalValue(value: string): string {
+  return new Date(value).toISOString()
+}
+
 export function formatTimeRange(startedAt: string, endedAt: string | null): string {
   const formatter = new Intl.DateTimeFormat('pt-BR', {
     hour: '2-digit',

@@ -86,3 +86,28 @@ export interface DayDashboard {
   stats: DayDashboardStats;
   blocks: DayTimelineBlock[];
 }
+
+export interface TaskTimeEntrySummary {
+  id: string;
+  userId: string;
+  userName: string;
+  type: TimeEntryType;
+  startedAt: string;
+  endedAt: string | null;
+  durationSeconds: number | null;
+  note: string | null;
+}
+
+export interface TaskTimeEntriesResponse {
+  timeEntries: TaskTimeEntrySummary[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface UpdateTaskTimeEntryResponse {
+  timeEntry: TaskTimeEntrySummary;
+}

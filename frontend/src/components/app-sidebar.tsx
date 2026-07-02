@@ -13,14 +13,19 @@ import {
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/use-auth';
 import type { UnitType } from '@/types/auth';
-import { FolderKanbanIcon, HomeIcon, UsersIcon } from 'lucide-react';
+import {
+  FolderKanbanIcon,
+  HomeIcon,
+  UserCogIcon,
+  UsersIcon,
+} from 'lucide-react';
 
 const UNIT_LABELS: Record<UnitType, string> = {
   PEDERTRACTOR: 'Pedertractor',
   TRACTOR: 'Tractor',
 };
 
-const navItems = [
+const baseNavItems = [
   {
     title: 'Início',
     url: '/',
@@ -38,9 +43,22 @@ const navItems = [
   },
 ];
 
+const adminNavItems = [
+  {
+    title: 'Usuários',
+    url: '/usuarios',
+    icon: <UserCogIcon />,
+  },
+];
+
 export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
   const { pathname } = useLocation();
+
+  const navItems =
+    user?.role === 'ADMIN'
+      ? [...baseNavItems, ...adminNavItems]
+      : baseNavItems;
 
   const navMain = navItems.map((item) => ({
     ...item,

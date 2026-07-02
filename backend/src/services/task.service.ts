@@ -2,7 +2,8 @@ import type { Task } from '../generated/client.js';
 import { CardRepository } from '../repositories/card.repository.js';
 import { TaskRepository } from '../repositories/task.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
-import type { TaskSummary } from '../types/task.types.js';
+import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
+import type { TaskDetail, TaskSummary } from '../types/task.types.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 
@@ -32,6 +33,7 @@ export class TaskService {
     private readonly taskRepository: TaskRepository,
     private readonly cardRepository: CardRepository,
     private readonly teamRepository: TeamRepository,
+    private readonly timeEntryRepository: TimeEntryRepository,
   ) {}
 
   private async assertProjectAccess(projectId: string, userId: string) {
@@ -87,5 +89,27 @@ export class TaskService {
     });
 
     return toTaskSummary(task);
+  }
+
+  async getTask(
+    projectId: string,
+    taskId: string,
+    userId: string,
+  ): Promise<TaskDetail> {
+    await this.assertProjectAccess(projectId, userId);
+
+    const task = await this.taskRepository.findById(taskId);
+
+    if (!task || task.cardId !== projectId) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    const loggedSeconds =
+      await this.timeEntryRepository.getLoggedSecondsByTaskId(taskId);
+
+    return {
+      ...toTaskSummary(task),
+      loggedSeconds,
+    };
   }
 }

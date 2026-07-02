@@ -23,6 +23,14 @@ export interface TaskResponse {
   task: TaskSummary
 }
 
+export interface TaskDetail extends TaskSummary {
+  loggedSeconds: number
+}
+
+export interface TaskDetailResponse {
+  task: TaskDetail
+}
+
 export interface CreateTaskInput {
   title: string
   description?: string

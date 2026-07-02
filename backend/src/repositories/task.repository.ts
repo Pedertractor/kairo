@@ -7,6 +7,7 @@ export class TaskRepository {
     return this.prisma.task.findUnique({
       where: { id: taskId },
       include: {
+        assignedTo: { select: { id: true, name: true } },
         card: {
           select: {
             id: true,

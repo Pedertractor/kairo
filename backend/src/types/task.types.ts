@@ -14,3 +14,7 @@ export interface TaskSummary {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface TaskDetail extends TaskSummary {
+  loggedSeconds: number;
+}

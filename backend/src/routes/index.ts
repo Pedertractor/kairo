@@ -5,6 +5,7 @@ import { taskRoutes } from './task.route.js';
 import { healthRoutes } from './health.route.js';
 import { teamRoutes } from './team.route.js';
 import { timeEntryRoutes } from './time-entry.route.js';
+import { userRoutes } from './user.route.js';
 
 export async function registerRoutes(app: FastifyInstance) {
   await app.register(healthRoutes, { prefix: '/api' });
@@ -13,4 +14,5 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(cardRoutes, { prefix: '/api' });
   await app.register(taskRoutes, { prefix: '/api' });
   await app.register(timeEntryRoutes, { prefix: '/api' });
+  await app.register(userRoutes, { prefix: '/api' });
 }

@@ -1,4 +1,4 @@
-import type { PrismaClient, TimeEntry } from '../generated/client.js';
+import type { Prisma, PrismaClient, TimeEntry } from '../generated/client.js';
 import {
   getEntryDurationSeconds,
   sumEntryDurations,
@@ -63,6 +63,84 @@ export class TimeEntryRepository {
         userId: data.userId,
         type: 'TIMER',
         startedAt: data.startedAt,
+      },
+    });
+  }
+
+  findById(id: string) {
+    return this.prisma.timeEntry.findUnique({
+      where: { id },
+      include: {
+        user: { select: { id: true, name: true } },
+        task: {
+          include: {
+            card: {
+              select: {
+                id: true,
+                type: true,
+                teamId: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  private buildTaskEntriesWhere(
+    taskId: string,
+    date?: string,
+  ): Prisma.TimeEntryWhereInput {
+    const where: Prisma.TimeEntryWhereInput = { taskId };
+
+    if (date) {
+      const dayStart = new Date(`${date}T00:00:00.000`);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setDate(dayEnd.getDate() + 1);
+
+      where.startedAt = { lt: dayEnd };
+      where.OR = [{ endedAt: { gt: dayStart } }, { endedAt: null }];
+    }
+
+    return where;
+  }
+
+  findByTaskId(
+    taskId: string,
+    options: { date?: string; skip: number; take: number },
+  ) {
+    const where = this.buildTaskEntriesWhere(taskId, options.date);
+
+    return this.prisma.timeEntry.findMany({
+      where,
+      orderBy: { startedAt: 'desc' },
+      skip: options.skip,
+      take: options.take,
+      include: {
+        user: { select: { id: true, name: true } },
+      },
+    });
+  }
+
+  countByTaskId(taskId: string, date?: string) {
+    const where = this.buildTaskEntriesWhere(taskId, date);
+
+    return this.prisma.timeEntry.count({ where });
+  }
+
+  updateDates(id: string, startedAt: Date, endedAt: Date | null) {
+    const durationSeconds = endedAt
+      ? Math.max(
+          0,
+          Math.floor((endedAt.getTime() - startedAt.getTime()) / 1000),
+        )
+      : null;
+
+    return this.prisma.timeEntry.update({
+      where: { id },
+      data: { startedAt, endedAt, durationSeconds },
+      include: {
+        user: { select: { id: true, name: true } },
       },
     });
   }
@@ -217,5 +295,18 @@ export class TimeEntryRepository {
     }
 
     return totals;
+  }
+
+  async getLoggedSecondsByTaskId(taskId: string): Promise<number> {
+    const entries = await this.prisma.timeEntry.findMany({
+      where: { taskId },
+      select: {
+        startedAt: true,
+        endedAt: true,
+        durationSeconds: true,
+      },
+    });
+
+    return sumEntryDurations(entries);
   }
 }

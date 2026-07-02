@@ -2,6 +2,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import {
   createTaskSchema,
   projectIdParamSchema,
+  taskParamSchema,
 } from '../schemas/task.schema.js';
 import { TaskService } from '../services/task.service.js';
 import { AppError, handleControllerError } from '../utils/errors.js';
@@ -24,6 +25,26 @@ export class TaskController {
       );
 
       return sendSuccess(reply, { tasks });
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  getTask = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const parsed = taskParamSchema.safeParse(request.params);
+
+      if (!parsed.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const task = await this.service.getTask(
+        parsed.data.projectId,
+        parsed.data.taskId,
+        request.user.sub,
+      );
+
+      return sendSuccess(reply, { task });
     } catch (error) {
       return handleControllerError(error, reply);
     }
