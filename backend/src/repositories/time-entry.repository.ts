@@ -87,6 +87,13 @@ export class TimeEntryRepository {
     });
   }
 
+  findByIdWithRelations(id: string) {
+    return this.prisma.timeEntry.findUnique({
+      where: { id },
+      include: this.userEntriesInclude,
+    });
+  }
+
   private buildTaskEntriesWhere(
     taskId: string,
     date?: string,
@@ -145,40 +152,81 @@ export class TimeEntryRepository {
     });
   }
 
-  findRecentByUserId(userId: string, take = 50) {
-    return this.prisma.timeEntry.findMany({
-      where: { userId },
-      orderBy: { startedAt: 'desc' },
-      take,
-      include: {
+  private readonly userEntriesInclude = {
+    card: {
+      select: {
+        id: true,
+        title: true,
+        type: true,
+        teamId: true,
+        status: true,
+        team: { select: { name: true } },
+      },
+    },
+    task: {
+      select: {
+        id: true,
+        title: true,
+        status: true,
         card: {
           select: {
             id: true,
             title: true,
             type: true,
             teamId: true,
-            status: true,
             team: { select: { name: true } },
           },
         },
-        task: {
-          select: {
-            id: true,
-            title: true,
-            status: true,
-            card: {
-              select: {
-                id: true,
-                title: true,
-                type: true,
-                teamId: true,
-                team: { select: { name: true } },
-              },
-            },
-          },
-        },
       },
+    },
+  } as const;
+
+  findRecentByUserId(userId: string, take = 50) {
+    return this.prisma.timeEntry.findMany({
+      where: { userId },
+      orderBy: { startedAt: 'desc' },
+      take,
+      include: this.userEntriesInclude,
     });
+  }
+
+  findByUserId(
+    userId: string,
+    options: { date?: string; skip: number; take: number },
+  ) {
+    const where = this.buildUserEntriesWhere(userId, options.date);
+
+    return this.prisma.timeEntry.findMany({
+      where,
+      orderBy: { startedAt: 'desc' },
+      skip: options.skip,
+      take: options.take,
+      include: this.userEntriesInclude,
+    });
+  }
+
+  countByUserId(userId: string, date?: string) {
+    const where = this.buildUserEntriesWhere(userId, date);
+
+    return this.prisma.timeEntry.count({ where });
+  }
+
+  private buildUserEntriesWhere(
+    userId: string,
+    date?: string,
+  ): Prisma.TimeEntryWhereInput {
+    const where: Prisma.TimeEntryWhereInput = { userId };
+
+    if (date) {
+      const dayStart = new Date(`${date}T00:00:00.000`);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setDate(dayEnd.getDate() + 1);
+
+      where.startedAt = { lt: dayEnd };
+      where.OR = [{ endedAt: { gt: dayStart } }, { endedAt: null }];
+    }
+
+    return where;
   }
 
   findOverlappingDay(userId: string, dayStart: Date, dayEnd: Date) {

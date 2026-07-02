@@ -10,10 +10,12 @@ import type {
   DayDashboard,
   DayTimelineBlock,
   PaginatedTaskTimeEntries,
+  PaginatedUserTimeEntries,
   RecentWorkItem,
   RecentWorkItemKind,
   TaskTimeEntrySummary,
   TimeEntrySummary,
+  UserTimeEntrySummary,
 } from '../types/time-entry.types.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
@@ -90,6 +92,10 @@ function toActiveTimer(entry: ActiveEntryWithRelations): ActiveTimer | null {
 
 type RecentEntry = Awaited<
   ReturnType<TimeEntryRepository['findRecentByUserId']>
+>[number];
+
+type UserEntry = Awaited<
+  ReturnType<TimeEntryRepository['findByUserId']>
 >[number];
 
 type DayEntry = Awaited<
@@ -252,6 +258,62 @@ function mapRecentEntry(entry: RecentEntry): RecentWorkItem | null {
     lastWorkedAt: entry.startedAt.toISOString(),
     canStartTimer: kind === 'ACTIVITY',
     activityId: kind === 'ACTIVITY' ? entry.card.id : null,
+  };
+}
+
+function mapUserTimeEntry(entry: UserEntry): UserTimeEntrySummary | null {
+  if (entry.task) {
+    const parentCard = entry.task.card;
+
+    if (!parentCard) {
+      return null;
+    }
+
+    return {
+      id: entry.id,
+      type: entry.type,
+      startedAt: entry.startedAt.toISOString(),
+      endedAt: entry.endedAt?.toISOString() ?? null,
+      durationSeconds:
+        entry.durationSeconds ?? getEntryDurationSeconds(entry),
+      note: entry.note,
+      kind: 'TASK',
+      title: entry.task.title,
+      parentTitle: parentCard.title,
+      teamId: parentCard.teamId,
+      teamName: parentCard.team.name,
+      activityId: null,
+      projectId: parentCard.id,
+      taskId: entry.task.id,
+    };
+  }
+
+  if (!entry.card) {
+    return null;
+  }
+
+  const kind = entry.card.type as RecentWorkItemKind;
+
+  if (kind !== 'ACTIVITY' && kind !== 'PROJECT') {
+    return null;
+  }
+
+  return {
+    id: entry.id,
+    type: entry.type,
+    startedAt: entry.startedAt.toISOString(),
+    endedAt: entry.endedAt?.toISOString() ?? null,
+    durationSeconds:
+      entry.durationSeconds ?? getEntryDurationSeconds(entry),
+    note: entry.note,
+    kind,
+    title: entry.card.title,
+    parentTitle: null,
+    teamId: entry.card.teamId,
+    teamName: entry.card.team.name,
+    activityId: kind === 'ACTIVITY' ? entry.card.id : null,
+    projectId: kind === 'PROJECT' ? entry.card.id : null,
+    taskId: null,
   };
 }
 
@@ -501,6 +563,96 @@ export class TimeEntryService {
     );
 
     return toTaskTimeEntrySummary(updated);
+  }
+
+  async updateUserTimeEntry(
+    timeEntryId: string,
+    userId: string,
+    startedAt: string,
+    endedAt: string | null,
+  ): Promise<UserTimeEntrySummary> {
+    const entry =
+      await this.timeEntryRepository.findByIdWithRelations(timeEntryId);
+
+    if (!entry || entry.userId !== userId) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    const teamId = entry.task?.card?.teamId ?? entry.card?.teamId;
+
+    if (!teamId) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    const membership = await this.teamRepository.findMembershipByTeamAndUser(
+      teamId,
+      userId,
+    );
+
+    if (!membership) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    const startedAtDate = new Date(startedAt);
+    const endedAtDate = endedAt ? new Date(endedAt) : null;
+
+    if (
+      endedAtDate &&
+      startedAtDate.getTime() >= endedAtDate.getTime()
+    ) {
+      throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+    }
+
+    await this.timeEntryRepository.updateDates(
+      timeEntryId,
+      startedAtDate,
+      endedAtDate,
+    );
+
+    const updated =
+      await this.timeEntryRepository.findByIdWithRelations(timeEntryId);
+
+    if (!updated) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    const mapped = mapUserTimeEntry(updated);
+
+    if (!mapped) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    return mapped;
+  }
+
+  async listUserTimeEntries(
+    userId: string,
+    options: { date?: string; page: number; pageSize: number },
+  ): Promise<PaginatedUserTimeEntries> {
+    const skip = (options.page - 1) * options.pageSize;
+
+    const [entries, total] = await Promise.all([
+      this.timeEntryRepository.findByUserId(userId, {
+        date: options.date,
+        skip,
+        take: options.pageSize,
+      }),
+      this.timeEntryRepository.countByUserId(userId, options.date),
+    ]);
+
+    const totalPages = total === 0 ? 0 : Math.ceil(total / options.pageSize);
+
+    return {
+      timeEntries: entries
+        .map(mapUserTimeEntry)
+        .filter((entry): entry is UserTimeEntrySummary => entry !== null),
+      pagination: {
+        page: options.page,
+        pageSize: options.pageSize,
+        total,
+        totalPages,
+      },
+    };
   }
 
   async getRecentWorkItems(

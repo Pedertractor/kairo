@@ -140,7 +140,7 @@ export function UsuariosPage() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-sm">
               <thead>
-                <tr className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
+                <tr className="border-b bg-[#C5D3FF] text-left text-xs text-sidebar-primary">
                   <th className="px-4 py-3 font-medium">Usuário</th>
                   <th className="px-4 py-3 font-medium">Cartão</th>
                   <th className="px-4 py-3 font-medium">Unidade</th>

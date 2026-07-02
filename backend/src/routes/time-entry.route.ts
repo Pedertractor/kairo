@@ -29,6 +29,16 @@ export async function timeEntryRoutes(app: FastifyInstance) {
     controller.getRecent,
   );
   app.get(
+    '/time-entries',
+    { preHandler: [app.authenticate] },
+    controller.listUserTimeEntries,
+  );
+  app.patch(
+    '/time-entries/:timeEntryId',
+    { preHandler: [app.authenticate] },
+    controller.updateUserTimeEntry,
+  );
+  app.get(
     '/time-entries/day',
     { preHandler: [app.authenticate] },
     controller.getDayDashboard,

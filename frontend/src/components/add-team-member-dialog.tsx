@@ -1,7 +1,13 @@
-import { useEffect, useLayoutEffect, useMemo, useState, type FormEvent } from 'react'
-import { Loader2 } from 'lucide-react'
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+} from 'react';
+import { Loader2 } from 'lucide-react';
 
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/button';
 import {
   Combobox,
   ComboboxContent,
@@ -9,7 +15,7 @@ import {
   ComboboxInput,
   ComboboxItem,
   ComboboxList,
-} from '@/components/ui/combobox'
+} from '@/components/ui/combobox';
 import {
   Dialog,
   DialogContent,
@@ -17,33 +23,33 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { api } from '@/lib/api-handler'
+} from '@/components/ui/dialog';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { api } from '@/lib/api-handler';
 import type {
   AddTeamMemberInput,
   AvailableTeamMembersResponse,
   TeamResponse,
   TeamUserOption,
-} from '@/types/team'
+} from '@/types/team';
 
 type UserComboboxOption = {
-  value: string
-  label: string
-}
+  value: string;
+  label: string;
+};
 
 interface AddTeamMemberDialogProps {
-  teamId: string
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onAdded: (team: TeamResponse['team']) => void
+  teamId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onAdded: (team: TeamResponse['team']) => void;
 }
 
 function toComboboxOption(user: TeamUserOption): UserComboboxOption {
   return {
     value: user.id,
     label: `${user.name} (${user.employeeId})`,
-  }
+  };
 }
 
 export function AddTeamMemberDialog({
@@ -52,85 +58,82 @@ export function AddTeamMemberDialog({
   onOpenChange,
   onAdded,
 }: AddTeamMemberDialogProps) {
-  const [users, setUsers] = useState<TeamUserOption[]>([])
+  const [users, setUsers] = useState<TeamUserOption[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserComboboxOption | null>(
     null,
-  )
-  const [isLoadingUsers, setIsLoadingUsers] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  );
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const userOptions = useMemo(
-    () => users.map(toComboboxOption),
-    [users],
-  )
+  const userOptions = useMemo(() => users.map(toComboboxOption), [users]);
 
   function resetForm() {
-    setSelectedUser(null)
-    setUsers([])
+    setSelectedUser(null);
+    setUsers([]);
   }
 
   useLayoutEffect(() => {
     if (open) {
-      setIsLoadingUsers(true)
+      setIsLoadingUsers(true);
     }
-  }, [open, teamId])
+  }, [open, teamId]);
 
   useEffect(() => {
     if (!open) {
-      return
+      return;
     }
 
-    let cancelled = false
+    let cancelled = false;
 
     async function loadUsers() {
       try {
         const data = await api<AvailableTeamMembersResponse>(
           `/teams/${teamId}/available-members`,
           { toastOnError: false },
-        )
+        );
 
         if (!cancelled) {
-          setUsers(data.users)
+          setUsers(data.users);
         }
       } catch {
         if (!cancelled) {
-          setUsers([])
+          setUsers([]);
         }
       } finally {
         if (!cancelled) {
-          setIsLoadingUsers(false)
+          setIsLoadingUsers(false);
         }
       }
     }
 
-    void loadUsers()
+    void loadUsers();
 
     return () => {
-      cancelled = true
-    }
-  }, [open, teamId])
+      cancelled = true;
+    };
+  }, [open, teamId]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+    event.preventDefault();
 
     if (!selectedUser) {
-      return
+      return;
     }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
 
     try {
-      const payload: AddTeamMemberInput = { userId: selectedUser.value }
+      const payload: AddTeamMemberInput = { userId: selectedUser.value };
       const data = await api<TeamResponse>(`/teams/${teamId}/members`, {
         method: 'POST',
         body: JSON.stringify(payload),
-      })
+      });
 
-      resetForm()
-      onOpenChange(false)
-      onAdded(data.team)
+      resetForm();
+      onOpenChange(false);
+      onAdded(data.team);
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
   }
 
@@ -139,9 +142,9 @@ export function AddTeamMemberDialog({
       open={open}
       onOpenChange={(nextOpen) => {
         if (!nextOpen) {
-          resetForm()
+          resetForm();
         }
-        onOpenChange(nextOpen)
+        onOpenChange(nextOpen);
       }}
     >
       <DialogContent>
@@ -154,16 +157,16 @@ export function AddTeamMemberDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup className="py-4">
+          <FieldGroup className='py-4'>
             <Field>
-              <FieldLabel htmlFor="member-user">Usuário</FieldLabel>
+              <FieldLabel htmlFor='member-user'>Usuário</FieldLabel>
               {isLoadingUsers ? (
-                <div className="flex h-8 items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="size-4 animate-spin" />
+                <div className='flex h-8 items-center gap-2 text-sm text-muted-foreground'>
+                  <Loader2 className='size-4 animate-spin' />
                   Carregando usuários...
                 </div>
               ) : users.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
+                <p className='text-sm text-muted-foreground'>
                   Nenhum usuário disponível para adicionar.
                 </p>
               ) : (
@@ -176,9 +179,9 @@ export function AddTeamMemberDialog({
                   disabled={isSubmitting}
                 >
                   <ComboboxInput
-                    id="member-user"
-                    className="w-full"
-                    placeholder="Buscar por nome..."
+                    id='member-user'
+                    className='w-full'
+                    placeholder='Buscar por nome...'
                     showClear
                     disabled={isSubmitting}
                   />
@@ -199,16 +202,15 @@ export function AddTeamMemberDialog({
 
           <DialogFooter>
             <Button
-              type="button"
-              variant="outline"
+              type='button'
+              variant='cancel'
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
             >
               Cancelar
             </Button>
             <Button
-              type="submit"
-              className="bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90"
+              type='submit'
               disabled={
                 isSubmitting ||
                 isLoadingUsers ||
@@ -222,5 +224,5 @@ export function AddTeamMemberDialog({
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

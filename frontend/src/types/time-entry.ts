@@ -111,3 +111,34 @@ export interface TaskTimeEntriesResponse {
 export interface UpdateTaskTimeEntryResponse {
   timeEntry: TaskTimeEntrySummary;
 }
+
+export interface UserTimeEntrySummary {
+  id: string;
+  type: TimeEntryType;
+  startedAt: string;
+  endedAt: string | null;
+  durationSeconds: number | null;
+  note: string | null;
+  kind: RecentWorkItemKind;
+  title: string;
+  parentTitle: string | null;
+  teamId: string;
+  teamName: string;
+  activityId: string | null;
+  projectId: string | null;
+  taskId: string | null;
+}
+
+export interface UserTimeEntriesResponse {
+  timeEntries: UserTimeEntrySummary[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface UpdateUserTimeEntryResponse {
+  timeEntry: UserTimeEntrySummary;
+}

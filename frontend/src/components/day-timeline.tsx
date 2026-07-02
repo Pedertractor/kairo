@@ -151,8 +151,8 @@ function getBlockColors(block: DayTimelineBlock, isToday: boolean, now: Date) {
 
   if (isFuture) {
     return {
-      bar: 'bg-[#C5D3FF] text-sidebar-primary',
-      subtext: 'text-sidebar-primary/70',
+      bar: 'bg-primary-100 text-primary-700',
+      subtext: 'text-primary-700/70',
     }
   }
 
@@ -338,7 +338,7 @@ export function DayTimeline({
                 className={cn(
                   'rounded-full px-3 py-1 text-xs font-medium capitalize transition-colors',
                   isActive
-                    ? 'bg-card text-sidebar-primary shadow-sm'
+                    ? 'bg-card text-primary shadow-sm'
                     : 'text-muted-foreground hover:text-foreground',
                 )}
               >

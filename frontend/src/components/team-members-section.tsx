@@ -37,11 +37,7 @@ export function TeamMembersSection({
   const isCreator = user?.id === createdById;
 
   const addMemberButton = isCreator ? (
-    <Button
-      size='sm'
-      className='bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90'
-      onClick={() => setIsAddDialogOpen(true)}
-    >
+    <Button size='sm' onClick={() => setIsAddDialogOpen(true)}>
       <UserPlus />
       adicionar novo membro
     </Button>

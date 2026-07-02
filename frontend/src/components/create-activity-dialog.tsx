@@ -133,7 +133,7 @@ export function CreateActivityDialog({
           <DialogFooter>
             <Button
               type="button"
-              variant="outline"
+              variant="cancel"
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
             >

@@ -13,17 +13,23 @@ import {
 import { FieldGroup } from '@/components/ui/field'
 import { api } from '@/lib/api-handler'
 import type {
-  TaskTimeEntrySummary,
   UpdateTaskTimeEntryResponse,
+  UpdateUserTimeEntryResponse,
 } from '@/types/time-entry'
 
+interface EditableTimeEntry {
+  id: string
+  startedAt: string
+  endedAt: string | null
+}
+
 interface EditTaskTimeEntryDialogProps {
-  projectId: string
-  taskId: string
-  entry: TaskTimeEntrySummary | null
+  entry: EditableTimeEntry | null
   open: boolean
   onOpenChange: (open: boolean) => void
-  onUpdated: (entry: TaskTimeEntrySummary) => void
+  onUpdated: () => void
+  projectId?: string
+  taskId?: string
 }
 
 export function EditTaskTimeEntryDialog({
@@ -53,8 +59,25 @@ export function EditTaskTimeEntryDialog({
     setIsSubmitting(true)
 
     try {
-      const data = await api<UpdateTaskTimeEntryResponse>(
-        `/projects/${projectId}/tasks/${taskId}/time-entries/${entry.id}`,
+      if (projectId && taskId) {
+        await api<UpdateTaskTimeEntryResponse>(
+          `/projects/${projectId}/tasks/${taskId}/time-entries/${entry.id}`,
+          {
+            method: 'PATCH',
+            body: JSON.stringify({
+              startedAt,
+              endedAt,
+            }),
+          },
+        )
+
+        onOpenChange(false)
+        onUpdated()
+        return
+      }
+
+      await api<UpdateUserTimeEntryResponse>(
+        `/time-entries/${entry.id}`,
         {
           method: 'PATCH',
           body: JSON.stringify({
@@ -65,7 +88,7 @@ export function EditTaskTimeEntryDialog({
       )
 
       onOpenChange(false)
-      onUpdated(data.timeEntry)
+      onUpdated()
     } finally {
       setIsSubmitting(false)
     }
@@ -104,7 +127,7 @@ export function EditTaskTimeEntryDialog({
         <DialogFooter>
           <Button
             type="button"
-            variant="outline"
+            variant="cancel"
             onClick={() => onOpenChange(false)}
             disabled={isSubmitting}
           >
