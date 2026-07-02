@@ -26,6 +26,11 @@ import { cn } from '@/lib/utils'
 
 type EndMode = 'active' | 'set'
 
+const END_MODE_LABELS: Record<EndMode, string> = {
+  active: 'Em andamento',
+  set: 'Definir data e hora',
+}
+
 interface DateTimePickerFieldProps {
   id: string
   label: string
@@ -95,7 +100,11 @@ export function DateTimePickerField({
           disabled={disabled}
         >
           <SelectTrigger id={`${id}-mode`} className="w-full">
-            <SelectValue />
+            <SelectValue>
+              {(selectedValue) =>
+                END_MODE_LABELS[selectedValue as EndMode] ?? 'Selecionar'
+              }
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="active">Em andamento</SelectItem>
