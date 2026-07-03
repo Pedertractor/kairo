@@ -10,6 +10,16 @@ export async function userRoutes(app: FastifyInstance) {
   const controller = new UserController(new UserService(userRepository));
 
   app.get('/users', { preHandler: [app.authenticate, requireAdmin] }, controller.list);
+  app.get(
+    '/users/lookup/:unit/:cardNumber',
+    { preHandler: [app.authenticate, requireAdmin] },
+    controller.lookupEmployee,
+  );
+  app.post(
+    '/users',
+    { preHandler: [app.authenticate, requireAdmin] },
+    controller.create,
+  );
   app.patch(
     '/users/:id/role',
     { preHandler: [app.authenticate, requireAdmin] },

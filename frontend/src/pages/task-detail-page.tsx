@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CardTimeBudget } from '@/components/card-time-budget'
 import { api } from '@/lib/api-handler'
-import { TASK_STATUS_LABELS } from '@/lib/task-status'
+import { TASK_STATUS_BADGE_CLASS, TASK_STATUS_LABELS } from '@/lib/task-status'
+import { cn } from '@/lib/utils'
 import type { TaskDetail, TaskDetailResponse } from '@/types/task'
 
 export function TaskDetailPage() {
@@ -100,7 +101,12 @@ export function TaskDetailPage() {
                     size="icon-sm"
                   />
                 ) : null}
-                <span className="rounded-md bg-muted px-2.5 py-1 text-sm text-muted-foreground">
+                <span
+                  className={cn(
+                    TASK_STATUS_BADGE_CLASS[task.status],
+                    'px-2.5 py-1 text-sm',
+                  )}
+                >
                   {TASK_STATUS_LABELS[task.status]}
                 </span>
               </div>

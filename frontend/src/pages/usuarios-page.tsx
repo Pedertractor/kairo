@@ -3,12 +3,14 @@ import {
   Crown,
   EllipsisIcon,
   KeyRound,
+  Plus,
   Shield,
   UserCheck,
   UserX,
 } from 'lucide-react'
 
 import { ChangeUserRoleDialog } from '@/components/change-user-role-dialog'
+import { CreateUserDialog } from '@/components/create-user-dialog'
 import { DeactivateUserDialog } from '@/components/deactivate-user-dialog'
 import { ResetUserPasswordDialog } from '@/components/reset-user-password-dialog'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -46,6 +48,7 @@ export function UsuariosPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [activeAction, setActiveAction] = useState<UserAction | null>(null)
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
 
   const loadUsers = useCallback(async () => {
     setIsLoading(true)
@@ -94,12 +97,34 @@ export function UsuariosPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-bold">Usuários</h1>
-        <p className="text-sm text-muted-foreground">
-          Gerencie os usuários da plataforma.
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Usuários</h1>
+          <p className="text-sm text-muted-foreground">
+            Gerencie os usuários da plataforma.
+          </p>
+        </div>
+        <Button type="button" onClick={() => setIsCreateDialogOpen(true)}>
+          <Plus />
+          Criar usuário
+        </Button>
       </div>
+
+      <CreateUserDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onCreated={(user) => {
+          setUsers((currentUsers) =>
+            [user, ...currentUsers].sort((a, b) => {
+              if (a.active !== b.active) {
+                return a.active ? -1 : 1
+              }
+
+              return a.name.localeCompare(b.name, 'pt-BR')
+            }),
+          )
+        }}
+      />
 
       <ChangeUserRoleDialog
         user={selectedUser}

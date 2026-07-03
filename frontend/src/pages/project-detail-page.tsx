@@ -79,7 +79,7 @@ export function ProjectDetailPage() {
               <ProjectStatusActions
                 project={project}
                 onStatusClick={() => setIsStatusDialogOpen(true)}
-                statusClassName="rounded-md bg-muted px-2.5 py-1 text-sm text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground"
+                statusClassName="px-2.5 py-1 text-sm"
               />
             </div>
             {project.teamName ? (

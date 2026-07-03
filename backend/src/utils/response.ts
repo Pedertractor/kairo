@@ -47,6 +47,10 @@ export const MENSAGENS = {
     'Não é possível alterar o único administrador ativo',
   NAO_PODE_ALTERAR_PROPRIO_ACESSO:
     'Você não pode remover ou desativar sua própria conta',
+  USUARIO_CRIADO_SUCESSO: 'Usuário criado com sucesso',
+  USUARIO_JA_CADASTRADO: 'Este usuário já está cadastrado na aplicação',
+  FUNCIONARIO_NAO_ENCONTRADO: 'Funcionário não encontrado na API externa',
+  ERRO_API_EXTERNA: 'Não foi possível consultar a API externa',
 } as const;
 
 export function sendError(

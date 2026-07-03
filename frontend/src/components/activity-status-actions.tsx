@@ -1,4 +1,5 @@
-import { STATUS_LABELS } from '@/lib/card-status'
+import { CARD_STATUS_BADGE_CLASS, STATUS_LABELS } from '@/lib/card-status'
+import { cn } from '@/lib/utils'
 import type { ActivitySummary } from '@/types/card'
 
 import { StartActivityTimerButton } from './start-activity-timer-button'
@@ -25,10 +26,10 @@ export function ActivityStatusActions({
       />
       <button
         type="button"
-        className={
-          statusClassName ??
-          'rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground'
-        }
+        className={cn(
+          CARD_STATUS_BADGE_CLASS[activity.status],
+          statusClassName,
+        )}
         onClick={onStatusClick}
       >
         {STATUS_LABELS[activity.status]}

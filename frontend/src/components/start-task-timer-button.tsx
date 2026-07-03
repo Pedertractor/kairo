@@ -1,4 +1,4 @@
-import { Play } from 'lucide-react'
+import { Pause, Play } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { useActiveTimer } from '@/hooks/use-active-timer'
@@ -16,10 +16,23 @@ export function StartTaskTimerButton({
   size = 'icon-xs',
   className,
 }: StartTaskTimerButtonProps) {
-  const { startTaskTimer, isStarting, isTaskActive } = useActiveTimer()
+  const { startTaskTimer, pauseTimer, isStarting, isPausing, isTaskActive } =
+    useActiveTimer()
 
   if (isTaskActive(taskId)) {
-    return null
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        size={size}
+        className={className}
+        aria-label="Pausar timer"
+        disabled={isPausing}
+        onClick={() => void pauseTimer()}
+      >
+        <Pause />
+      </Button>
+    )
   }
 
   return (

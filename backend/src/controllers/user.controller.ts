@@ -1,5 +1,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import {
+  createUserSchema,
+  employeeLookupParamSchema,
   updateUserRoleSchema,
   userIdParamSchema,
 } from '../schemas/user.schema.js';
@@ -14,6 +16,44 @@ export class UserController {
     try {
       const users = await this.service.listUsers();
       return sendSuccess(reply, { users });
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  lookupEmployee = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const parsed = employeeLookupParamSchema.safeParse(request.params);
+
+      if (!parsed.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const employee = await this.service.lookupEmployee(
+        parsed.data.cardNumber,
+        parsed.data.unit,
+      );
+
+      return sendSuccess(reply, { employee });
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  create = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const parsed = createUserSchema.safeParse(request.body);
+
+      if (!parsed.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const user = await this.service.createUser(
+        parsed.data.cardNumber,
+        parsed.data.unit,
+      );
+
+      return sendSuccess(reply, { user }, 201, MENSAGENS.USUARIO_CRIADO_SUCESSO);
     } catch (error) {
       return handleControllerError(error, reply);
     }

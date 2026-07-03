@@ -7,6 +7,11 @@ import { UpdateProjectStatusDialog } from '@/components/update-project-status-di
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { api } from '@/lib/api-handler'
+import {
+  CARD_STATUS_BADGE_CLASS,
+  CARD_STATUS_CARD_CLASS,
+} from '@/lib/card-status'
+import { cn } from '@/lib/utils'
 import { CardTimeBudget } from '@/components/card-time-budget'
 import type { ProjectSummary, ProjectsListResponse } from '@/types/card'
 
@@ -89,7 +94,10 @@ export function TeamProjectsSection({ teamId }: TeamProjectsSectionProps) {
           {projects.map((project) => (
             <li
               key={project.id}
-              className="flex flex-col gap-2 rounded-lg border bg-card p-3 transition-colors"
+              className={cn(
+                'flex flex-col gap-2 rounded-lg border p-3 transition-colors',
+                CARD_STATUS_CARD_CLASS[project.status],
+              )}
             >
               <div className="flex items-start justify-between gap-2">
                 <Link
@@ -101,6 +109,7 @@ export function TeamProjectsSection({ teamId }: TeamProjectsSectionProps) {
                 <ProjectStatusActions
                   project={project}
                   onStatusClick={() => setProjectToUpdate(project)}
+                  statusClassName={CARD_STATUS_BADGE_CLASS[project.status]}
                 />
               </div>
               {project.description ? (

@@ -78,4 +78,15 @@ export class UserRepository {
       },
     });
   }
+
+  create(data: {
+    employeeId: string;
+    name: string;
+    unit: UnitType;
+    cardNumber: string;
+    passwordHash: string;
+    role: UserRole;
+  }) {
+    return this.prisma.user.create({ data });
+  }
 }

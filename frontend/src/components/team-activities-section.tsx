@@ -8,6 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useActiveTimer } from '@/hooks/use-active-timer';
 import { api } from '@/lib/api-handler';
+import {
+  CARD_STATUS_BADGE_CLASS,
+  CARD_STATUS_CARD_CLASS,
+} from '@/lib/card-status';
 import { CardTimeBudget } from '@/components/card-time-budget';
 import { cn } from '@/lib/utils';
 import type { ActivitiesListResponse, ActivitySummary } from '@/types/card';
@@ -93,37 +97,39 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
             const isTimerActive = isActivityActive(activity.id);
 
             return (
-            <li
-              key={activity.id}
-              className={cn(
-                'flex flex-col gap-2 rounded-lg border bg-card p-3 transition-colors',
-                isTimerActive &&
-                  'border-sidebar-primary bg-sidebar-primary/10',
-              )}
-            >
-              <div className='flex items-start justify-between gap-2'>
-                <Link
-                  to={`/equipes/${teamId}/atividades/${activity.id}`}
-                  className='text-sm font-medium hover:underline'
-                >
-                  {activity.title}
-                </Link>
-                <ActivityStatusActions
-                  teamId={teamId}
-                  activity={activity}
-                  onStatusClick={() => setActivityToUpdate(activity)}
+              <li
+                key={activity.id}
+                className={cn(
+                  'flex flex-col gap-2 rounded-lg border p-3 transition-all',
+                  CARD_STATUS_CARD_CLASS[activity.status],
+                  isTimerActive &&
+                    'border-sidebar-primary shadow-md shadow-sidebar-primary/15 ring-2 ring-sidebar-primary/35',
+                )}
+              >
+                <div className='flex items-start justify-between gap-2'>
+                  <Link
+                    to={`/equipes/${teamId}/atividades/${activity.id}`}
+                    className='text-sm font-medium hover:underline'
+                  >
+                    {activity.title}
+                  </Link>
+                  <ActivityStatusActions
+                    teamId={teamId}
+                    activity={activity}
+                    onStatusClick={() => setActivityToUpdate(activity)}
+                    statusClassName={CARD_STATUS_BADGE_CLASS[activity.status]}
+                  />
+                </div>
+                {activity.description ? (
+                  <p className='line-clamp-2 text-xs text-muted-foreground'>
+                    {activity.description}
+                  </p>
+                ) : null}
+                <CardTimeBudget
+                  loggedSeconds={activity.loggedSeconds}
+                  estimatedHours={activity.estimatedHours}
                 />
-              </div>
-              {activity.description ? (
-                <p className='line-clamp-2 text-xs text-muted-foreground'>
-                  {activity.description}
-                </p>
-              ) : null}
-              <CardTimeBudget
-                loggedSeconds={activity.loggedSeconds}
-                estimatedHours={activity.estimatedHours}
-              />
-            </li>
+              </li>
             );
           })}
         </ul>

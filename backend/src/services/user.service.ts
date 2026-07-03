@@ -1,14 +1,57 @@
 import bcrypt from 'bcryptjs';
 import { UserRole } from '../generated/client.js';
 import { env } from '../config/env.js';
+import { EmployeeService } from './employee.service.js';
 import { UserRepository } from '../repositories/user.repository.js';
 import type { SafeUser } from '../types/auth.types.js';
+import type { EmployeeLookupResult } from '../types/employee.types.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
-import { toSafeUser } from '../utils/user.js';
+import { toEmployeeId, toSafeUser } from '../utils/user.js';
 
 export class UserService {
+  private readonly employeeService = new EmployeeService();
+
   constructor(private readonly userRepository: UserRepository) {}
+
+  async lookupEmployee(
+    cardNumber: string,
+    unit: EmployeeLookupResult['unit'],
+  ): Promise<EmployeeLookupResult> {
+    return this.employeeService.getByCardNumberAndUnit(cardNumber, unit);
+  }
+
+  async createUser(
+    cardNumber: string,
+    unit: EmployeeLookupResult['unit'],
+  ): Promise<SafeUser> {
+    const existing = await this.userRepository.findByUnitAndCardNumber(
+      unit,
+      cardNumber,
+    );
+
+    if (existing) {
+      throw new AppError(409, MENSAGENS.USUARIO_JA_CADASTRADO);
+    }
+
+    const employee = await this.employeeService.getByCardNumberAndUnit(
+      cardNumber,
+      unit,
+    );
+
+    const passwordHash = await bcrypt.hash(env.DEFAULT_PASSWORD, 10);
+
+    const user = await this.userRepository.create({
+      employeeId: toEmployeeId(employee.unit, employee.cardNumber),
+      name: employee.name,
+      unit: employee.unit,
+      cardNumber: employee.cardNumber,
+      passwordHash,
+      role: UserRole.USER,
+    });
+
+    return toSafeUser(user);
+  }
 
   async listUsers(): Promise<SafeUser[]> {
     const users = await this.userRepository.findAll();

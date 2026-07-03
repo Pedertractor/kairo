@@ -3,7 +3,12 @@ import { Link } from 'react-router-dom'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { api } from '@/lib/api-handler'
-import { STATUS_LABELS } from '@/lib/card-status'
+import {
+  CARD_STATUS_BADGE_CLASS,
+  CARD_STATUS_CARD_CLASS,
+  STATUS_LABELS,
+} from '@/lib/card-status'
+import { cn } from '@/lib/utils'
 import { CardTimeBudget } from '@/components/card-time-budget'
 import type { ProjectSummary, ProjectsListResponse } from '@/types/card'
 
@@ -54,11 +59,19 @@ export function ProjetosPage() {
             <li key={project.id}>
               <Link
                 to={`/projetos/${project.id}`}
-                className="flex flex-col gap-2 rounded-lg border bg-card p-3 transition-colors hover:bg-muted/50"
+                className={cn(
+                  'flex flex-col gap-2 rounded-lg border p-3 transition-colors hover:bg-muted/50',
+                  CARD_STATUS_CARD_CLASS[project.status],
+                )}
               >
                 <div className="flex items-start justify-between gap-2">
                   <span className="text-sm font-medium">{project.title}</span>
-                  <span className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                  <span
+                    className={cn(
+                      'shrink-0',
+                      CARD_STATUS_BADGE_CLASS[project.status],
+                    )}
+                  >
                     {STATUS_LABELS[project.status]}
                   </span>
                 </div>

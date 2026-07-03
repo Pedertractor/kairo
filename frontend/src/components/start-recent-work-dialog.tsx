@@ -18,7 +18,11 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { useActiveTimer } from '@/hooks/use-active-timer'
 import { api } from '@/lib/api-handler'
-import { STATUS_LABELS } from '@/lib/card-status'
+import { CARD_STATUS_BADGE_CLASS, STATUS_LABELS } from '@/lib/card-status'
+import {
+  TASK_STATUS_BADGE_CLASS,
+  TASK_STATUS_LABELS,
+} from '@/lib/task-status'
 import { cn } from '@/lib/utils'
 import type {
   RecentWorkItem,
@@ -47,19 +51,38 @@ const KIND_CONFIG: Record<
   },
 }
 
-const TASK_STATUS_LABELS: Record<string, string> = {
-  TODO: 'A fazer',
-  IN_PROGRESS: 'Em andamento',
-  DONE: 'Concluído',
-  CANCELED: 'Cancelado',
-}
-
 function getStatusLabel(item: RecentWorkItem): string {
   if (item.kind === 'TASK') {
-    return TASK_STATUS_LABELS[item.status] ?? item.status
+    return (
+      TASK_STATUS_LABELS[item.status as keyof typeof TASK_STATUS_LABELS] ??
+      item.status
+    )
   }
 
   return STATUS_LABELS[item.status as keyof typeof STATUS_LABELS] ?? item.status
+}
+
+function getStatusBadgeClass(
+  item: RecentWorkItem,
+  isActive: boolean,
+): string {
+  if (isActive) {
+    return CARD_STATUS_BADGE_CLASS.IN_PROGRESS
+  }
+
+  if (item.kind === 'TASK') {
+    return (
+      TASK_STATUS_BADGE_CLASS[
+        item.status as keyof typeof TASK_STATUS_BADGE_CLASS
+      ] ?? 'bg-muted text-muted-foreground'
+    )
+  }
+
+  return (
+    CARD_STATUS_BADGE_CLASS[
+      item.status as keyof typeof CARD_STATUS_BADGE_CLASS
+    ] ?? 'bg-muted text-muted-foreground'
+  )
 }
 
 function getItemHref(item: RecentWorkItem): string | null {
@@ -288,10 +311,8 @@ export function StartRecentWorkDialog({
 
                       <span
                         className={cn(
+                          getStatusBadgeClass(item, isActive),
                           'rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap',
-                          isActive
-                            ? 'bg-sidebar-primary/10 text-sidebar-primary'
-                            : 'bg-muted text-muted-foreground',
                         )}
                       >
                         {statusLabel}

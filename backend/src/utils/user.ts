@@ -1,5 +1,9 @@
-import type { User } from '../generated/client.js';
+import type { UnitType, User } from '../generated/client.js';
 import type { SafeUser } from '../types/auth.types.js';
+
+export function toEmployeeId(unit: UnitType, cardNumber: string): string {
+  return `${unit}-${cardNumber}`;
+}
 
 export function toSafeUser(user: User): SafeUser {
   return {

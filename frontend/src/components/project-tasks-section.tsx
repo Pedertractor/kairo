@@ -7,13 +7,22 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useActiveTimer } from '@/hooks/use-active-timer';
 import { api } from '@/lib/api-handler';
-import { TASK_STATUS_LABELS } from '@/lib/task-status';
+import { TASK_STATUS_BADGE_CLASS, TASK_STATUS_LABELS } from '@/lib/task-status';
 import { cn } from '@/lib/utils';
-import type { TaskSummary, TasksListResponse } from '@/types/task';
+import type { TaskStatus, TaskSummary, TasksListResponse } from '@/types/task';
 
 interface ProjectTasksSectionProps {
   projectId: string;
 }
+
+const TASK_CARD_STATUS_CLASS: Record<TaskStatus, string> = {
+  TODO: 'border-border bg-card',
+  IN_PROGRESS:
+    'border-sky-200 bg-sky-50/70 dark:border-sky-900/60 dark:bg-sky-950/20',
+  DONE: 'border-emerald-200 bg-emerald-50/75 dark:border-emerald-900/60 dark:bg-emerald-950/25',
+  CANCELED:
+    'border-rose-200 bg-rose-50/65 dark:border-rose-900/60 dark:bg-rose-950/20',
+};
 
 export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
   const { isTaskActive } = useActiveTimer();
@@ -79,16 +88,17 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
               <li
                 key={task.id}
                 className={cn(
-                  'group relative rounded-lg border bg-card transition-colors',
+                  'group relative rounded-lg border transition-all',
+                  TASK_CARD_STATUS_CLASS[task.status],
                   isTimerActive &&
-                    'border-sidebar-primary bg-sidebar-primary/10',
+                    'border-sidebar-primary shadow-md shadow-sidebar-primary/15 ring-2 ring-sidebar-primary/35',
                 )}
               >
                 <Link
                   to={`/projetos/${projectId}/tarefas/${task.id}`}
-                  className="flex flex-col gap-1.5 p-2.5 pr-20 hover:bg-muted/30"
+                  className='flex flex-col gap-1.5 p-2.5 pr-20 hover:bg-muted/30'
                 >
-                  <p className="line-clamp-2 text-sm font-medium leading-snug">
+                  <p className='line-clamp-2 text-sm font-medium leading-snug'>
                     {task.title}
                   </p>
                   {task.description ? (
@@ -106,7 +116,7 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
                   </div>
                 </Link>
                 <div
-                  className="absolute top-2.5 right-2.5 flex shrink-0 items-center gap-0.5"
+                  className='absolute top-2.5 right-2.5 flex shrink-0 items-center gap-0.5'
                   onClick={(event) => event.preventDefault()}
                 >
                   <StartTaskTimerButton
@@ -114,7 +124,7 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
                     taskId={task.id}
                     className='text-muted-foreground hover:text-sidebar-primary'
                   />
-                  <span className='rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground'>
+                  <span className={TASK_STATUS_BADGE_CLASS[task.status]}>
                     {TASK_STATUS_LABELS[task.status]}
                   </span>
                 </div>
