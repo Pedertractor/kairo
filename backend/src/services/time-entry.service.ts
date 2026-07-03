@@ -232,8 +232,10 @@ function mapRecentEntry(entry: RecentEntry): RecentWorkItem | null {
       status: entry.task.status,
       parentTitle: parentCard.title,
       lastWorkedAt: entry.startedAt.toISOString(),
-      canStartTimer: false,
+      canStartTimer: !['DONE', 'CANCELED'].includes(entry.task.status),
       activityId: null,
+      projectId: parentCard.id,
+      taskId: entry.task.id,
     };
   }
 
@@ -258,6 +260,8 @@ function mapRecentEntry(entry: RecentEntry): RecentWorkItem | null {
     lastWorkedAt: entry.startedAt.toISOString(),
     canStartTimer: kind === 'ACTIVITY',
     activityId: kind === 'ACTIVITY' ? entry.card.id : null,
+    projectId: kind === 'PROJECT' ? entry.card.id : null,
+    taskId: null,
   };
 }
 

@@ -59,6 +59,8 @@ export interface RecentWorkItem {
   lastWorkedAt: string;
   canStartTimer: boolean;
   activityId: string | null;
+  projectId: string | null;
+  taskId: string | null;
 }
 
 export interface RecentWorkItemsResponse {

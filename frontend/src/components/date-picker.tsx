@@ -19,6 +19,7 @@ interface DatePickerProps {
   onDateChange: (date: Date | undefined) => void
   disabled?: boolean
   placeholder?: string
+  displayFormat?: string
   className?: string
 }
 
@@ -28,6 +29,7 @@ export function DatePicker({
   onDateChange,
   disabled = false,
   placeholder = 'Selecionar data',
+  displayFormat = 'PPP',
   className,
 }: DatePickerProps) {
   const [open, setOpen] = useState(false)
@@ -50,7 +52,9 @@ export function DatePicker({
         }
       >
         <CalendarIcon />
-        {date ? format(date, 'PPP', { locale: dateFnsPtBR }) : placeholder}
+        {date
+          ? format(date, displayFormat, { locale: dateFnsPtBR })
+          : placeholder}
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
         <Calendar

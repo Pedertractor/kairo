@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Pencil } from 'lucide-react';
+import { Pencil, Plus } from 'lucide-react';
 
+import { DatePicker } from '@/components/date-picker';
 import { EditTaskTimeEntryDialog } from '@/components/edit-task-time-entry-dialog';
+import { StartRecentWorkDialog } from '@/components/start-recent-work-dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useActiveTimer } from '@/hooks/use-active-timer';
 import { api } from '@/lib/api-handler';
-import { toDateKey } from '@/lib/date';
+import { fromDateKey, toDateKey } from '@/lib/date';
 import { formatLoggedDuration } from '@/lib/format-duration';
 import { formatDateTime } from '@/lib/time-format';
+import { cn } from '@/lib/utils';
 import type {
   RecentWorkItemKind,
   UserTimeEntriesResponse,
@@ -51,6 +54,8 @@ export function ApontamentosPage() {
   const [entryToEdit, setEntryToEdit] = useState<UserTimeEntrySummary | null>(
     null,
   );
+  const [startDialogOpen, setStartDialogOpen] = useState(false);
+  const { isActive } = useActiveTimer();
 
   const loadTimeEntries = useCallback(async () => {
     setIsLoading(true);
@@ -87,7 +92,7 @@ export function ApontamentosPage() {
   }
 
   return (
-    <div className='flex flex-1 flex-col gap-6'>
+    <div className='relative flex flex-1 flex-col gap-6 pb-4'>
       <div className='flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between'>
         <div>
           <h1 className='text-2xl font-bold'>Apontamentos</h1>
@@ -98,11 +103,15 @@ export function ApontamentosPage() {
 
         <div className='flex flex-col gap-2 sm:w-52'>
           <Label htmlFor='apontamentos-date'>Filtrar por dia</Label>
-          <Input
+          <DatePicker
             id='apontamentos-date'
-            type='date'
-            value={selectedDate}
-            onChange={(event) => setSelectedDate(event.target.value)}
+            date={fromDateKey(selectedDate)}
+            displayFormat='dd-MM-yy'
+            onDateChange={(date) => {
+              if (date) {
+                setSelectedDate(toDateKey(date));
+              }
+            }}
           />
         </div>
       </div>
@@ -119,6 +128,25 @@ export function ApontamentosPage() {
           handleEntryUpdated();
         }}
       />
+
+      <StartRecentWorkDialog
+        open={startDialogOpen}
+        onOpenChange={setStartDialogOpen}
+        onStarted={handleEntryUpdated}
+      />
+
+      <Button
+        type='button'
+        size='icon-lg'
+        className={cn(
+          'fixed right-6 z-20 size-14 rounded-full shadow-lg lg:right-10',
+          isActive ? 'bottom-24' : 'bottom-6',
+        )}
+        aria-label='Iniciar apontamento'
+        onClick={() => setStartDialogOpen(true)}
+      >
+        <Plus className='size-6' />
+      </Button>
 
       {isLoading ? (
         <div className='flex flex-col gap-2'>
