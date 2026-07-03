@@ -12,6 +12,14 @@ const envSchema = z.object({
   DEFAULT_PASSWORD: z
     .string()
     .min(3, 'DEFAULT_PASSWORD deve ter pelo menos 3 caracteres'),
+  API_BASE_URL: z
+    .string()
+    .url('API_BASE_URL deve ser uma URL válida')
+    .optional(),
+  API_BASE_KEY: z.string().min(1, 'API_BASE_KEY é obrigatório'),
+  API_BASE_NAME_APPLICATION: z
+    .string()
+    .min(1, 'API_BASE_NAME_APPLICATION é obrigatório'),
 });
 
 const parsed = envSchema.safeParse(process.env);

@@ -5,13 +5,13 @@ import { Pencil, Plus } from 'lucide-react';
 import { DatePicker } from '@/components/date-picker';
 import { EditTaskTimeEntryDialog } from '@/components/edit-task-time-entry-dialog';
 import { StartRecentWorkDialog } from '@/components/start-recent-work-dialog';
+import { TimeEntryDuration } from '@/components/time-entry-duration';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useActiveTimer } from '@/hooks/use-active-timer';
 import { api } from '@/lib/api-handler';
 import { fromDateKey, toDateKey } from '@/lib/date';
-import { formatLoggedDuration } from '@/lib/format-duration';
 import { formatDateTime } from '@/lib/time-format';
 import { cn } from '@/lib/utils';
 import type {
@@ -216,8 +216,13 @@ export function ApontamentosPage() {
                             ? formatDateTime(entry.endedAt)
                             : 'Em andamento'}
                         </td>
-                        <td className='px-4 py-3 tabular-nums'>
-                          {formatLoggedDuration(entry.durationSeconds ?? 0)}
+                        <td className='px-4 py-3'>
+                          <TimeEntryDuration
+                            id={entry.id}
+                            startedAt={entry.startedAt}
+                            endedAt={entry.endedAt}
+                            durationSeconds={entry.durationSeconds}
+                          />
                         </td>
                         <td className='px-4 py-3 text-right'>
                           <Button
