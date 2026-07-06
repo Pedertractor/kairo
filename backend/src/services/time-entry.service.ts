@@ -10,10 +10,14 @@ import type {
   DayDashboard,
   DayTimelineBlock,
   PaginatedTaskTimeEntries,
+  PaginatedTeamTimeEntries,
   PaginatedUserTimeEntries,
   RecentWorkItem,
   RecentWorkItemKind,
   TaskTimeEntrySummary,
+  TeamDayDashboard,
+  TeamDayTimelineBlock,
+  TeamTimeEntrySummary,
   TimeEntrySummary,
   UserTimeEntrySummary,
 } from '../types/time-entry.types.js';
@@ -102,8 +106,16 @@ type DayEntry = Awaited<
   ReturnType<TimeEntryRepository['findOverlappingDay']>
 >[number];
 
+type TeamDayEntry = Awaited<
+  ReturnType<TimeEntryRepository['findOverlappingDayByTeamId']>
+>[number];
+
 type TaskEntryWithUser = Awaited<
   ReturnType<TimeEntryRepository['findByTaskId']>
+>[number];
+
+type TeamEntry = Awaited<
+  ReturnType<TimeEntryRepository['findByTeamId']>
 >[number];
 
 function toTaskTimeEntrySummary(entry: TaskEntryWithUser): TaskTimeEntrySummary {
@@ -200,6 +212,25 @@ function mapDayEntryToBlock(
     startedAt: overlapStart.toISOString(),
     endedAt: entry.endedAt ? overlapEnd.toISOString() : null,
     isActive: entry.endedAt === null,
+  };
+}
+
+function mapTeamDayEntryToBlock(
+  entry: TeamDayEntry,
+  dayStart: Date,
+  dayEnd: Date,
+  now: Date,
+): TeamDayTimelineBlock | null {
+  const mapped = mapDayEntryToBlock(entry, dayStart, dayEnd, now);
+
+  if (!mapped) {
+    return null;
+  }
+
+  return {
+    ...mapped,
+    userId: entry.user.id,
+    userName: entry.user.name,
   };
 }
 
@@ -318,6 +349,20 @@ function mapUserTimeEntry(entry: UserEntry): UserTimeEntrySummary | null {
     activityId: kind === 'ACTIVITY' ? entry.card.id : null,
     projectId: kind === 'PROJECT' ? entry.card.id : null,
     taskId: null,
+  };
+}
+
+function mapTeamTimeEntry(entry: TeamEntry): TeamTimeEntrySummary | null {
+  const mapped = mapUserTimeEntry(entry);
+
+  if (!mapped) {
+    return null;
+  }
+
+  return {
+    ...mapped,
+    userId: entry.user.id,
+    userName: entry.user.name,
   };
 }
 
@@ -659,6 +704,46 @@ export class TimeEntryService {
     };
   }
 
+  async listTeamTimeEntries(
+    teamId: string,
+    userId: string,
+    options: { date?: string; page: number; pageSize: number },
+  ): Promise<PaginatedTeamTimeEntries> {
+    const membership = await this.teamRepository.findMembershipByTeamAndUser(
+      teamId,
+      userId,
+    );
+
+    if (!membership) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    const skip = (options.page - 1) * options.pageSize;
+
+    const [entries, total] = await Promise.all([
+      this.timeEntryRepository.findByTeamId(teamId, {
+        date: options.date,
+        skip,
+        take: options.pageSize,
+      }),
+      this.timeEntryRepository.countByTeamId(teamId, options.date),
+    ]);
+
+    const totalPages = total === 0 ? 0 : Math.ceil(total / options.pageSize);
+
+    return {
+      timeEntries: entries
+        .map(mapTeamTimeEntry)
+        .filter((entry): entry is TeamTimeEntrySummary => entry !== null),
+      pagination: {
+        page: options.page,
+        pageSize: options.pageSize,
+        total,
+        totalPages,
+      },
+    };
+  }
+
   async getRecentWorkItems(
     userId: string,
     limit = 8,
@@ -756,6 +841,92 @@ export class TimeEntryService {
         loggedSeconds,
         changePercent,
         uniqueCategories: categories.size,
+      },
+      blocks,
+    };
+  }
+
+  async getTeamDayDashboard(
+    teamId: string,
+    userId: string,
+    date?: string,
+  ): Promise<TeamDayDashboard> {
+    const membership = await this.teamRepository.findMembershipByTeamAndUser(
+      teamId,
+      userId,
+    );
+
+    if (!membership) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    const targetDate = date ?? formatDateKey(new Date());
+    const { dayStart, dayEnd } = parseDayBounds(targetDate);
+    const now = new Date();
+
+    const previousDay = new Date(dayStart);
+    previousDay.setDate(previousDay.getDate() - 1);
+    const previousDate = formatDateKey(previousDay);
+    const { dayStart: prevStart, dayEnd: prevEnd } =
+      parseDayBounds(previousDate);
+
+    const [entries, previousEntries] = await Promise.all([
+      this.timeEntryRepository.findOverlappingDayByTeamId(
+        teamId,
+        dayStart,
+        dayEnd,
+      ),
+      this.timeEntryRepository.findOverlappingDayByTeamId(
+        teamId,
+        prevStart,
+        prevEnd,
+      ),
+    ]);
+
+    let loggedSeconds = 0;
+    const activeMemberIds = new Set<string>();
+
+    for (const entry of entries) {
+      const entryEnd = entry.endedAt ?? now;
+      loggedSeconds += getOverlapSeconds(
+        entry.startedAt,
+        entryEnd,
+        dayStart,
+        dayEnd,
+      );
+      activeMemberIds.add(entry.userId);
+    }
+
+    let previousLoggedSeconds = 0;
+
+    for (const entry of previousEntries) {
+      const entryEnd = entry.endedAt ?? now;
+      previousLoggedSeconds += getOverlapSeconds(
+        entry.startedAt,
+        entryEnd,
+        prevStart,
+        prevEnd,
+      );
+    }
+
+    const changePercent =
+      previousLoggedSeconds > 0
+        ? Math.round(
+            ((loggedSeconds - previousLoggedSeconds) / previousLoggedSeconds) *
+              100,
+          )
+        : null;
+
+    const blocks = entries
+      .map((entry) => mapTeamDayEntryToBlock(entry, dayStart, dayEnd, now))
+      .filter((block): block is TeamDayTimelineBlock => block !== null);
+
+    return {
+      date: targetDate,
+      stats: {
+        loggedSeconds,
+        changePercent,
+        activeMembers: activeMemberIds.size,
       },
       blocks,
     };

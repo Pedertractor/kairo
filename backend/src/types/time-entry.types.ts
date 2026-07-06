@@ -73,6 +73,23 @@ export interface DayDashboard {
   blocks: DayTimelineBlock[];
 }
 
+export interface TeamDayTimelineBlock extends DayTimelineBlock {
+  userId: string;
+  userName: string;
+}
+
+export interface TeamDayDashboardStats {
+  loggedSeconds: number;
+  changePercent: number | null;
+  activeMembers: number;
+}
+
+export interface TeamDayDashboard {
+  date: string;
+  stats: TeamDayDashboardStats;
+  blocks: TeamDayTimelineBlock[];
+}
+
 export interface TaskTimeEntrySummary {
   id: string;
   userId: string;
@@ -113,6 +130,21 @@ export interface UserTimeEntrySummary {
 
 export interface PaginatedUserTimeEntries {
   timeEntries: UserTimeEntrySummary[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface TeamTimeEntrySummary extends UserTimeEntrySummary {
+  userId: string;
+  userName: string;
+}
+
+export interface PaginatedTeamTimeEntries {
+  timeEntries: TeamTimeEntrySummary[];
   pagination: {
     page: number;
     pageSize: number;

@@ -93,7 +93,11 @@ export function UpdateActivityStatusDialog({
                 disabled={isSubmitting || !activity}
               >
                 <SelectTrigger id="activity-status" className="w-full">
-                  <SelectValue placeholder="Selecione um status" />
+                  <SelectValue placeholder="Selecione um status">
+                    {(selectedValue) =>
+                      STATUS_LABELS[selectedValue as CardStatus]
+                    }
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {CARD_STATUSES.map((option) => (

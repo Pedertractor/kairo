@@ -211,6 +211,59 @@ export class TimeEntryRepository {
     return this.prisma.timeEntry.count({ where });
   }
 
+  private readonly teamEntriesInclude = {
+    user: { select: { id: true, name: true } },
+    ...this.userEntriesInclude,
+  } as const;
+
+  findByTeamId(
+    teamId: string,
+    options: { date?: string; skip: number; take: number },
+  ) {
+    const where = this.buildTeamEntriesWhere(teamId, options.date);
+
+    return this.prisma.timeEntry.findMany({
+      where,
+      orderBy: { startedAt: 'desc' },
+      skip: options.skip,
+      take: options.take,
+      include: this.teamEntriesInclude,
+    });
+  }
+
+  countByTeamId(teamId: string, date?: string) {
+    const where = this.buildTeamEntriesWhere(teamId, date);
+
+    return this.prisma.timeEntry.count({ where });
+  }
+
+  private buildTeamEntriesWhere(
+    teamId: string,
+    date?: string,
+  ): Prisma.TimeEntryWhereInput {
+    const teamFilter: Prisma.TimeEntryWhereInput = {
+      OR: [{ card: { teamId } }, { task: { card: { teamId } } }],
+    };
+
+    if (!date) {
+      return teamFilter;
+    }
+
+    const dayStart = new Date(`${date}T00:00:00.000`);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+
+    return {
+      AND: [
+        teamFilter,
+        {
+          startedAt: { lt: dayEnd },
+          OR: [{ endedAt: { gt: dayStart } }, { endedAt: null }],
+        },
+      ],
+    };
+  }
+
   private buildUserEntriesWhere(
     userId: string,
     date?: string,
@@ -238,6 +291,46 @@ export class TimeEntryRepository {
       },
       orderBy: { startedAt: 'asc' },
       include: {
+        card: {
+          select: {
+            id: true,
+            title: true,
+            type: true,
+            teamId: true,
+          },
+        },
+        task: {
+          select: {
+            id: true,
+            title: true,
+            card: {
+              select: {
+                id: true,
+                title: true,
+                type: true,
+                teamId: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  findOverlappingDayByTeamId(teamId: string, dayStart: Date, dayEnd: Date) {
+    return this.prisma.timeEntry.findMany({
+      where: {
+        AND: [
+          { OR: [{ card: { teamId } }, { task: { card: { teamId } } }] },
+          {
+            startedAt: { lt: dayEnd },
+            OR: [{ endedAt: { gt: dayStart } }, { endedAt: null }],
+          },
+        ],
+      },
+      orderBy: { startedAt: 'asc' },
+      include: {
+        user: { select: { id: true, name: true } },
         card: {
           select: {
             id: true,

@@ -1,5 +1,5 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import { activityParamSchema } from '../schemas/card.schema.js';
+import { activityParamSchema, teamIdParamSchema } from '../schemas/card.schema.js';
 import { taskParamSchema } from '../schemas/task.schema.js';
 import {
   dayDashboardQuerySchema,
@@ -172,6 +172,27 @@ export class TimeEntryController {
     }
   };
 
+  listTeamTimeEntries = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const params = teamIdParamSchema.safeParse(request.params);
+      const query = listUserTimeEntriesQuerySchema.safeParse(request.query);
+
+      if (!params.success || !query.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const result = await this.service.listTeamTimeEntries(
+        params.data.teamId,
+        request.user.sub,
+        query.data,
+      );
+
+      return sendSuccess(reply, result);
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
   updateUserTimeEntry = async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const params = timeEntryIdParamSchema.safeParse(request.params);
@@ -210,6 +231,30 @@ export class TimeEntryController {
       const dashboard = await this.service.getDayDashboard(
         request.user.sub,
         parsed.data.date,
+      );
+
+      return sendSuccess(reply, dashboard);
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  getTeamDayDashboard = async (
+    request: FastifyRequest,
+    reply: FastifyReply,
+  ) => {
+    try {
+      const params = teamIdParamSchema.safeParse(request.params);
+      const query = dayDashboardQuerySchema.safeParse(request.query);
+
+      if (!params.success || !query.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const dashboard = await this.service.getTeamDayDashboard(
+        params.data.teamId,
+        request.user.sub,
+        query.data.date,
       );
 
       return sendSuccess(reply, dashboard);

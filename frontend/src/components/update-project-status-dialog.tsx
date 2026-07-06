@@ -93,7 +93,11 @@ export function UpdateProjectStatusDialog({
                 disabled={isSubmitting || !project}
               >
                 <SelectTrigger id="project-status" className="w-full">
-                  <SelectValue placeholder="Selecione um status" />
+                  <SelectValue placeholder="Selecione um status">
+                    {(selectedValue) =>
+                      STATUS_LABELS[selectedValue as CardStatus]
+                    }
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {CARD_STATUSES.map((option) => (

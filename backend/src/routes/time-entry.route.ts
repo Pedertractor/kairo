@@ -33,6 +33,16 @@ export async function timeEntryRoutes(app: FastifyInstance) {
     { preHandler: [app.authenticate] },
     controller.listUserTimeEntries,
   );
+  app.get(
+    '/teams/:teamId/time-entries',
+    { preHandler: [app.authenticate] },
+    controller.listTeamTimeEntries,
+  );
+  app.get(
+    '/teams/:teamId/time-entries/day',
+    { preHandler: [app.authenticate] },
+    controller.getTeamDayDashboard,
+  );
   app.patch(
     '/time-entries/:timeEntryId',
     { preHandler: [app.authenticate] },

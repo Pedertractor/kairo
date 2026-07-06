@@ -4,7 +4,8 @@ import { Link, useParams } from 'react-router-dom';
 import { TeamActivitiesSection } from '@/components/team-activities-section';
 import { TeamMembersSection } from '@/components/team-members-section';
 import { TeamProjectsSection } from '@/components/team-projects-section';
-import { TeamSectionPlaceholder } from '@/components/team-section-placeholder';
+import { TeamTimeEntriesSection } from '@/components/team-time-entries-section';
+import { TeamTimelineSection } from '@/components/team-timeline-section';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -137,17 +138,11 @@ export function TeamDetailPage() {
             </TabsContent>
 
             <TabsContent value='apontamentos'>
-              <TeamSectionPlaceholder
-                title='Apontamentos'
-                description='Os apontamentos de horas desta equipe aparecerão aqui.'
-              />
+              <TeamTimeEntriesSection teamId={team.id} />
             </TabsContent>
 
             <TabsContent value='timeline'>
-              <TeamSectionPlaceholder
-                title='Timeline'
-                description='A linha do tempo de atividades desta equipe aparecerá aqui.'
-              />
+              <TeamTimelineSection teamId={team.id} />
             </TabsContent>
           </Tabs>
         </>
