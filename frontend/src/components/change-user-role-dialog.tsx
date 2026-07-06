@@ -88,7 +88,11 @@ export function ChangeUserRoleDialog({
             onValueChange={(value) => setRole(value as UserRole)}
           >
             <SelectTrigger id="user-role" className="w-full">
-              <SelectValue />
+              <SelectValue>
+                {(selectedValue) =>
+                  ROLE_LABELS[selectedValue as UserRole]
+                }
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {(Object.keys(ROLE_LABELS) as UserRole[]).map((option) => (
