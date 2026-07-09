@@ -73,6 +73,7 @@ export class UserController {
         request.user.sub,
         params.data.id,
         body.data.role,
+        body.data.printerOperator,
       );
 
       return sendSuccess(

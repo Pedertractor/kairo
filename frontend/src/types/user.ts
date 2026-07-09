@@ -10,6 +10,7 @@ export interface UserResponse {
 
 export interface UpdateUserRoleInput {
   role: UserRole
+  printerOperator: boolean
 }
 
 export interface CreateUserInput {

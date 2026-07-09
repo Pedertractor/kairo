@@ -48,10 +48,16 @@ export class UserRepository {
     });
   }
 
-  updateRole(id: string, role: UserRole) {
+  updateRole(
+    id: string,
+    data: {
+      role: UserRole;
+      printerOperator: boolean;
+    },
+  ) {
     return this.prisma.user.update({
       where: { id },
-      data: { role },
+      data,
     });
   }
 

@@ -64,6 +64,7 @@ export class UserService {
     actorUserId: string,
     targetUserId: string,
     role: UserRole,
+    printerOperator: boolean,
   ): Promise<SafeUser> {
     const targetUser = await this.userRepository.findById(targetUserId);
 
@@ -89,7 +90,10 @@ export class UserService {
       }
     }
 
-    const updated = await this.userRepository.updateRole(targetUserId, role);
+    const updated = await this.userRepository.updateRole(targetUserId, {
+      role,
+      printerOperator,
+    });
     return toSafeUser(updated);
   }
 

@@ -17,4 +17,5 @@ export const createUserSchema = z.object({
 
 export const updateUserRoleSchema = z.object({
   role: z.enum(['ADMIN', 'USER']),
+  printerOperator: z.boolean(),
 });
