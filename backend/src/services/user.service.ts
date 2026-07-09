@@ -24,6 +24,7 @@ export class UserService {
   async createUser(
     cardNumber: string,
     unit: EmployeeLookupResult['unit'],
+    printerOperator = false,
   ): Promise<SafeUser> {
     const existing = await this.userRepository.findByUnitAndCardNumber(
       unit,
@@ -48,6 +49,7 @@ export class UserService {
       cardNumber: employee.cardNumber,
       passwordHash,
       role: UserRole.USER,
+      printerOperator,
     });
 
     return toSafeUser(user);

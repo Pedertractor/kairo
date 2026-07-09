@@ -51,6 +51,7 @@ export class UserController {
       const user = await this.service.createUser(
         parsed.data.cardNumber,
         parsed.data.unit,
+        parsed.data.printerOperator,
       );
 
       return sendSuccess(reply, { user }, 201, MENSAGENS.USUARIO_CRIADO_SUCESSO);

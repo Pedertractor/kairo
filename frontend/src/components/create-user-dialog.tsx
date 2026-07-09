@@ -36,6 +36,7 @@ export function CreateUserDialog({
 }: CreateUserDialogProps) {
   const [cardNumber, setCardNumber] = useState('')
   const [unit, setUnit] = useState<UnitType>('PEDERTRACTOR')
+  const [printerOperator, setPrinterOperator] = useState(false)
   const [employeeName, setEmployeeName] = useState<string | null>(null)
   const [lookupError, setLookupError] = useState<string | null>(null)
   const [isLookingUp, setIsLookingUp] = useState(false)
@@ -44,6 +45,7 @@ export function CreateUserDialog({
   function resetForm() {
     setCardNumber('')
     setUnit('PEDERTRACTOR')
+    setPrinterOperator(false)
     setEmployeeName(null)
     setLookupError(null)
     setIsLookingUp(false)
@@ -122,6 +124,7 @@ export function CreateUserDialog({
       const payload: CreateUserInput = {
         cardNumber: cardNumber.trim(),
         unit,
+        printerOperator,
       }
 
       const data = await api<UserResponse>('/users', {
@@ -187,6 +190,20 @@ export function CreateUserDialog({
                   </Button>
                 ))}
               </div>
+            </Field>
+
+            <Field orientation="horizontal">
+              <input
+                id="user-printer-operator"
+                type="checkbox"
+                checked={printerOperator}
+                onChange={(event) => setPrinterOperator(event.target.checked)}
+                disabled={isSubmitting}
+                className="size-4 accent-primary"
+              />
+              <FieldLabel htmlFor="user-printer-operator">
+                Operador de impressora
+              </FieldLabel>
             </Field>
 
             {isLookingUp ? (

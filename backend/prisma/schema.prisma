@@ -62,9 +62,10 @@ model User {
   unit         UnitType
   cardNumber   String
   passwordHash String
-  role         UserRole
-  active       Boolean  @default(true)
-  firstLogin   Boolean  @default(true)
+  role            UserRole
+  active          Boolean  @default(true)
+  firstLogin      Boolean  @default(true)
+  printerOperator Boolean  @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

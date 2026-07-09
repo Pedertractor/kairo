@@ -15,5 +15,6 @@ export function toSafeUser(user: User): SafeUser {
     role: user.role,
     active: user.active,
     firstLogin: user.firstLogin,
+    printerOperator: user.printerOperator,
   };
 }

@@ -9,6 +9,7 @@ export interface SafeUser {
   role: UserRole;
   active: boolean;
   firstLogin: boolean;
+  printerOperator: boolean;
 }
 
 export interface LoginInput {

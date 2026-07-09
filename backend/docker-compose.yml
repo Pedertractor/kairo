@@ -10,9 +10,9 @@ services:
       POSTGRES_PASSWORD: docker
       POSTGRES_DB: kairo
     volumes:
-      - kairo_pg_data:/var/lib/postgresql/data
+      - kairo_pg_data:/var/lib/postgre.sql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U user -d kairo']
+      test: ['CMD-SHELL, 'pg_isready -U user -d kairo']
       interval: 5s
       timeout: 5s
       retries: 5

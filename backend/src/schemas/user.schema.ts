@@ -12,6 +12,7 @@ export const employeeLookupParamSchema = z.object({
 export const createUserSchema = z.object({
   cardNumber: z.string().min(1),
   unit: z.enum(['PEDERTRACTOR', 'TRACTOR']),
+  printerOperator: z.boolean().optional().default(false),
 });
 
 export const updateUserRoleSchema = z.object({

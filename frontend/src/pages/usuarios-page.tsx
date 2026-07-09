@@ -163,13 +163,14 @@ export function UsuariosPage() {
       ) : (
         <div className="overflow-hidden rounded-xl border bg-card">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-sm">
+            <table className="w-full min-w-[840px] text-sm">
               <thead>
                 <tr className="border-b bg-[#C5D3FF] text-left text-xs text-sidebar-primary">
                   <th className="px-4 py-3 font-medium">Usuário</th>
                   <th className="px-4 py-3 font-medium">Cartão</th>
                   <th className="px-4 py-3 font-medium">Unidade</th>
                   <th className="px-4 py-3 font-medium">Função</th>
+                  <th className="px-4 py-3 font-medium">Operador</th>
                   <th className="px-4 py-3 font-medium">Estado</th>
                   <th className="px-4 py-3 text-right font-medium">Ações</th>
                 </tr>
@@ -216,6 +217,18 @@ export function UsuariosPage() {
                     <td className="px-4 py-3">{user.cardNumber}</td>
                     <td className="px-4 py-3">{UNIT_LABELS[user.unit]}</td>
                     <td className="px-4 py-3">{ROLE_LABELS[user.role]}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={cn(
+                          'inline-flex rounded-md px-2 py-0.5 text-xs',
+                          user.printerOperator
+                            ? 'bg-sidebar-primary/10 text-sidebar-primary'
+                            : 'bg-muted text-muted-foreground',
+                        )}
+                      >
+                        {user.printerOperator ? 'Sim' : 'Não'}
+                      </span>
+                    </td>
                     <td className="px-4 py-3">
                       <span
                         className={cn(
