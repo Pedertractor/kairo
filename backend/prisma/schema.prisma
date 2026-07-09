@@ -237,3 +237,24 @@ model TimeEntry {
   @@index([startedAt])
   @@map("time_entries")
 }
+
+model PrintingMachine {
+  id        String   @id @default(cuid())
+  name      String
+  busy      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("printing_machines")
+}
+
+model ThreeDPart {
+  id          String   @id @default(cuid())
+  name        String
+  code        String   @unique
+  timeToPrint Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("three_d_parts")
+}

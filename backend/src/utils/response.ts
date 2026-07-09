@@ -51,6 +51,15 @@ export const MENSAGENS = {
   USUARIO_JA_CADASTRADO: 'Este usuário já está cadastrado na aplicação',
   FUNCIONARIO_NAO_ENCONTRADO: 'Funcionário não encontrado na API externa',
   ERRO_API_EXTERNA: 'Não foi possível consultar a API externa',
+  IMPRESSORA_CRIADA_SUCESSO: 'Impressora criada com sucesso',
+  IMPRESSORA_ATUALIZADA_SUCESSO: 'Impressora atualizada com sucesso',
+  IMPRESSORA_REMOVIDA_SUCESSO: 'Impressora removida com sucesso',
+  IMPRESSORA_NAO_ENCONTRADA: 'Impressora não encontrada',
+  PECA_3D_CRIADA_SUCESSO: 'Peça 3D criada com sucesso',
+  PECA_3D_ATUALIZADA_SUCESSO: 'Peça 3D atualizada com sucesso',
+  PECA_3D_REMOVIDA_SUCESSO: 'Peça 3D removida com sucesso',
+  PECA_3D_NAO_ENCONTRADA: 'Peça 3D não encontrada',
+  CODIGO_PECA_3D_JA_CADASTRADO: 'Já existe uma peça 3D com este código',
 } as const;
 
 export function sendError(
