@@ -55,6 +55,9 @@ export const MENSAGENS = {
   IMPRESSORA_ATUALIZADA_SUCESSO: 'Impressora atualizada com sucesso',
   IMPRESSORA_REMOVIDA_SUCESSO: 'Impressora removida com sucesso',
   IMPRESSORA_NAO_ENCONTRADA: 'Impressora não encontrada',
+  IMPRESSORA_JA_OCUPADA: 'Esta impressora já está ocupada',
+  PECA_OBRIGATORIA_PARA_IMPRESSAO:
+    'Selecione uma peça para iniciar a impressão',
   PECA_3D_CRIADA_SUCESSO: 'Peça 3D criada com sucesso',
   PECA_3D_ATUALIZADA_SUCESSO: 'Peça 3D atualizada com sucesso',
   PECA_3D_REMOVIDA_SUCESSO: 'Peça 3D removida com sucesso',

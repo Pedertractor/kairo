@@ -239,22 +239,26 @@ model TimeEntry {
 }
 
 model PrintingMachine {
-  id        String   @id @default(cuid())
-  name      String
-  busy      Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String     @id @default(cuid())
+  name         String
+  busy         Boolean    @default(false)
+  threeDPartId String?
+  threeDPart   ThreeDPart? @relation(fields: [threeDPartId], references: [id], onDelete: SetNull)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
+  @@index([threeDPartId])
   @@map("printing_machines")
 }
 
 model ThreeDPart {
-  id          String   @id @default(cuid())
-  name        String
-  code        String   @unique
-  timeToPrint Int
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String             @id @default(cuid())
+  name             String
+  code             String             @unique
+  timeToPrint      Int
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  printingMachines PrintingMachine[]
 
   @@map("three_d_parts")
 }
