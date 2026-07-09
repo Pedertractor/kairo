@@ -14,6 +14,7 @@ import {
 import { useAuth } from '@/hooks/use-auth';
 import type { UnitType } from '@/types/auth';
 import {
+  BoxIcon,
   ClockIcon,
   FolderKanbanIcon,
   HomeIcon,
@@ -49,6 +50,14 @@ const baseNavItems = [
   },
 ];
 
+const printerOperatorNavItems = [
+  {
+    title: '3D',
+    url: '/3d',
+    icon: <BoxIcon />,
+  },
+];
+
 const adminNavItems = [
   {
     title: 'Usuários',
@@ -61,10 +70,11 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
   const { pathname } = useLocation();
 
-  const navItems =
-    user?.role === 'ADMIN'
-      ? [...baseNavItems, ...adminNavItems]
-      : baseNavItems;
+  const navItems = [
+    ...baseNavItems,
+    ...(user?.printerOperator ? printerOperatorNavItems : []),
+    ...(user?.role === 'ADMIN' ? adminNavItems : []),
+  ];
 
   const navMain = navItems.map((item) => ({
     ...item,

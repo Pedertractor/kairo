@@ -12,6 +12,7 @@ import { TaskDetailPage } from '@/pages/task-detail-page'
 import { ApontamentosPage } from '@/pages/apontamentos-page'
 import { ProjetosPage } from '@/pages/projetos-page'
 import { TeamsPage } from '@/pages/teams-page'
+import { ThreeDPage } from '@/pages/3d-page'
 import { UsuariosPage } from '@/pages/usuarios-page'
 
 function ProtectedRoute({
@@ -20,12 +21,14 @@ function ProtectedRoute({
   hideHeader = false,
   mainClassName,
   requireAdmin = false,
+  requirePrinterOperator = false,
 }: {
   children: React.ReactNode
   title?: string
   hideHeader?: boolean
   mainClassName?: string
   requireAdmin?: boolean
+  requirePrinterOperator?: boolean
 }) {
   const { isAuthenticated, user } = useAuth()
 
@@ -34,6 +37,10 @@ function ProtectedRoute({
   }
 
   if (requireAdmin && user?.role !== 'ADMIN') {
+    return <Navigate to="/" replace />
+  }
+
+  if (requirePrinterOperator && !user?.printerOperator) {
     return <Navigate to="/" replace />
   }
 
@@ -112,6 +119,14 @@ function App() {
         element={
           <ProtectedRoute title="Apontamentos">
             <ApontamentosPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/3d"
+        element={
+          <ProtectedRoute title="3D" requirePrinterOperator>
+            <ThreeDPage />
           </ProtectedRoute>
         }
       />
