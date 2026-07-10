@@ -8,6 +8,7 @@ export interface ActivitySummary {
   status: CardStatus;
   estimatedHours: string | null;
   loggedSeconds: number;
+  isFavorite: boolean;
   createdById: string;
   createdAt: string;
   updatedAt: string;

@@ -91,6 +91,11 @@ export function ActivityDetailPage() {
                   teamId={teamId}
                   activity={activity}
                   onStatusClick={() => setIsStatusDialogOpen(true)}
+                  onFavoriteToggle={(isFavorite) => {
+                    setActivity((current) =>
+                      current ? { ...current, isFavorite } : current,
+                    )
+                  }}
                   statusClassName="px-2.5 py-1 text-sm"
                 />
               ) : null}

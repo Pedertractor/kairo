@@ -1,5 +1,6 @@
 import type { Task } from '../generated/client.js';
 import { CardRepository } from '../repositories/card.repository.js';
+import { FavoriteRepository } from '../repositories/favorite.repository.js';
 import { TaskRepository } from '../repositories/task.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
@@ -11,7 +12,10 @@ type TaskWithAssignee = Task & {
   assignedTo: { id: string; name: string } | null;
 };
 
-function toTaskSummary(task: TaskWithAssignee): TaskSummary {
+function toTaskSummary(
+  task: TaskWithAssignee,
+  isFavorite = false,
+): TaskSummary {
   return {
     id: task.id,
     cardId: task.cardId,
@@ -22,6 +26,7 @@ function toTaskSummary(task: TaskWithAssignee): TaskSummary {
     assignedToId: task.assignedToId,
     assignedToName: task.assignedTo?.name ?? null,
     sortOrder: task.sortOrder,
+    isFavorite,
     createdById: task.createdById,
     createdAt: task.createdAt.toISOString(),
     updatedAt: task.updatedAt.toISOString(),
@@ -34,6 +39,7 @@ export class TaskService {
     private readonly cardRepository: CardRepository,
     private readonly teamRepository: TeamRepository,
     private readonly timeEntryRepository: TimeEntryRepository,
+    private readonly favoriteRepository: FavoriteRepository,
   ) {}
 
   private async assertProjectAccess(projectId: string, userId: string) {
@@ -55,12 +61,31 @@ export class TaskService {
     return card;
   }
 
+  private async getFavoriteTaskIdSet(userId: string, taskIds: string[]) {
+    const favorites = await this.favoriteRepository.findFavoriteTaskIds(
+      userId,
+      taskIds,
+    );
+
+    return new Set(
+      favorites
+        .map((favorite) => favorite.taskId)
+        .filter((taskId): taskId is string => taskId !== null),
+    );
+  }
+
   async listTasks(projectId: string, userId: string): Promise<TaskSummary[]> {
     await this.assertProjectAccess(projectId, userId);
 
     const tasks = await this.taskRepository.findByProjectId(projectId);
+    const favoriteIds = await this.getFavoriteTaskIdSet(
+      userId,
+      tasks.map((task) => task.id),
+    );
 
-    return tasks.map(toTaskSummary);
+    return tasks.map((task) =>
+      toTaskSummary(task, favoriteIds.has(task.id)),
+    );
   }
 
   async createTask(
@@ -101,11 +126,13 @@ export class TaskService {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
     }
 
-    const loggedSeconds =
-      await this.timeEntryRepository.getLoggedSecondsByTaskId(taskId);
+    const [loggedSeconds, favorite] = await Promise.all([
+      this.timeEntryRepository.getLoggedSecondsByTaskId(taskId),
+      this.favoriteRepository.findTaskFavorite(userId, taskId),
+    ]);
 
     return {
-      ...toTaskSummary(task),
+      ...toTaskSummary(task, favorite !== null),
       loggedSeconds,
     };
   }

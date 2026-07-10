@@ -117,6 +117,15 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
                     teamId={teamId}
                     activity={activity}
                     onStatusClick={() => setActivityToUpdate(activity)}
+                    onFavoriteToggle={(isFavorite) => {
+                      setActivities((current) =>
+                        current.map((item) =>
+                          item.id === activity.id
+                            ? { ...item, isFavorite }
+                            : item,
+                        ),
+                      );
+                    }}
                     statusClassName={CARD_STATUS_BADGE_CLASS[activity.status]}
                   />
                 </div>

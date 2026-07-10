@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 
+import { FavoriteButton } from '@/components/favorite-button'
 import { StartTaskTimerButton } from '@/components/start-task-timer-button'
 import { TaskTimeEntriesSection } from '@/components/task-time-entries-section'
 import { Button } from '@/components/ui/button'
@@ -95,11 +96,27 @@ export function TaskDetailPage() {
               <h1 className="text-2xl font-bold">{task.title}</h1>
               <div className="flex shrink-0 items-center gap-2">
                 {projectId ? (
-                  <StartTaskTimerButton
-                    projectId={projectId}
-                    taskId={task.id}
-                    size="icon-sm"
-                  />
+                  <>
+                    <FavoriteButton
+                      target={{
+                        kind: 'task',
+                        projectId,
+                        taskId: task.id,
+                      }}
+                      isFavorite={task.isFavorite}
+                      onToggle={(isFavorite) => {
+                        setTask((current) =>
+                          current ? { ...current, isFavorite } : current,
+                        )
+                      }}
+                      size="icon-sm"
+                    />
+                    <StartTaskTimerButton
+                      projectId={projectId}
+                      taskId={task.id}
+                      size="icon-sm"
+                    />
+                  </>
                 ) : null}
                 <span
                   className={cn(

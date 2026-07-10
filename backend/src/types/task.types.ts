@@ -10,6 +10,7 @@ export interface TaskSummary {
   assignedToId: string | null;
   assignedToName: string | null;
   sortOrder: number;
+  isFavorite: boolean;
   createdById: string;
   createdAt: string;
   updatedAt: string;

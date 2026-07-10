@@ -1,5 +1,6 @@
 import type { Card, CardStatus } from '../generated/client.js';
 import { CardRepository } from '../repositories/card.repository.js';
+import { FavoriteRepository } from '../repositories/favorite.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
 import type { ActivitySummary, ProjectSummary } from '../types/card.types.js';
@@ -9,6 +10,7 @@ import { MENSAGENS } from '../utils/response.js';
 function toActivitySummary(
   card: Card,
   loggedSeconds = 0,
+  isFavorite = false,
 ): ActivitySummary {
   return {
     id: card.id,
@@ -18,6 +20,7 @@ function toActivitySummary(
     status: card.status,
     estimatedHours: card.estimatedHours?.toString() ?? null,
     loggedSeconds,
+    isFavorite,
     createdById: card.createdById,
     createdAt: card.createdAt.toISOString(),
     updatedAt: card.updatedAt.toISOString(),
@@ -49,6 +52,7 @@ export class CardService {
     private readonly cardRepository: CardRepository,
     private readonly teamRepository: TeamRepository,
     private readonly timeEntryRepository: TimeEntryRepository,
+    private readonly favoriteRepository: FavoriteRepository,
   ) {}
 
   private async assertTeamMember(teamId: string, userId: string) {
@@ -62,6 +66,19 @@ export class CardService {
     }
   }
 
+  private async getFavoriteCardIdSet(userId: string, cardIds: string[]) {
+    const favorites = await this.favoriteRepository.findFavoriteCardIds(
+      userId,
+      cardIds,
+    );
+
+    return new Set(
+      favorites
+        .map((favorite) => favorite.cardId)
+        .filter((cardId): cardId is string => cardId !== null),
+    );
+  }
+
   async listActivities(
     teamId: string,
     userId: string,
@@ -69,13 +86,18 @@ export class CardService {
     await this.assertTeamMember(teamId, userId);
 
     const cards = await this.cardRepository.findActivitiesByTeamId(teamId);
-    const loggedByCard =
-      await this.timeEntryRepository.getLoggedSecondsByCardIds(
-        cards.map((card) => card.id),
-      );
+    const cardIds = cards.map((card) => card.id);
+    const [loggedByCard, favoriteIds] = await Promise.all([
+      this.timeEntryRepository.getLoggedSecondsByCardIds(cardIds),
+      this.getFavoriteCardIdSet(userId, cardIds),
+    ]);
 
     return cards.map((card) =>
-      toActivitySummary(card, loggedByCard.get(card.id) ?? 0),
+      toActivitySummary(
+        card,
+        loggedByCard.get(card.id) ?? 0,
+        favoriteIds.has(card.id),
+      ),
     );
   }
 
@@ -92,10 +114,16 @@ export class CardService {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
     }
 
-    const loggedByCard =
-      await this.timeEntryRepository.getLoggedSecondsByCardIds([activityId]);
+    const [loggedByCard, favorite] = await Promise.all([
+      this.timeEntryRepository.getLoggedSecondsByCardIds([activityId]),
+      this.favoriteRepository.findActivityFavorite(userId, activityId),
+    ]);
 
-    return toActivitySummary(card, loggedByCard.get(activityId) ?? 0);
+    return toActivitySummary(
+      card,
+      loggedByCard.get(activityId) ?? 0,
+      favorite !== null,
+    );
   }
 
   async createActivity(
@@ -137,12 +165,15 @@ export class CardService {
       status,
     );
 
-    const loggedByCard =
-      await this.timeEntryRepository.getLoggedSecondsByCardIds([activityId]);
+    const [loggedByCard, favorite] = await Promise.all([
+      this.timeEntryRepository.getLoggedSecondsByCardIds([activityId]),
+      this.favoriteRepository.findActivityFavorite(userId, activityId),
+    ]);
 
     return toActivitySummary(
       updated,
       loggedByCard.get(activityId) ?? 0,
+      favorite !== null,
     );
   }
 

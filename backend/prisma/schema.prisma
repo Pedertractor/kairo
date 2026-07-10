@@ -78,6 +78,7 @@ model User {
   assignedTasks Task[] @relation("TaskAssignee")
 
   timeEntries TimeEntry[]
+  favorites   UserFavorite[]
 
   sentInvites     TeamInvite[] @relation("InviteSender")
   acceptedInvites TeamInvite[] @relation("InviteAcceptedBy")
@@ -168,6 +169,7 @@ model Card {
 
   tasks       Task[]
   timeEntries TimeEntry[]
+  favorites   UserFavorite[]
 
   @@index([teamId])
   @@index([createdById])
@@ -201,6 +203,7 @@ model Task {
   updatedAt DateTime @updatedAt
 
   timeEntries TimeEntry[]
+  favorites   UserFavorite[]
 
   @@index([cardId])
   @@index([assignedToId])
@@ -236,6 +239,26 @@ model TimeEntry {
   @@index([userId])
   @@index([startedAt])
   @@map("time_entries")
+}
+
+model UserFavorite {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  cardId String?
+  card   Card?  @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  taskId String?
+  task   Task?  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, cardId])
+  @@unique([userId, taskId])
+  @@index([userId])
+  @@map("user_favorites")
 }
 
 model PrintingMachine {

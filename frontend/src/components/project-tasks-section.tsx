@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { CreateTaskDialog } from '@/components/create-task-dialog';
+import { FavoriteButton } from '@/components/favorite-button';
 import { StartTaskTimerButton } from '@/components/start-task-timer-button';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -96,7 +97,7 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
               >
                 <Link
                   to={`/projetos/${projectId}/tarefas/${task.id}`}
-                  className='flex flex-col gap-1.5 p-2.5 pr-20 hover:bg-muted/30'
+                  className='flex flex-col gap-1.5 p-2.5 pr-28 hover:bg-muted/30'
                 >
                   <p className='line-clamp-2 text-sm font-medium leading-snug'>
                     {task.title}
@@ -119,6 +120,22 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
                   className='absolute top-2.5 right-2.5 flex shrink-0 items-center gap-0.5'
                   onClick={(event) => event.preventDefault()}
                 >
+                  <FavoriteButton
+                    target={{
+                      kind: 'task',
+                      projectId,
+                      taskId: task.id,
+                    }}
+                    isFavorite={task.isFavorite}
+                    onToggle={(isFavorite) => {
+                      setTasks((current) =>
+                        current.map((item) =>
+                          item.id === task.id ? { ...item, isFavorite } : item,
+                        ),
+                      );
+                    }}
+                    className='text-muted-foreground hover:text-amber-500'
+                  />
                   <StartTaskTimerButton
                     projectId={projectId}
                     taskId={task.id}
