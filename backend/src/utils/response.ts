@@ -56,6 +56,12 @@ export const MENSAGENS = {
   IMPRESSORA_REMOVIDA_SUCESSO: 'Impressora removida com sucesso',
   IMPRESSORA_NAO_ENCONTRADA: 'Impressora não encontrada',
   IMPRESSORA_JA_OCUPADA: 'Esta impressora já está ocupada',
+  IMPRESSORA_NAO_ESTA_OCUPADA: 'Esta impressora não está ocupada',
+  IMPRESSORA_JA_PAUSADA: 'Esta impressora já está pausada',
+  IMPRESSORA_NAO_ESTA_PAUSADA: 'Esta impressora não está pausada',
+  IMPRESSAO_CONCLUIDA_SUCESSO: 'Impressão concluída com sucesso',
+  IMPRESSAO_PAUSADA_SUCESSO: 'Impressão pausada com sucesso',
+  IMPRESSAO_RETOMADA_SUCESSO: 'Impressão retomada com sucesso',
   PECA_OBRIGATORIA_PARA_IMPRESSAO:
     'Selecione uma peça para iniciar a impressão',
   PECA_3D_CRIADA_SUCESSO: 'Peça 3D criada com sucesso',

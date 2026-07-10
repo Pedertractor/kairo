@@ -242,6 +242,7 @@ model PrintingMachine {
   id           String     @id @default(cuid())
   name         String
   busy         Boolean    @default(false)
+  paused       Boolean    @default(false)
   threeDPartId String?
   threeDPart   ThreeDPart? @relation(fields: [threeDPartId], references: [id], onDelete: SetNull)
   createdAt    DateTime   @default(now())

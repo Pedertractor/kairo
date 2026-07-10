@@ -21,6 +21,7 @@ function toPrintingMachineSummary(
     id: machine.id,
     name: machine.name,
     busy: machine.busy,
+    paused: machine.paused,
     part: machine.threeDPart,
     createdAt: machine.createdAt.toISOString(),
     updatedAt: machine.updatedAt.toISOString(),
@@ -61,9 +62,10 @@ export class PrintingMachineService {
     data: {
       name?: string;
       busy?: boolean;
+      paused?: boolean;
       threeDPartId?: string | null;
     },
-  ): Promise<PrintingMachineSummary> {
+  ): Promise<{ machine: PrintingMachineSummary; mensagem: string }> {
     const machine = await this.printingMachineRepository.findById(id);
 
     if (!machine) {
@@ -71,10 +73,7 @@ export class PrintingMachineService {
     }
 
     const updateData = { ...data };
-
-    if (updateData.busy === false && updateData.threeDPartId === undefined) {
-      updateData.threeDPartId = null;
-    }
+    let mensagem: string = MENSAGENS.IMPRESSORA_ATUALIZADA_SUCESSO;
 
     if (updateData.threeDPartId) {
       await this.assertValidPart(updateData.threeDPartId);
@@ -100,8 +99,46 @@ export class PrintingMachineService {
       updateData.threeDPartId = machine.threeDPartId;
     }
 
+    if (updateData.busy === true) {
+      updateData.paused = false;
+    }
+
+    if (updateData.busy === false) {
+      updateData.threeDPartId = null;
+      updateData.paused = false;
+      mensagem = MENSAGENS.IMPRESSAO_CONCLUIDA_SUCESSO;
+    }
+
+    if (updateData.paused === true) {
+      if (!machine.busy && updateData.busy !== true) {
+        throw new AppError(400, MENSAGENS.IMPRESSORA_NAO_ESTA_OCUPADA);
+      }
+
+      if (machine.paused) {
+        throw new AppError(400, MENSAGENS.IMPRESSORA_JA_PAUSADA);
+      }
+
+      mensagem = MENSAGENS.IMPRESSAO_PAUSADA_SUCESSO;
+    }
+
+    if (updateData.paused === false && updateData.busy === undefined) {
+      if (!machine.busy) {
+        throw new AppError(400, MENSAGENS.IMPRESSORA_NAO_ESTA_OCUPADA);
+      }
+
+      if (!machine.paused) {
+        throw new AppError(400, MENSAGENS.IMPRESSORA_NAO_ESTA_PAUSADA);
+      }
+
+      mensagem = MENSAGENS.IMPRESSAO_RETOMADA_SUCESSO;
+    }
+
     const updated = await this.printingMachineRepository.update(id, updateData);
-    return toPrintingMachineSummary(updated);
+
+    return {
+      machine: toPrintingMachineSummary(updated),
+      mensagem,
+    };
   }
 
   async delete(id: string): Promise<void> {

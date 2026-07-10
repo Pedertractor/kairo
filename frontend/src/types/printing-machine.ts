@@ -9,6 +9,7 @@ export interface PrintingMachine {
   id: string
   name: string
   busy: boolean
+  paused: boolean
   part: PrintingMachinePart | null
   createdAt: string
   updatedAt: string
@@ -30,5 +31,6 @@ export interface CreatePrintingMachineInput {
 export interface UpdatePrintingMachineInput {
   name?: string
   busy?: boolean
+  paused?: boolean
   threeDPartId?: string | null
 }

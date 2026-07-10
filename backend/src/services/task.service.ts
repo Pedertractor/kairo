@@ -55,10 +55,7 @@ export class TaskService {
     return card;
   }
 
-  async listTasks(
-    projectId: string,
-    userId: string,
-  ): Promise<TaskSummary[]> {
+  async listTasks(projectId: string, userId: string): Promise<TaskSummary[]> {
     await this.assertProjectAccess(projectId, userId);
 
     const tasks = await this.taskRepository.findByProjectId(projectId);

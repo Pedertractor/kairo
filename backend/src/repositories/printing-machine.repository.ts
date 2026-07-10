@@ -48,6 +48,7 @@ export class PrintingMachineRepository {
     data: {
       name?: string;
       busy?: boolean;
+      paused?: boolean;
       threeDPartId?: string | null;
     },
   ) {

@@ -13,12 +13,14 @@ export const updatePrintingMachineSchema = z
   .object({
     name: z.string().trim().min(1, 'Nome é obrigatório').optional(),
     busy: z.boolean().optional(),
+    paused: z.boolean().optional(),
     threeDPartId: z.string().min(1).nullable().optional(),
   })
   .refine(
     (data) =>
       data.name !== undefined ||
       data.busy !== undefined ||
+      data.paused !== undefined ||
       data.threeDPartId !== undefined,
     { message: 'Informe ao menos um campo para atualizar' },
   );

@@ -68,17 +68,12 @@ export class PrintingMachineController {
         throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
       }
 
-      const printingMachine = await this.service.update(
+      const { machine: printingMachine, mensagem } = await this.service.update(
         params.data.id,
         body.data,
       );
 
-      return sendSuccess(
-        reply,
-        { printingMachine },
-        200,
-        MENSAGENS.IMPRESSORA_ATUALIZADA_SUCESSO,
-      );
+      return sendSuccess(reply, { printingMachine }, 200, mensagem);
     } catch (error) {
       return handleControllerError(error, reply);
     }
