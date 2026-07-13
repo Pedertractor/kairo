@@ -118,6 +118,7 @@ function RecentWorkItemCard({ item }: { item: RecentWorkItem }) {
         <div className='min-w-0 flex-1'>
           <p className='truncate text-[10px] leading-tight text-muted-foreground'>
             {config.label}
+            {item.parentTitle ? ` · ${item.parentTitle}` : ''}
           </p>
           {href ? (
             <Link
