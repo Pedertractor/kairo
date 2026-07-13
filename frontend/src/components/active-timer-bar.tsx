@@ -2,12 +2,15 @@ import { Link } from 'react-router-dom';
 import { Pause } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { useActiveTimer } from '@/contexts/active-timer-context';
+import {
+  useActiveTimer,
+  useElapsedSeconds,
+} from '@/contexts/active-timer-context';
 import { formatElapsed } from '@/lib/format-elapsed';
 
 export function ActiveTimerBar() {
-  const { activeTimer, elapsedSeconds, isPausing, pauseTimer } =
-    useActiveTimer();
+  const { activeTimer, isPausing, pauseTimer } = useActiveTimer();
+  const elapsedSeconds = useElapsedSeconds();
 
   if (!activeTimer) {
     return null;

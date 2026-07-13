@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-import { useActiveTimer } from '@/hooks/use-active-timer'
+import { useActiveTimer, useElapsedSeconds } from '@/hooks/use-active-timer'
 import { formatElapsed } from '@/lib/format-elapsed'
 import { formatLoggedDuration } from '@/lib/format-duration'
 
@@ -30,6 +30,16 @@ function useElapsedSince(startedAt: string, enabled: boolean): number {
   return elapsedSeconds
 }
 
+function ActiveEntryElapsed() {
+  const elapsedSeconds = useElapsedSeconds()
+
+  return (
+    <span className="font-mono text-base font-semibold tabular-nums text-sidebar-primary">
+      {formatElapsed(elapsedSeconds)}
+    </span>
+  )
+}
+
 interface TimeEntryDurationProps {
   id: string
   startedAt: string
@@ -43,7 +53,7 @@ export function TimeEntryDuration({
   endedAt,
   durationSeconds,
 }: TimeEntryDurationProps) {
-  const { activeTimer, elapsedSeconds } = useActiveTimer()
+  const { activeTimer } = useActiveTimer()
   const isActiveEntry = activeTimer?.timeEntry.id === id
   const isInProgress = endedAt === null
   const fallbackElapsed = useElapsedSince(startedAt, isInProgress && !isActiveEntry)
@@ -56,11 +66,13 @@ export function TimeEntryDuration({
     )
   }
 
-  const seconds = isActiveEntry ? elapsedSeconds : fallbackElapsed
+  if (isActiveEntry) {
+    return <ActiveEntryElapsed />
+  }
 
   return (
     <span className="font-mono text-base font-semibold tabular-nums text-sidebar-primary">
-      {formatElapsed(seconds)}
+      {formatElapsed(fallbackElapsed)}
     </span>
   )
 }

@@ -1,1 +1,4 @@
-export { useActiveTimer } from '@/contexts/active-timer-context'
+export {
+  useActiveTimer,
+  useElapsedSeconds,
+} from '@/contexts/active-timer-context'

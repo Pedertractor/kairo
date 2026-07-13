@@ -4,7 +4,9 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from 'react';
 
@@ -19,7 +21,6 @@ import type {
 
 interface ActiveTimerContextValue {
   activeTimer: ActiveTimer | null;
-  elapsedSeconds: number;
   isActive: boolean;
   isStarting: boolean;
   isPausing: boolean;
@@ -31,13 +32,51 @@ interface ActiveTimerContextValue {
   isTaskActive: (taskId: string) => boolean;
 }
 
+interface ElapsedStore {
+  subscribe: (onStoreChange: () => void) => () => void;
+  getSnapshot: () => number;
+  setElapsed: (seconds: number) => void;
+}
+
 const ActiveTimerContext = createContext<ActiveTimerContextValue | null>(null);
+const ElapsedStoreContext = createContext<ElapsedStore | null>(null);
+
+function createElapsedStore(): ElapsedStore {
+  let elapsedSeconds = 0;
+  const listeners = new Set<() => void>();
+
+  return {
+    subscribe(onStoreChange) {
+      listeners.add(onStoreChange);
+      return () => {
+        listeners.delete(onStoreChange);
+      };
+    },
+    getSnapshot() {
+      return elapsedSeconds;
+    },
+    setElapsed(seconds) {
+      if (elapsedSeconds === seconds) {
+        return;
+      }
+
+      elapsedSeconds = seconds;
+      listeners.forEach((listener) => listener());
+    },
+  };
+}
 
 export function ActiveTimerProvider({ children }: { children: ReactNode }) {
   const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(null);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isStarting, setIsStarting] = useState(false);
   const [isPausing, setIsPausing] = useState(false);
+  const elapsedStoreRef = useRef<ElapsedStore | null>(null);
+
+  if (elapsedStoreRef.current === null) {
+    elapsedStoreRef.current = createElapsedStore();
+  }
+
+  const elapsedStore = elapsedStoreRef.current;
 
   const refresh = useCallback(async () => {
     const data = await api<ActiveTimerResponse>('/time-entries/active', {
@@ -52,13 +91,14 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!activeTimer) {
-      setElapsedSeconds(0);
+      elapsedStore.setElapsed(0);
       return;
     }
 
+    const startedAt = new Date(activeTimer.timeEntry.startedAt).getTime();
+
     const updateElapsed = () => {
-      const startedAt = new Date(activeTimer.timeEntry.startedAt).getTime();
-      setElapsedSeconds(
+      elapsedStore.setElapsed(
         Math.max(0, Math.floor((Date.now() - startedAt) / 1000)),
       );
     };
@@ -69,7 +109,7 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [activeTimer]);
+  }, [activeTimer, elapsedStore]);
 
   const startTimer = useCallback(async (teamId: string, activityId: string) => {
     setIsStarting(true);
@@ -131,7 +171,6 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       activeTimer,
-      elapsedSeconds,
       isActive: activeTimer !== null,
       isStarting,
       isPausing,
@@ -144,7 +183,6 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
     }),
     [
       activeTimer,
-      elapsedSeconds,
       isStarting,
       isPausing,
       refresh,
@@ -157,9 +195,11 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <ActiveTimerContext.Provider value={value}>
-      {children}
-    </ActiveTimerContext.Provider>
+    <ElapsedStoreContext.Provider value={elapsedStore}>
+      <ActiveTimerContext.Provider value={value}>
+        {children}
+      </ActiveTimerContext.Provider>
+    </ElapsedStoreContext.Provider>
   );
 }
 
@@ -173,4 +213,17 @@ export function useActiveTimer() {
   }
 
   return context;
+}
+
+/** Subscribes only to the 1s tick — does not re-render on other timer state changes. */
+export function useElapsedSeconds() {
+  const store = useContext(ElapsedStoreContext);
+
+  if (!store) {
+    throw new Error(
+      'useElapsedSeconds deve ser usado dentro de ActiveTimerProvider',
+    );
+  }
+
+  return useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
 }
