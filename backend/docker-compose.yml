@@ -1,39 +1,40 @@
+name: kairo
 services:
-  db:
-    image: postgres:16-alpine
-    container_name: kairo-db
+  project-kairo-api:
+    build: .
+    container_name: project-kairo-api
+    ports:
+      - '3000:3000'
+    env_file:
+      - .env
+    environment:
+      # Dentro da rede Docker o host da base é o serviço, não localhost.
+      DATABASE_URL: postgresql://docker:docker@project-kairo-database:5432/kairo?schema=public
+      NODE_ENV: production
+    depends_on:
+      - project-kairo-database
+    networks:
+      - project-kairo-network
     restart: unless-stopped
+
+  project-kairo-database:
+    image: postgres:16
+    container_name: project-kairo-database
     ports:
       - '5440:5432'
     environment:
-      POSTGRES_USER: docker
-      POSTGRES_PASSWORD: docker
-      POSTGRES_DB: kairo
+      - POSTGRES_USER=docker
+      - POSTGRES_PASSWORD=docker
+      - POSTGRES_DB=kairo
     volumes:
-      - kairo_pg_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U user -d kairo']
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  # Uncomment when you want to run the API in Docker as well.
-  # api:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile
-  #   container_name: kairo-api
-  #   restart: unless-stopped
-  #   ports:
-  #     - "3000:3000"
-  #   environment:
-  #     DATABASE_URL: postgresql://user:password@db:5432/kairo?schema=public
-  #     PORT: 3000
-  #     HOST: 0.0.0.0
-  #     NODE_ENV: production
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
+      - project-kairo-database:/var/lib/postgresql/data
+    networks:
+      - project-kairo-network
 
 volumes:
-  kairo_pg_data:
+  project-kairo-database:
+    name: project-kairo-database
+
+networks:
+  project-kairo-network:
+    name: project-kairo-network
