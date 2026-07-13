@@ -90,6 +90,7 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
                 key={task.id}
                 className={cn(
                   'group relative rounded-lg border transition-all',
+                  'after:pointer-events-none after:absolute after:inset-0 after:z-[1] after:rounded-[inherit] after:bg-muted/30 after:opacity-0 after:transition-opacity hover:after:opacity-100',
                   TASK_CARD_STATUS_CLASS[task.status],
                   isTimerActive &&
                     'border-sidebar-primary shadow-md shadow-sidebar-primary/15 ring-2 ring-sidebar-primary/35',
@@ -97,7 +98,7 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
               >
                 <Link
                   to={`/projetos/${projectId}/tarefas/${task.id}`}
-                  className='flex flex-col gap-1.5 p-2.5 pr-28 hover:bg-muted/30'
+                  className='relative z-[2] flex flex-col gap-1.5 p-2.5 pr-28'
                 >
                   <p className='line-clamp-2 text-sm font-medium leading-snug'>
                     {task.title}
@@ -117,7 +118,7 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
                   </div>
                 </Link>
                 <div
-                  className='absolute top-2.5 right-2.5 flex shrink-0 items-center gap-0.5'
+                  className='absolute top-2.5 right-2.5 z-[2] flex shrink-0 items-center gap-0.5'
                   onClick={(event) => event.preventDefault()}
                 >
                   <FavoriteButton
