@@ -7,6 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { TimelineBlock } from '@/components/timeline-block'
+import {
+  buildActivityColorMap,
+  type ActivityColorScheme,
+} from '@/lib/activity-colors'
 import { toDateKey } from '@/lib/date'
 import { formatCurrentTime } from '@/lib/format-time'
 import { cn } from '@/lib/utils'
@@ -139,27 +143,25 @@ function getBlockStyle(block: DayTimelineBlock, hourHeight: number) {
   return { top, height }
 }
 
-function getBlockColors(block: DayTimelineBlock, isToday: boolean, now: Date) {
-  if (block.isActive) {
-    return {
-      bar: 'bg-sidebar-primary text-sidebar-primary-foreground',
-      subtext: 'text-sidebar-primary-foreground/80',
-    }
+function getBlockColors(
+  block: DayTimelineBlock,
+  isToday: boolean,
+  now: Date,
+  colorMap: ReturnType<typeof buildActivityColorMap>,
+): ActivityColorScheme {
+  const scheme = colorMap.get(block.title)
+  const fallback: ActivityColorScheme = {
+    bar: 'bg-blue-700 text-white',
+    subtext: 'text-white/80',
+  }
+
+  if (!scheme) {
+    return fallback
   }
 
   const isFuture = isToday && dayjs(block.startedAt).isAfter(dayjs(now))
 
-  if (isFuture) {
-    return {
-      bar: 'bg-primary-100 text-primary-700',
-      subtext: 'text-primary-700/70',
-    }
-  }
-
-  return {
-    bar: 'bg-sidebar-primary text-sidebar-primary-foreground',
-    subtext: 'text-sidebar-primary-foreground/80',
-  }
+  return isFuture ? scheme.future : scheme.solid
 }
 
 export function DayTimeline({
@@ -186,6 +188,10 @@ export function DayTimeline({
   const rangeStart = TIMELINE_START_HOUR * 60
   const rangeEnd = TIMELINE_END_HOUR * 60
   const ticks = useMemo(() => buildTicks(zoom), [zoom])
+  const activityColorMap = useMemo(
+    () => buildActivityColorMap(blocks.map((block) => block.title)),
+    [blocks],
+  )
 
   const minutesToTop = useCallback(
     (minutes: number) =>
@@ -404,7 +410,12 @@ export function DayTimeline({
 
                 {blocks.map((block) => {
                   const { top, height } = getBlockStyle(block, hourHeight)
-                  const colors = getBlockColors(block, isToday, now)
+                  const colors = getBlockColors(
+                    block,
+                    isToday,
+                    now,
+                    activityColorMap,
+                  )
 
                   return (
                     <TimelineBlock

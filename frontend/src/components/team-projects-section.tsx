@@ -95,32 +95,36 @@ export function TeamProjectsSection({ teamId }: TeamProjectsSectionProps) {
             <li
               key={project.id}
               className={cn(
-                'flex flex-col gap-2 rounded-lg border p-3 transition-colors',
+                'relative rounded-lg border p-3 transition-colors hover:bg-muted/50',
                 CARD_STATUS_CARD_CLASS[project.status],
               )}
             >
-              <div className="flex items-start justify-between gap-2">
-                <Link
-                  to={`/projetos/${project.id}`}
-                  className="text-sm font-medium hover:underline"
-                >
-                  {project.title}
-                </Link>
-                <ProjectStatusActions
-                  project={project}
-                  onStatusClick={() => setProjectToUpdate(project)}
-                  statusClassName={CARD_STATUS_BADGE_CLASS[project.status]}
+              <Link
+                to={`/projetos/${project.id}`}
+                className="absolute inset-0 z-0 rounded-lg"
+                aria-label={project.title}
+              />
+              <div className="pointer-events-none relative z-10 flex flex-col gap-2">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-sm font-medium">{project.title}</span>
+                  <div className="pointer-events-auto">
+                    <ProjectStatusActions
+                      project={project}
+                      onStatusClick={() => setProjectToUpdate(project)}
+                      statusClassName={CARD_STATUS_BADGE_CLASS[project.status]}
+                    />
+                  </div>
+                </div>
+                {project.description ? (
+                  <p className="line-clamp-2 text-xs text-muted-foreground">
+                    {project.description}
+                  </p>
+                ) : null}
+                <CardTimeBudget
+                  loggedSeconds={project.loggedSeconds}
+                  estimatedHours={project.estimatedHours}
                 />
               </div>
-              {project.description ? (
-                <p className="line-clamp-2 text-xs text-muted-foreground">
-                  {project.description}
-                </p>
-              ) : null}
-              <CardTimeBudget
-                loggedSeconds={project.loggedSeconds}
-                estimatedHours={project.estimatedHours}
-              />
             </li>
           ))}
         </ul>
