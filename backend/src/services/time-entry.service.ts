@@ -185,7 +185,7 @@ function mapDayEntryToBlock(
 
     return {
       id: entry.id,
-      title: entry.task.title,
+      title: `${parentCard.title} · ${entry.task.title}`,
       kind: 'TASK',
       teamId: parentCard.teamId,
       startedAt: overlapStart.toISOString(),

@@ -79,7 +79,7 @@ export function LoginForm({
               <Button
                 key={option}
                 type='button'
-                variant={unit === option ? 'default' : 'outline'}
+                variant={unit === option ? 'blue' : 'outline'}
                 onClick={() => setUnit(option)}
               >
                 {option}
@@ -88,7 +88,7 @@ export function LoginForm({
           </div>
         </Field>
         <Field>
-          <Button type='submit' disabled={isSubmitting}>
+          <Button type='submit' variant='blue' disabled={isSubmitting}>
             {isSubmitting ? 'Entrando...' : 'Entrar'}
           </Button>
         </Field>
