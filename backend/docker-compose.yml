@@ -4,7 +4,7 @@ services:
     build: .
     container_name: project-kairo-api
     ports:
-      - '3000:3000'
+      - '5019:3000'
     env_file:
       - .env
     environment:
@@ -12,7 +12,8 @@ services:
       DATABASE_URL: postgresql://docker:docker@project-kairo-database:5432/kairo?schema=public
       NODE_ENV: production
     depends_on:
-      - project-kairo-database
+      project-kairo-database:
+        condition: service_healthy
     networks:
       - project-kairo-network
     restart: unless-stopped
@@ -21,7 +22,7 @@ services:
     image: postgres:16
     container_name: project-kairo-database
     ports:
-      - '5440:5432'
+      - '5018:5432'
     environment:
       - POSTGRES_USER=docker
       - POSTGRES_PASSWORD=docker
@@ -30,6 +31,12 @@ services:
       - project-kairo-database:/var/lib/postgresql/data
     networks:
       - project-kairo-network
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U docker -d kairo']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
 volumes:
   project-kairo-database:

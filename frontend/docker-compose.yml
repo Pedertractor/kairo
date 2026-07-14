@@ -4,11 +4,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      pull: false
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:5019}
     container_name: project-kairo-front-end
     ports:
-      - '3001:80'
+      - '5020:80'
     networks:
       - project-kairo-network
 

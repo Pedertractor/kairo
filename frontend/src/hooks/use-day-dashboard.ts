@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { api } from '@/lib/api-handler'
-import { toDateKey } from '@/lib/date'
 import { fetchCached } from '@/lib/query-cache'
 import type { DayDashboard } from '@/types/time-entry'
 
