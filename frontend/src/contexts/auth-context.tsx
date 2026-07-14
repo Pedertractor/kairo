@@ -10,14 +10,25 @@ import {
 
 import { api } from '@/lib/api-handler'
 import { clearStoredToken, getStoredToken, setStoredToken } from '@/lib/auth-storage'
-import type { AuthResponse, LoginCredentials, MeResponse, User } from '@/types/auth'
+import type {
+  AuthResponse,
+  ChangePasswordInput,
+  ChangePasswordPayload,
+  LoginCredentials,
+  LoginResponse,
+  MeResponse,
+  User,
+} from '@/types/auth'
 
 interface AuthContextValue {
   user: User | null
   token: string | null
   isAuthenticated: boolean
   isLoading: boolean
-  login: (credentials: LoginCredentials) => Promise<void>
+  pendingPasswordChange: boolean
+  pendingUser: User | null
+  login: (credentials: LoginCredentials) => Promise<boolean>
+  changePassword: (input: ChangePasswordInput) => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -27,11 +38,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState<string | null>(() => getStoredToken())
   const [isLoading, setIsLoading] = useState(true)
+  const [pendingCredentials, setPendingCredentials] = useState<LoginCredentials | null>(null)
+  const [pendingUser, setPendingUser] = useState<User | null>(null)
 
   const clearSession = useCallback(() => {
     clearStoredToken()
     setToken(null)
     setUser(null)
+    setPendingCredentials(null)
+    setPendingUser(null)
   }, [])
 
   const restoreSession = useCallback(async () => {
@@ -60,19 +75,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void restoreSession()
   }, [restoreSession])
 
-  const login = useCallback(async (credentials: LoginCredentials) => {
-    const { token: accessToken, user: authenticatedUser } = await api<AuthResponse>(
-      '/auth/login',
-      {
-        method: 'POST',
-        body: JSON.stringify(credentials),
-      },
-    )
+  const login = useCallback(async (credentials: LoginCredentials): Promise<boolean> => {
+    const response = await api<LoginResponse>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    })
 
-    setStoredToken(accessToken)
-    setToken(accessToken)
-    setUser(authenticatedUser)
+    if (response.requiresPasswordChange) {
+      setPendingCredentials(credentials)
+      setPendingUser(response.user)
+      return false
+    }
+
+    setStoredToken(response.token)
+    setToken(response.token)
+    setUser(response.user)
+    return true
   }, [])
+
+  const changePassword = useCallback(
+    async ({ newPassword, confirmPassword }: ChangePasswordInput) => {
+      if (!pendingCredentials) {
+        throw new Error('Sessão de alteração de senha expirada. Faça login novamente.')
+      }
+
+      const payload: ChangePasswordPayload = {
+        ...pendingCredentials,
+        currentPassword: pendingCredentials.password,
+        newPassword,
+        confirmPassword,
+      }
+
+      const { token: accessToken, user: authenticatedUser } = await api<AuthResponse>(
+        '/auth/change-password',
+        {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        },
+      )
+
+      setPendingCredentials(null)
+      setPendingUser(null)
+      setStoredToken(accessToken)
+      setToken(accessToken)
+      setUser(authenticatedUser)
+    },
+    [pendingCredentials],
+  )
 
   const logout = useCallback(async () => {
     try {
@@ -95,10 +144,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       token,
       isAuthenticated: Boolean(user && token),
       isLoading,
+      pendingPasswordChange: Boolean(pendingCredentials && pendingUser),
+      pendingUser,
       login,
+      changePassword,
       logout,
     }),
-    [user, token, isLoading, login, logout],
+    [user, token, isLoading, pendingCredentials, pendingUser, login, changePassword, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

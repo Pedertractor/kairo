@@ -1,0 +1,263 @@
+import { useEffect, useState, type FormEvent } from 'react'
+import { Loader2, UserRound } from 'lucide-react'
+
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Input } from '@/components/ui/input'
+import { api } from '@/lib/api-handler'
+import type { UnitType } from '@/types/auth'
+import type {
+  CreateUserInput,
+  EmployeeLookupResponse,
+  UserResponse,
+} from '@/types/user'
+
+const UNITS: UnitType[] = ['PEDERTRACTOR', 'TRACTOR']
+const LOOKUP_DEBOUNCE_MS = 500
+
+interface CreateUserDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onCreated: (user: UserResponse['user']) => void
+}
+
+export function CreateUserDialog({
+  open,
+  onOpenChange,
+  onCreated,
+}: CreateUserDialogProps) {
+  const [cardNumber, setCardNumber] = useState('')
+  const [unit, setUnit] = useState<UnitType>('PEDERTRACTOR')
+  const [printerOperator, setPrinterOperator] = useState(false)
+  const [employeeName, setEmployeeName] = useState<string | null>(null)
+  const [lookupError, setLookupError] = useState<string | null>(null)
+  const [isLookingUp, setIsLookingUp] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  function resetForm() {
+    setCardNumber('')
+    setUnit('PEDERTRACTOR')
+    setPrinterOperator(false)
+    setEmployeeName(null)
+    setLookupError(null)
+    setIsLookingUp(false)
+  }
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    const trimmedCardNumber = cardNumber.trim()
+
+    setEmployeeName(null)
+    setLookupError(null)
+    setIsLookingUp(false)
+
+    if (!trimmedCardNumber) {
+      return
+    }
+
+    const controller = new AbortController()
+    let isCurrentLookup = true
+
+    const timeoutId = window.setTimeout(async () => {
+      setIsLookingUp(true)
+
+      try {
+        const data = await api<EmployeeLookupResponse>(
+          `/users/lookup/${unit}/${encodeURIComponent(trimmedCardNumber)}`,
+          {
+            signal: controller.signal,
+            toastOnError: false,
+          },
+        )
+
+        if (isCurrentLookup) {
+          setEmployeeName(data.employee.name)
+        }
+      } catch (error) {
+        if (
+          !isCurrentLookup ||
+          (error instanceof Error && error.name === 'AbortError')
+        ) {
+          return
+        }
+
+        setLookupError(
+          error instanceof Error
+            ? error.message
+            : 'Não foi possível buscar o funcionário.',
+        )
+      } finally {
+        if (isCurrentLookup) {
+          setIsLookingUp(false)
+        }
+      }
+    }, LOOKUP_DEBOUNCE_MS)
+
+    return () => {
+      isCurrentLookup = false
+      window.clearTimeout(timeoutId)
+      controller.abort()
+    }
+  }, [cardNumber, unit, open])
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!employeeName || isLookingUp) {
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      const payload: CreateUserInput = {
+        cardNumber: cardNumber.trim(),
+        unit,
+        printerOperator,
+      }
+
+      const data = await api<UserResponse>('/users', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      })
+
+      resetForm()
+      onOpenChange(false)
+      onCreated(data.user)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const canCreate = Boolean(employeeName) && !isLookingUp
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          resetForm()
+        }
+        onOpenChange(nextOpen)
+      }}
+    >
+      <DialogContent>
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Criar usuário</DialogTitle>
+            <DialogDescription>
+              Informe o cartão e a unidade para buscar o funcionário
+              automaticamente na API externa e criar o acesso na aplicação.
+            </DialogDescription>
+          </DialogHeader>
+
+          <FieldGroup className="py-4">
+            <Field>
+              <FieldLabel htmlFor="user-card-number">Número do cartão</FieldLabel>
+              <Input
+                id="user-card-number"
+                value={cardNumber}
+                onChange={(event) => setCardNumber(event.target.value)}
+                placeholder="1010"
+                required
+                disabled={isSubmitting}
+              />
+            </Field>
+
+            <Field>
+              <FieldLabel>Unidade</FieldLabel>
+              <div className="grid grid-cols-2 gap-2">
+                {UNITS.map((option) => (
+                  <Button
+                    key={option}
+                    type="button"
+                    variant={unit === option ? 'default' : 'outline'}
+                    onClick={() => setUnit(option)}
+                    disabled={isSubmitting}
+                  >
+                    {option}
+                  </Button>
+                ))}
+              </div>
+            </Field>
+
+            <Field orientation="horizontal">
+              <input
+                id="user-printer-operator"
+                type="checkbox"
+                checked={printerOperator}
+                onChange={(event) => setPrinterOperator(event.target.checked)}
+                disabled={isSubmitting}
+                className="size-4 accent-primary"
+              />
+              <FieldLabel htmlFor="user-printer-operator">
+                Operador de impressora
+              </FieldLabel>
+            </Field>
+
+            {isLookingUp ? (
+              <div className="flex items-center gap-2 rounded-lg border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" />
+                Buscando funcionário...
+              </div>
+            ) : null}
+
+            {cardNumber.trim() && !employeeName && !lookupError && !isLookingUp ? (
+              <p className="text-sm text-muted-foreground">
+                A busca será feita automaticamente.
+              </p>
+            ) : null}
+
+            {employeeName ? (
+              <div className="flex items-center gap-3 rounded-lg border bg-muted/40 px-4 py-3">
+                <div className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <UserRound className="size-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-muted-foreground">
+                    Funcionário encontrado
+                  </p>
+                  <p className="truncate font-medium">{employeeName}</p>
+                </div>
+              </div>
+            ) : null}
+
+            {lookupError ? (
+              <p className="text-sm text-destructive">{lookupError}</p>
+            ) : null}
+          </FieldGroup>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="cancel"
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              disabled={
+                isSubmitting || isLookingUp || !cardNumber.trim() || !canCreate
+              }
+            >
+              {isSubmitting ? 'Criando...' : 'Criar'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}

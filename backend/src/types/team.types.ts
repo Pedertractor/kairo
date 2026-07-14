@@ -1,0 +1,24 @@
+import type { TeamRole } from '../generated/client.js';
+
+export interface TeamMemberSummary {
+  id: string;
+  name: string;
+  role: TeamRole;
+}
+
+export interface TeamUserOption {
+  id: string;
+  name: string;
+  employeeId: string;
+}
+
+export interface TeamSummary {
+  id: string;
+  name: string;
+  description: string | null;
+  createdById: string;
+  memberCount: number;
+  members: TeamMemberSummary[];
+  role: TeamRole;
+  createdAt: string;
+}

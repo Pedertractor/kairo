@@ -1,0 +1,305 @@
+import type { Card, CardStatus } from '../generated/client.js';
+import { CardRepository } from '../repositories/card.repository.js';
+import { FavoriteRepository } from '../repositories/favorite.repository.js';
+import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
+import { TeamRepository } from '../repositories/team.repository.js';
+import type { ActivitySummary, ProjectSummary } from '../types/card.types.js';
+import { AppError } from '../utils/errors.js';
+import { MENSAGENS } from '../utils/response.js';
+
+function toActivitySummary(
+  card: Card,
+  loggedSeconds = 0,
+  isFavorite = false,
+): ActivitySummary {
+  return {
+    id: card.id,
+    teamId: card.teamId,
+    title: card.title,
+    description: card.description,
+    status: card.status,
+    estimatedHours: card.estimatedHours?.toString() ?? null,
+    loggedSeconds,
+    isFavorite,
+    createdById: card.createdById,
+    createdAt: card.createdAt.toISOString(),
+    updatedAt: card.updatedAt.toISOString(),
+  };
+}
+
+function toProjectSummary(
+  card: Card,
+  loggedSeconds = 0,
+  teamName?: string,
+): ProjectSummary {
+  return {
+    id: card.id,
+    teamId: card.teamId,
+    ...(teamName ? { teamName } : {}),
+    title: card.title,
+    description: card.description,
+    status: card.status,
+    estimatedHours: card.estimatedHours?.toString() ?? null,
+    loggedSeconds,
+    createdById: card.createdById,
+    createdAt: card.createdAt.toISOString(),
+    updatedAt: card.updatedAt.toISOString(),
+  };
+}
+
+export class CardService {
+  constructor(
+    private readonly cardRepository: CardRepository,
+    private readonly teamRepository: TeamRepository,
+    private readonly timeEntryRepository: TimeEntryRepository,
+    private readonly favoriteRepository: FavoriteRepository,
+  ) {}
+
+  private async assertTeamMember(teamId: string, userId: string) {
+    const membership = await this.teamRepository.findMembershipByTeamAndUser(
+      teamId,
+      userId,
+    );
+
+    if (!membership) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+  }
+
+  private async getFavoriteCardIdSet(userId: string, cardIds: string[]) {
+    const favorites = await this.favoriteRepository.findFavoriteCardIds(
+      userId,
+      cardIds,
+    );
+
+    return new Set(
+      favorites
+        .map((favorite) => favorite.cardId)
+        .filter((cardId): cardId is string => cardId !== null),
+    );
+  }
+
+  async listActivities(
+    teamId: string,
+    userId: string,
+  ): Promise<ActivitySummary[]> {
+    await this.assertTeamMember(teamId, userId);
+
+    const cards = await this.cardRepository.findActivitiesByTeamId(teamId);
+    const cardIds = cards.map((card) => card.id);
+    const [loggedByCard, favoriteIds] = await Promise.all([
+      this.timeEntryRepository.getLoggedSecondsByCardIds(cardIds),
+      this.getFavoriteCardIdSet(userId, cardIds),
+    ]);
+
+    return cards.map((card) =>
+      toActivitySummary(
+        card,
+        loggedByCard.get(card.id) ?? 0,
+        favoriteIds.has(card.id),
+      ),
+    );
+  }
+
+  async getActivity(
+    teamId: string,
+    activityId: string,
+    userId: string,
+  ): Promise<ActivitySummary> {
+    await this.assertTeamMember(teamId, userId);
+
+    const card = await this.cardRepository.findActivityById(activityId);
+
+    if (!card || card.teamId !== teamId || card.type !== 'ACTIVITY') {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    const [loggedByCard, favorite] = await Promise.all([
+      this.timeEntryRepository.getLoggedSecondsByCardIds([activityId]),
+      this.favoriteRepository.findActivityFavorite(userId, activityId),
+    ]);
+
+    return toActivitySummary(
+      card,
+      loggedByCard.get(activityId) ?? 0,
+      favorite !== null,
+    );
+  }
+
+  async createActivity(
+    teamId: string,
+    userId: string,
+    title: string,
+    description?: string,
+    estimatedHours?: number,
+  ): Promise<ActivitySummary> {
+    await this.assertTeamMember(teamId, userId);
+
+    const card = await this.cardRepository.createActivity({
+      teamId,
+      createdById: userId,
+      title,
+      description,
+      estimatedHours,
+    });
+
+    return toActivitySummary(card);
+  }
+
+  async updateActivityStatus(
+    teamId: string,
+    activityId: string,
+    userId: string,
+    status: CardStatus,
+  ): Promise<ActivitySummary> {
+    await this.assertTeamMember(teamId, userId);
+
+    const card = await this.cardRepository.findActivityById(activityId);
+
+    if (!card || card.teamId !== teamId || card.type !== 'ACTIVITY') {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    const updated = await this.cardRepository.updateActivityStatus(
+      activityId,
+      status,
+    );
+
+    const [loggedByCard, favorite] = await Promise.all([
+      this.timeEntryRepository.getLoggedSecondsByCardIds([activityId]),
+      this.favoriteRepository.findActivityFavorite(userId, activityId),
+    ]);
+
+    return toActivitySummary(
+      updated,
+      loggedByCard.get(activityId) ?? 0,
+      favorite !== null,
+    );
+  }
+
+  async listProjects(
+    teamId: string,
+    userId: string,
+  ): Promise<ProjectSummary[]> {
+    await this.assertTeamMember(teamId, userId);
+
+    const cards = await this.cardRepository.findProjectsByTeamId(teamId);
+    const loggedByProject =
+      await this.timeEntryRepository.getLoggedSecondsByProjectIds(
+        cards.map((card) => card.id),
+      );
+
+    return cards.map((card) =>
+      toProjectSummary(card, loggedByProject.get(card.id) ?? 0),
+    );
+  }
+
+  async listAllProjects(userId: string): Promise<ProjectSummary[]> {
+    const cards = await this.cardRepository.findProjectsByUserId(userId);
+    const loggedByProject =
+      await this.timeEntryRepository.getLoggedSecondsByProjectIds(
+        cards.map((card) => card.id),
+      );
+
+    return cards.map((card) =>
+      toProjectSummary(
+        card,
+        loggedByProject.get(card.id) ?? 0,
+        card.team.name,
+      ),
+    );
+  }
+
+  async getProject(
+    teamId: string,
+    projectId: string,
+    userId: string,
+  ): Promise<ProjectSummary> {
+    await this.assertTeamMember(teamId, userId);
+
+    const card = await this.cardRepository.findProjectById(projectId);
+
+    if (!card || card.teamId !== teamId || card.type !== 'PROJECT') {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    const loggedByProject =
+      await this.timeEntryRepository.getLoggedSecondsByProjectIds([projectId]);
+
+    return toProjectSummary(
+      card,
+      loggedByProject.get(projectId) ?? 0,
+      card.team.name,
+    );
+  }
+
+  async getProjectById(
+    projectId: string,
+    userId: string,
+  ): Promise<ProjectSummary> {
+    const card = await this.cardRepository.findProjectById(projectId);
+
+    if (!card || card.type !== 'PROJECT') {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    await this.assertTeamMember(card.teamId, userId);
+
+    const loggedByProject =
+      await this.timeEntryRepository.getLoggedSecondsByProjectIds([projectId]);
+
+    return toProjectSummary(
+      card,
+      loggedByProject.get(projectId) ?? 0,
+      card.team.name,
+    );
+  }
+
+  async createProject(
+    teamId: string,
+    userId: string,
+    title: string,
+    description?: string,
+    estimatedHours?: number,
+  ): Promise<ProjectSummary> {
+    await this.assertTeamMember(teamId, userId);
+
+    const card = await this.cardRepository.createProject({
+      teamId,
+      createdById: userId,
+      title,
+      description,
+      estimatedHours,
+    });
+
+    return toProjectSummary(card);
+  }
+
+  async updateProjectStatus(
+    teamId: string,
+    projectId: string,
+    userId: string,
+    status: CardStatus,
+  ): Promise<ProjectSummary> {
+    await this.assertTeamMember(teamId, userId);
+
+    const card = await this.cardRepository.findProjectById(projectId);
+
+    if (!card || card.teamId !== teamId || card.type !== 'PROJECT') {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    const updated = await this.cardRepository.updateProjectStatus(
+      projectId,
+      status,
+    );
+
+    const loggedByProject =
+      await this.timeEntryRepository.getLoggedSecondsByProjectIds([projectId]);
+
+    return toProjectSummary(
+      updated,
+      loggedByProject.get(projectId) ?? 0,
+    );
+  }
+}

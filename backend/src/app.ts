@@ -1,3 +1,4 @@
+import cors from '@fastify/cors';
 import Fastify from 'fastify';
 import { env } from './config/env.js';
 import { jwtPlugin } from './plugins/jwt.plugin.js';
@@ -9,6 +10,12 @@ import { MENSAGENS, sendError } from './utils/response.js';
 export async function buildApp() {
   const app = Fastify({
     logger: env.NODE_ENV === 'development',
+  });
+
+  await app.register(cors, {
+    origin: true,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
   app.setErrorHandler((error, _request, reply) => {

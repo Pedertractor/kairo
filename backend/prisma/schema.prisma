@@ -62,9 +62,10 @@ model User {
   unit         UnitType
   cardNumber   String
   passwordHash String
-  role         UserRole
-  active       Boolean  @default(true)
-  firstLogin   Boolean  @default(true)
+  role            UserRole
+  active          Boolean  @default(true)
+  firstLogin      Boolean  @default(true)
+  printerOperator Boolean  @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -77,6 +78,7 @@ model User {
   assignedTasks Task[] @relation("TaskAssignee")
 
   timeEntries TimeEntry[]
+  favorites   UserFavorite[]
 
   sentInvites     TeamInvite[] @relation("InviteSender")
   acceptedInvites TeamInvite[] @relation("InviteAcceptedBy")
@@ -167,6 +169,7 @@ model Card {
 
   tasks       Task[]
   timeEntries TimeEntry[]
+  favorites   UserFavorite[]
 
   @@index([teamId])
   @@index([createdById])
@@ -200,6 +203,7 @@ model Task {
   updatedAt DateTime @updatedAt
 
   timeEntries TimeEntry[]
+  favorites   UserFavorite[]
 
   @@index([cardId])
   @@index([assignedToId])
@@ -235,4 +239,50 @@ model TimeEntry {
   @@index([userId])
   @@index([startedAt])
   @@map("time_entries")
+}
+
+model UserFavorite {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  cardId String?
+  card   Card?  @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  taskId String?
+  task   Task?  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, cardId])
+  @@unique([userId, taskId])
+  @@index([userId])
+  @@map("user_favorites")
+}
+
+model PrintingMachine {
+  id           String     @id @default(cuid())
+  name         String
+  busy         Boolean    @default(false)
+  paused       Boolean    @default(false)
+  threeDPartId String?
+  threeDPart   ThreeDPart? @relation(fields: [threeDPartId], references: [id], onDelete: SetNull)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([threeDPartId])
+  @@map("printing_machines")
+}
+
+model ThreeDPart {
+  id               String             @id @default(cuid())
+  name             String
+  code             String             @unique
+  timeToPrint      Int
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  printingMachines PrintingMachine[]
+
+  @@map("three_d_parts")
 }

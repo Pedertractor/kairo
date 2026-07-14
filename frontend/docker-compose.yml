@@ -1,0 +1,19 @@
+name: kairo
+services:
+  project-kairo-front-end:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      pull: false
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:5019}
+    container_name: project-kairo-front-end
+    ports:
+      - '5020:80'
+    networks:
+      - project-kairo-network
+
+networks:
+  project-kairo-network:
+    external: true
+    name: project-kairo-network

@@ -9,6 +9,7 @@ export interface SafeUser {
   role: UserRole;
   active: boolean;
   firstLogin: boolean;
+  printerOperator: boolean;
 }
 
 export interface LoginInput {
@@ -20,6 +21,18 @@ export interface LoginInput {
 export interface AuthPayload {
   token: string;
   user: SafeUser;
+}
+
+export type LoginResponse =
+  | { token: string; user: SafeUser; requiresPasswordChange?: false }
+  | { user: SafeUser; requiresPasswordChange: true };
+
+export interface ChangePasswordInput {
+  cardNumber: string;
+  unit: UnitType;
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
 }
 
 export interface JwtPayload {

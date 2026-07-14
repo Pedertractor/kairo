@@ -109,18 +109,30 @@ export async function api<T>(
   path: string,
   options: ApiRequestOptions = {},
 ): Promise<T> {
-  const { toastOnSuccess, toastOnError, ...init } = options
+  const { toastOnSuccess, toastOnError = true, ...init } = options
   const token = getStoredToken()
+  const hasBody =
+    init.body !== undefined && init.body !== null && init.body !== ''
 
-  const response = await fetch(`${BASE_URL}${path}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...init.headers,
-    },
-  })
+  let response: Response
+  try {
+    response = await fetch(`${BASE_URL}${path}`, {
+      ...init,
+      headers: {
+        Accept: 'application/json',
+        ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...init.headers,
+      },
+    })
+  } catch {
+    const mensagem =
+      'Não foi possível contactar o servidor. Verifique a ligação e tente novamente.'
+    if (toastOnError) {
+      toast.error(mensagem)
+    }
+    throw new ApiError(0, mensagem)
+  }
 
   return handleApiResponse<T>(response, { toastOnSuccess, toastOnError })
 }

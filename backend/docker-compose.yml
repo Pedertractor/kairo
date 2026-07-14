@@ -1,39 +1,47 @@
+name: kairo
 services:
-  db:
-    image: postgres:16-alpine
-    container_name: kairo-db
-    restart: unless-stopped
+  project-kairo-api:
+    build: .
+    container_name: project-kairo-api
     ports:
-      - '5440:5432'
+      - '${API_PORT:-5019}:3000'
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: docker
-      POSTGRES_PASSWORD: docker
-      POSTGRES_DB: kairo
+      # Dentro da rede Docker o host da base é o serviço, não localhost.
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@project-kairo-database:5432/${POSTGRES_DB}?schema=public
+      NODE_ENV: production
+    depends_on:
+      project-kairo-database:
+        condition: service_healthy
+    networks:
+      - project-kairo-network
+    restart: unless-stopped
+
+  project-kairo-database:
+    image: postgres:16
+    container_name: project-kairo-database
+    ports:
+      - '${DB_PORT:-5018}:5432'
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
-      - kairo_pg_data:/var/lib/postgresql/data
+      - project-kairo-database:/var/lib/postgresql/data
+    networks:
+      - project-kairo-network
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U user -d kairo']
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
       interval: 5s
       timeout: 5s
-      retries: 5
-
-  # Uncomment when you want to run the API in Docker as well.
-  # api:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile
-  #   container_name: kairo-api
-  #   restart: unless-stopped
-  #   ports:
-  #     - "3000:3000"
-  #   environment:
-  #     DATABASE_URL: postgresql://user:password@db:5432/kairo?schema=public
-  #     PORT: 3000
-  #     HOST: 0.0.0.0
-  #     NODE_ENV: production
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
+      retries: 10
+      start_period: 10s
 
 volumes:
-  kairo_pg_data:
+  project-kairo-database:
+    name: project-kairo-database
+
+networks:
+  project-kairo-network:
+    name: project-kairo-network
