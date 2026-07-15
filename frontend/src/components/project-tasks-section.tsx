@@ -80,9 +80,9 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
       />
 
       {isLoading ? (
-        <div className='grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
-          {Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton key={index} className='h-20 rounded-lg' />
+        <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-3'>
+          {Array.from({ length: 3 }).map((_, index) => (
+            <Skeleton key={index} className='h-28 rounded-lg' />
           ))}
         </div>
       ) : tasks.length === 0 ? (
@@ -93,7 +93,7 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
           </p>
         </div>
       ) : (
-        <ul className='grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
+        <ul className='grid gap-3 sm:grid-cols-2 lg:grid-cols-3'>
           {tasks.map((task) => {
             const isTimerActive = isTaskActive(task.id);
 
@@ -101,63 +101,73 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
               <li
                 key={task.id}
                 className={cn(
-                  'group relative rounded-lg border transition-all',
+                  'group relative min-h-28 rounded-lg border transition-all',
                   'after:pointer-events-none after:absolute after:inset-0 after:z-[1] after:rounded-[inherit] after:bg-muted/30 after:opacity-0 after:transition-opacity hover:after:opacity-100',
                   TASK_CARD_STATUS_CLASS[task.status],
                   isTimerActive &&
                     'border-sidebar-primary shadow-md shadow-sidebar-primary/15 ring-2 ring-sidebar-primary/35',
                 )}
               >
-                <Link
-                  to={`/projetos/${projectId}/tarefas/${task.id}`}
-                  className='relative z-[2] flex flex-col gap-1.5 p-2.5 pr-28'
-                >
-                  <p className='line-clamp-2 text-sm font-medium leading-snug'>
-                    {task.title}
-                  </p>
-                  {task.description ? (
-                    <p className='line-clamp-2 text-[11px] text-muted-foreground'>
-                      {task.description}
+                <div className='relative z-[2] flex h-full items-start gap-2 p-3'>
+                  <Link
+                    to={`/projetos/${projectId}/tarefas/${task.id}`}
+                    className='flex min-w-0 flex-1 flex-col gap-1.5'
+                  >
+                    <p
+                      className='line-clamp-2 break-words text-sm font-medium leading-snug'
+                      title={task.title}
+                    >
+                      {task.title}
                     </p>
-                  ) : null}
-                  <div className='flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground'>
-                    {task.estimatedHours ? (
-                      <span>{task.estimatedHours}h</span>
+                    {task.description ? (
+                      <p
+                        className='line-clamp-2 break-words text-[11px] text-muted-foreground'
+                        title={task.description}
+                      >
+                        {task.description}
+                      </p>
                     ) : null}
-                    {task.assignedToName ? (
-                      <span className='truncate'>{task.assignedToName}</span>
-                    ) : null}
+                    <div className='mt-auto flex min-w-0 flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground'>
+                      {task.estimatedHours ? (
+                        <span>{task.estimatedHours}h</span>
+                      ) : null}
+                      {task.assignedToName ? (
+                        <span className='truncate'>{task.assignedToName}</span>
+                      ) : null}
+                    </div>
+                  </Link>
+                  <div
+                    className='flex shrink-0 items-center gap-0.5'
+                    onClick={(event) => event.preventDefault()}
+                  >
+                    <FavoriteButton
+                      target={{
+                        kind: 'task',
+                        projectId,
+                        taskId: task.id,
+                      }}
+                      isFavorite={task.isFavorite}
+                      onToggle={(isFavorite) => {
+                        setTasks((current) =>
+                          current.map((item) =>
+                            item.id === task.id
+                              ? { ...item, isFavorite }
+                              : item,
+                          ),
+                        );
+                      }}
+                      className='text-muted-foreground hover:text-amber-500'
+                    />
+                    <StartTaskTimerButton
+                      projectId={projectId}
+                      taskId={task.id}
+                      status={task.status}
+                      className='text-muted-foreground hover:text-sidebar-primary'
+                    />
+                    <span className={TASK_STATUS_BADGE_CLASS[task.status]}>
+                      {TASK_STATUS_LABELS[task.status]}
+                    </span>
                   </div>
-                </Link>
-                <div
-                  className='absolute top-2.5 right-2.5 z-[2] flex shrink-0 items-center gap-0.5'
-                  onClick={(event) => event.preventDefault()}
-                >
-                  <FavoriteButton
-                    target={{
-                      kind: 'task',
-                      projectId,
-                      taskId: task.id,
-                    }}
-                    isFavorite={task.isFavorite}
-                    onToggle={(isFavorite) => {
-                      setTasks((current) =>
-                        current.map((item) =>
-                          item.id === task.id ? { ...item, isFavorite } : item,
-                        ),
-                      );
-                    }}
-                    className='text-muted-foreground hover:text-amber-500'
-                  />
-                  <StartTaskTimerButton
-                    projectId={projectId}
-                    taskId={task.id}
-                    status={task.status}
-                    className='text-muted-foreground hover:text-sidebar-primary'
-                  />
-                  <span className={TASK_STATUS_BADGE_CLASS[task.status]}>
-                    {TASK_STATUS_LABELS[task.status]}
-                  </span>
                 </div>
               </li>
             );
