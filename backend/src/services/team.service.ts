@@ -123,15 +123,9 @@ export class TeamService {
       throw new AppError(403, MENSAGENS.PROIBIDO);
     }
 
-    const actor = await this.userRepository.findById(actorUserId);
-
-    if (!actor) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
-
     const targetUser = await this.userRepository.findById(targetUserId);
 
-    if (!targetUser || !targetUser.active || targetUser.unit !== actor.unit) {
+    if (!targetUser || !targetUser.active) {
       throw new AppError(404, MENSAGENS.USUARIO_NAO_ENCONTRADO);
     }
 
@@ -164,13 +158,7 @@ export class TeamService {
       throw new AppError(403, MENSAGENS.PROIBIDO);
     }
 
-    const actor = await this.userRepository.findById(actorUserId);
-
-    if (!actor) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
-
-    return this.userRepository.findAvailableForTeam(teamId, actor.unit);
+    return this.userRepository.findAvailableForTeam(teamId);
   }
 
   async createTeam(

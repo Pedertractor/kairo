@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { useAuth } from '@/hooks/use-auth'
 import { api } from '@/lib/api-handler'
 import type { UnitType } from '@/types/auth'
 import type {
@@ -34,8 +35,10 @@ export function CreateUserDialog({
   onOpenChange,
   onCreated,
 }: CreateUserDialogProps) {
+  const { user: currentUser } = useAuth()
+  const defaultUnit = currentUser?.unit ?? 'PEDERTRACTOR'
   const [cardNumber, setCardNumber] = useState('')
-  const [unit, setUnit] = useState<UnitType>('PEDERTRACTOR')
+  const [unit, setUnit] = useState<UnitType>(defaultUnit)
   const [printerOperator, setPrinterOperator] = useState(false)
   const [employeeName, setEmployeeName] = useState<string | null>(null)
   const [lookupError, setLookupError] = useState<string | null>(null)
@@ -44,12 +47,18 @@ export function CreateUserDialog({
 
   function resetForm() {
     setCardNumber('')
-    setUnit('PEDERTRACTOR')
+    setUnit(defaultUnit)
     setPrinterOperator(false)
     setEmployeeName(null)
     setLookupError(null)
     setIsLookingUp(false)
   }
+
+  useEffect(() => {
+    if (open) {
+      setUnit(defaultUnit)
+    }
+  }, [open, defaultUnit])
 
   useEffect(() => {
     if (!open) {

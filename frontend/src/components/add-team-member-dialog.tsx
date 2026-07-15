@@ -48,7 +48,7 @@ interface AddTeamMemberDialogProps {
 function toComboboxOption(user: TeamUserOption): UserComboboxOption {
   return {
     value: user.id,
-    label: `${user.name} (${user.employeeId})`,
+    label: `${user.name} · ${user.unit} (${user.employeeId})`,
   };
 }
 
@@ -89,7 +89,6 @@ export function AddTeamMemberDialog({
       try {
         const data = await api<AvailableTeamMembersResponse>(
           `/teams/${teamId}/available-members`,
-          { toastOnError: false },
         );
 
         if (!cancelled) {
@@ -152,8 +151,7 @@ export function AddTeamMemberDialog({
           <DialogHeader>
             <DialogTitle>Adicionar membro </DialogTitle>
             <DialogDescription>
-              Busque e selecione um usuário da sua unidade para adicionar à
-              equipe.
+              Busque e selecione um usuário ativo para adicionar à equipe.
             </DialogDescription>
           </DialogHeader>
 
@@ -167,7 +165,8 @@ export function AddTeamMemberDialog({
                 </div>
               ) : users.length === 0 ? (
                 <p className='text-sm text-muted-foreground'>
-                  Nenhum usuário disponível para adicionar.
+                  Nenhum usuário disponível para adicionar. Confira se o usuário
+                  está ativo e ainda não faz parte desta equipe.
                 </p>
               ) : (
                 <Combobox
@@ -181,7 +180,7 @@ export function AddTeamMemberDialog({
                   <ComboboxInput
                     id='member-user'
                     className='w-full'
-                    placeholder='Buscar por nome...'
+                    placeholder='Buscar por nome ou unidade...'
                     showClear
                     disabled={isSubmitting}
                   />

@@ -17,10 +17,9 @@ export class UserRepository {
     });
   }
 
-  findAvailableForTeam(teamId: string, unit: UnitType) {
+  findAvailableForTeam(teamId: string) {
     return this.prisma.user.findMany({
       where: {
-        unit,
         active: true,
         memberships: {
           none: { teamId },
@@ -30,8 +29,9 @@ export class UserRepository {
         id: true,
         name: true,
         employeeId: true,
+        unit: true,
       },
-      orderBy: { name: 'asc' },
+      orderBy: [{ unit: 'asc' }, { name: 'asc' }],
     });
   }
 
