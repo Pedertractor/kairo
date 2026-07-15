@@ -60,6 +60,31 @@ export class TeamController {
     }
   };
 
+  transferAdmin = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const parsed = teamMemberParamSchema.safeParse(request.params);
+
+      if (!parsed.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const team = await this.service.transferAdmin(
+        parsed.data.id,
+        request.user.sub,
+        parsed.data.userId,
+      );
+
+      return sendSuccess(
+        reply,
+        { team },
+        200,
+        MENSAGENS.ADMIN_TRANSFERIDO_SUCESSO,
+      );
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
   addMember = async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const params = teamIdParamSchema.safeParse(request.params);

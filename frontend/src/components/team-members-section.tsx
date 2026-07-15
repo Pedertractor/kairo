@@ -3,6 +3,7 @@ import { Crown, UserPlus, X } from 'lucide-react';
 
 import { AddTeamMemberDialog } from '@/components/add-team-member-dialog';
 import { RemoveTeamMemberDialog } from '@/components/remove-team-member-dialog';
+import { TransferTeamAdminDialog } from '@/components/transfer-team-admin-dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/use-auth';
@@ -31,6 +32,8 @@ export function TeamMembersSection({
 }: TeamMembersSectionProps) {
   const { user } = useAuth();
   const [memberToRemove, setMemberToRemove] =
+    useState<TeamMemberSummary | null>(null);
+  const [memberToTransferAdmin, setMemberToTransferAdmin] =
     useState<TeamMemberSummary | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const canManageMembers = currentUserRole === 'ADMIN';
@@ -66,6 +69,18 @@ export function TeamMembersSection({
         onRemoved={onTeamUpdated}
       />
 
+      <TransferTeamAdminDialog
+        teamId={teamId}
+        member={memberToTransferAdmin}
+        open={memberToTransferAdmin !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setMemberToTransferAdmin(null);
+          }
+        }}
+        onTransferred={onTeamUpdated}
+      />
+
       {members.length === 0 && !isCreator ? (
         <p className='text-sm text-muted-foreground'>
           Nenhum membro nesta equipe.
@@ -74,6 +89,10 @@ export function TeamMembersSection({
         <ul className='grid gap-2 sm:grid-cols-2 lg:grid-cols-3'>
           {members.map((member) => {
             const canRemove = canManageMembers && user?.id !== member.id;
+            const canTransferAdmin =
+              canManageMembers &&
+              user?.id !== member.id &&
+              member.role === 'MEMBER';
 
             return (
               <li
@@ -102,6 +121,19 @@ export function TeamMembersSection({
                     {ROLE_LABELS[member.role]}
                   </p>
                 </div>
+
+                {canTransferAdmin ? (
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    size='icon-xs'
+                    className='shrink-0 text-muted-foreground hover:text-sidebar-primary'
+                    aria-label={`Tornar ${member.name} administrador`}
+                    onClick={() => setMemberToTransferAdmin(member)}
+                  >
+                    <Crown />
+                  </Button>
+                ) : null}
 
                 {canRemove ? (
                   <Button

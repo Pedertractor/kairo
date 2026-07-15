@@ -28,6 +28,11 @@ export const MENSAGENS = {
   ULTIMO_ADMIN_NAO_PODE_SER_REMOVIDO:
     'Não é possível remover o único administrador da equipe',
   MEMBRO_ADICIONADO_SUCESSO: 'Membro adicionado com sucesso',
+  ADMIN_TRANSFERIDO_SUCESSO:
+    'Administrador da equipe alterado com sucesso',
+  NAO_PODE_TRANSFERIR_ADMIN_PARA_SI_MESMO:
+    'Você já é o administrador desta equipe',
+  MEMBRO_JA_E_ADMIN: 'Este membro já é administrador da equipe',
   USUARIO_JA_E_MEMBRO: 'Este usuário já faz parte da equipe',
   USUARIO_NAO_ENCONTRADO: 'Usuário não encontrado',
   ATIVIDADE_CRIADA_SUCESSO: 'Atividade criada com sucesso',
