@@ -59,7 +59,7 @@ function AppLayoutContent({
           className={cn(
             'flex flex-1 flex-col px-6 pb-6 lg:px-10',
             hideHeader && 'pt-6',
-            isActive && 'pb-8',
+            isActive && 'pb-20',
             mainClassName,
           )}
         >

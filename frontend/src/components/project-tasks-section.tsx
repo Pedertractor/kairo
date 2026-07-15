@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useActiveTimer } from '@/hooks/use-active-timer';
 import { api } from '@/lib/api-handler';
+import { subscribeTaskDataInvalidation } from '@/lib/task-data-invalidation';
 import { TASK_STATUS_BADGE_CLASS, TASK_STATUS_LABELS } from '@/lib/task-status';
 import { cn } from '@/lib/utils';
 import type { TaskStatus, TaskSummary, TasksListResponse } from '@/types/task';
@@ -20,6 +21,8 @@ const TASK_CARD_STATUS_CLASS: Record<TaskStatus, string> = {
   TODO: 'border-border bg-card',
   IN_PROGRESS:
     'border-sky-200 bg-sky-50/70 dark:border-sky-900/60 dark:bg-sky-950/20',
+  PAUSED:
+    'border-amber-200 bg-amber-50/70 dark:border-amber-900/60 dark:bg-amber-950/20',
   DONE: 'border-emerald-200 bg-emerald-50/75 dark:border-emerald-900/60 dark:bg-emerald-950/25',
   CANCELED:
     'border-rose-200 bg-rose-50/65 dark:border-rose-900/60 dark:bg-rose-950/20',
@@ -31,20 +34,29 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-  const loadTasks = useCallback(async () => {
-    setIsLoading(true);
+  const loadTasks = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) {
+      setIsLoading(true);
+    }
 
     try {
       const data = await api<TasksListResponse>(`/projects/${projectId}/tasks`);
       setTasks(data.tasks);
     } finally {
-      setIsLoading(false);
+      if (!options?.silent) {
+        setIsLoading(false);
+      }
     }
   }, [projectId]);
 
   useEffect(() => {
     void loadTasks();
   }, [loadTasks]);
+
+  useEffect(
+    () => subscribeTaskDataInvalidation(() => void loadTasks({ silent: true })),
+    [loadTasks],
+  );
 
   return (
     <div className='flex flex-col gap-4'>
@@ -140,6 +152,7 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
                   <StartTaskTimerButton
                     projectId={projectId}
                     taskId={task.id}
+                    status={task.status}
                     className='text-muted-foreground hover:text-sidebar-primary'
                   />
                   <span className={TASK_STATUS_BADGE_CLASS[task.status]}>

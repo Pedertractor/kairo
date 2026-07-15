@@ -263,7 +263,9 @@ function mapRecentEntry(entry: RecentEntry): RecentWorkItem | null {
       status: entry.task.status,
       parentTitle: parentCard.title,
       lastWorkedAt: entry.startedAt.toISOString(),
-      canStartTimer: !['DONE', 'CANCELED'].includes(entry.task.status),
+      canStartTimer: !['DONE', 'CANCELED', 'IN_PROGRESS'].includes(
+        entry.task.status,
+      ),
       activityId: null,
       projectId: parentCard.id,
       taskId: entry.task.id,
@@ -385,6 +387,16 @@ export class TimeEntryService {
     return toActiveTimer(entry);
   }
 
+  private async pauseTaskForStoppedEntry(
+    taskId: string | null | undefined,
+  ): Promise<void> {
+    if (!taskId) {
+      return;
+    }
+
+    await this.taskRepository.updateStatusIfOpen(taskId, 'PAUSED');
+  }
+
   async startActivityTimer(
     teamId: string,
     activityId: string,
@@ -416,6 +428,7 @@ export class TimeEntryService {
 
     if (activeEntry) {
       await this.timeEntryRepository.stopEntry(activeEntry, startedAt);
+      await this.pauseTaskForStoppedEntry(activeEntry.taskId);
     }
 
     const entry = await this.timeEntryRepository.startTimer({
@@ -450,6 +463,10 @@ export class TimeEntryService {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
     }
 
+    if (task.status === 'DONE' || task.status === 'CANCELED') {
+      throw new AppError(400, MENSAGENS.TAREFA_TIMER_STATUS_INVALIDO);
+    }
+
     const membership = await this.teamRepository.findMembershipByTeamAndUser(
       task.card.teamId,
       userId,
@@ -457,6 +474,53 @@ export class TimeEntryService {
 
     if (!membership) {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    const activeOnTask =
+      await this.timeEntryRepository.findActiveByTaskId(taskId);
+
+    if (activeOnTask) {
+      if (activeOnTask.userId === userId) {
+        throw new AppError(400, MENSAGENS.TIMER_JA_ATIVO);
+      }
+
+      throw new AppError(
+        400,
+        `${MENSAGENS.TAREFA_JA_EM_ANDAMENTO} (${activeOnTask.user.name}).`,
+      );
+    }
+
+    const claimed = await this.taskRepository.claimForProgress(taskId);
+
+    if (claimed.count === 0) {
+      const activeAgain =
+        await this.timeEntryRepository.findActiveByTaskId(taskId);
+
+      if (activeAgain) {
+        if (activeAgain.userId === userId) {
+          throw new AppError(400, MENSAGENS.TIMER_JA_ATIVO);
+        }
+
+        throw new AppError(
+          400,
+          `${MENSAGENS.TAREFA_JA_EM_ANDAMENTO} (${activeAgain.user.name}).`,
+        );
+      }
+
+      const current = await this.taskRepository.findById(taskId);
+
+      if (
+        !current ||
+        current.status === 'DONE' ||
+        current.status === 'CANCELED'
+      ) {
+        throw new AppError(400, MENSAGENS.TAREFA_TIMER_STATUS_INVALIDO);
+      }
+
+      // Only orphaned IN_PROGRESS (no active timer) can be reclaimed.
+      if (current.status !== 'IN_PROGRESS') {
+        throw new AppError(400, MENSAGENS.TAREFA_JA_EM_ANDAMENTO);
+      }
     }
 
     const activeEntry =
@@ -470,6 +534,7 @@ export class TimeEntryService {
 
     if (activeEntry) {
       await this.timeEntryRepository.stopEntry(activeEntry, startedAt);
+      await this.pauseTaskForStoppedEntry(activeEntry.taskId);
     }
 
     const entry = await this.timeEntryRepository.startTaskTimer({
@@ -502,6 +567,8 @@ export class TimeEntryService {
       activeEntry,
       new Date(),
     );
+
+    await this.pauseTaskForStoppedEntry(activeEntry.taskId);
 
     return toTimeEntrySummary(stopped);
   }

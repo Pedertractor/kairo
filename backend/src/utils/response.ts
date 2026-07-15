@@ -40,6 +40,10 @@ export const MENSAGENS = {
   PROJETO_CRIADO_SUCESSO: 'Projeto criado com sucesso',
   PROJETO_ATUALIZADO_SUCESSO: 'Projeto atualizado com sucesso',
   TAREFA_CRIADA_SUCESSO: 'Tarefa criada com sucesso',
+  TAREFA_TIMER_STATUS_INVALIDO:
+    'Não é possível iniciar o timer de uma tarefa concluída ou cancelada',
+  TAREFA_JA_EM_ANDAMENTO:
+    'Esta tarefa já está em andamento por outro usuário',
   TIMER_INICIADO_SUCESSO: 'Timer iniciado com sucesso',
   TIMER_JA_ATIVO: 'Já existe um timer ativo para esta atividade',
   TIMER_PAUSADO_SUCESSO: 'Timer pausado com sucesso',

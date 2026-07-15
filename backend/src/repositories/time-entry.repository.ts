@@ -33,6 +33,16 @@ export class TimeEntryRepository {
     });
   }
 
+  findActiveByTaskId(taskId: string) {
+    return this.prisma.timeEntry.findFirst({
+      where: { taskId, endedAt: null, type: 'TIMER' },
+      orderBy: { startedAt: 'desc' },
+      include: {
+        user: { select: { id: true, name: true } },
+      },
+    });
+  }
+
   stopEntry(entry: TimeEntry, endedAt: Date) {
     const durationSeconds = Math.max(
       0,

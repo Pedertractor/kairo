@@ -1,4 +1,4 @@
-import type { PrismaClient } from '../generated/client.js';
+import type { PrismaClient, TaskStatus } from '../generated/client.js';
 
 export class TaskRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -17,6 +17,35 @@ export class TaskRepository {
           },
         },
       },
+    });
+  }
+
+  updateStatus(taskId: string, status: TaskStatus) {
+    return this.prisma.task.update({
+      where: { id: taskId },
+      data: { status },
+    });
+  }
+
+  /** Updates status unless the task is already DONE or CANCELED. */
+  updateStatusIfOpen(taskId: string, status: TaskStatus) {
+    return this.prisma.task.updateMany({
+      where: {
+        id: taskId,
+        status: { notIn: ['DONE', 'CANCELED'] },
+      },
+      data: { status },
+    });
+  }
+
+  /** Atomically claims a task for work (TODO/PAUSED → IN_PROGRESS). */
+  claimForProgress(taskId: string) {
+    return this.prisma.task.updateMany({
+      where: {
+        id: taskId,
+        status: { in: ['TODO', 'PAUSED'] },
+      },
+      data: { status: 'IN_PROGRESS' },
     });
   }
 

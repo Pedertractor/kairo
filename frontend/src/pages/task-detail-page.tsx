@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CardTimeBudget } from '@/components/card-time-budget'
 import { api } from '@/lib/api-handler'
+import { subscribeTaskDataInvalidation } from '@/lib/task-data-invalidation'
 import { TASK_STATUS_BADGE_CLASS, TASK_STATUS_LABELS } from '@/lib/task-status'
 import { cn } from '@/lib/utils'
 import type { TaskDetail, TaskDetailResponse } from '@/types/task'
@@ -65,6 +66,11 @@ export function TaskDetailPage() {
     }
   }, [projectId, taskId])
 
+  useEffect(
+    () => subscribeTaskDataInvalidation(() => void loadTask()),
+    [loadTask],
+  )
+
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-6">
       <div>
@@ -114,6 +120,7 @@ export function TaskDetailPage() {
                     <StartTaskTimerButton
                       projectId={projectId}
                       taskId={task.id}
+                      status={task.status}
                       size="icon-sm"
                     />
                   </>
