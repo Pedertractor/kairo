@@ -31,12 +31,14 @@ export function CreateActivityDialog({
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [estimatedHours, setEstimatedHours] = useState('')
+  const [indefiniteTime, setIndefiniteTime] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   function resetForm() {
     setTitle('')
     setDescription('')
     setEstimatedHours('')
+    setIndefiniteTime(false)
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -46,9 +48,10 @@ export function CreateActivityDialog({
     try {
       const payload: CreateActivityInput = { title: title.trim() }
       const trimmedDescription = description.trim()
-      const parsedHours = estimatedHours.trim()
-        ? Number.parseFloat(estimatedHours)
-        : undefined
+      const parsedHours =
+        !indefiniteTime && estimatedHours.trim()
+          ? Number.parseFloat(estimatedHours)
+          : undefined
 
       if (trimmedDescription) {
         payload.description = trimmedDescription
@@ -125,8 +128,27 @@ export function CreateActivityDialog({
                 value={estimatedHours}
                 onChange={(event) => setEstimatedHours(event.target.value)}
                 placeholder="Ex.: 8"
-                disabled={isSubmitting}
+                disabled={isSubmitting || indefiniteTime}
               />
+            </Field>
+            <Field orientation="horizontal">
+              <input
+                id="activity-indefinite-time"
+                type="checkbox"
+                checked={indefiniteTime}
+                onChange={(event) => {
+                  const checked = event.target.checked
+                  setIndefiniteTime(checked)
+                  if (checked) {
+                    setEstimatedHours('')
+                  }
+                }}
+                disabled={isSubmitting}
+                className="size-4 accent-primary"
+              />
+              <FieldLabel htmlFor="activity-indefinite-time">
+                Tempo indefinido
+              </FieldLabel>
             </Field>
           </FieldGroup>
 
