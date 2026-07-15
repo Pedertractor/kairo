@@ -108,6 +108,46 @@ export class TeamService {
     return this.getTeamForMember(teamId, actorUserId);
   }
 
+  async transferAdmin(
+    teamId: string,
+    actorUserId: string,
+    targetUserId: string,
+  ): Promise<TeamSummary> {
+    if (actorUserId === targetUserId) {
+      throw new AppError(400, MENSAGENS.NAO_PODE_TRANSFERIR_ADMIN_PARA_SI_MESMO);
+    }
+
+    const actorMembership = await this.teamRepository.findMembershipByTeamAndUser(
+      teamId,
+      actorUserId,
+    );
+
+    if (!actorMembership) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    if (actorMembership.role !== TeamRole.ADMIN) {
+      throw new AppError(403, MENSAGENS.PROIBIDO);
+    }
+
+    const targetMembership = await this.teamRepository.findMembershipByTeamAndUser(
+      teamId,
+      targetUserId,
+    );
+
+    if (!targetMembership) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    if (targetMembership.role === TeamRole.ADMIN) {
+      throw new AppError(400, MENSAGENS.MEMBRO_JA_E_ADMIN);
+    }
+
+    await this.teamRepository.transferAdmin(teamId, actorUserId, targetUserId);
+
+    return this.getTeamForMember(teamId, actorUserId);
+  }
+
   async addMember(
     teamId: string,
     actorUserId: string,
@@ -123,15 +163,9 @@ export class TeamService {
       throw new AppError(403, MENSAGENS.PROIBIDO);
     }
 
-    const actor = await this.userRepository.findById(actorUserId);
-
-    if (!actor) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
-
     const targetUser = await this.userRepository.findById(targetUserId);
 
-    if (!targetUser || !targetUser.active || targetUser.unit !== actor.unit) {
+    if (!targetUser || !targetUser.active) {
       throw new AppError(404, MENSAGENS.USUARIO_NAO_ENCONTRADO);
     }
 
@@ -164,13 +198,7 @@ export class TeamService {
       throw new AppError(403, MENSAGENS.PROIBIDO);
     }
 
-    const actor = await this.userRepository.findById(actorUserId);
-
-    if (!actor) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
-
-    return this.userRepository.findAvailableForTeam(teamId, actor.unit);
+    return this.userRepository.findAvailableForTeam(teamId);
   }
 
   async createTeam(

@@ -1,4 +1,4 @@
-import type { TeamRole } from '../generated/client.js';
+import type { TeamRole, UnitType } from '../generated/client.js';
 
 export interface TeamMemberSummary {
   id: string;
@@ -10,6 +10,7 @@ export interface TeamUserOption {
   id: string;
   name: string;
   employeeId: string;
+  unit: UnitType;
 }
 
 export interface TeamSummary {

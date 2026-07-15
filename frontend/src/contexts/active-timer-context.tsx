@@ -12,6 +12,7 @@ import {
 
 import { api } from '@/lib/api-handler';
 import { invalidateHomeData } from '@/lib/home-data-invalidation';
+import { invalidateTaskData } from '@/lib/task-data-invalidation';
 import type {
   ActiveTimer,
   ActiveTimerResponse,
@@ -121,6 +122,7 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
       );
       setActiveTimer(data.activeTimer);
       invalidateHomeData();
+      invalidateTaskData();
     } finally {
       setIsStarting(false);
     }
@@ -137,6 +139,7 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
         );
         setActiveTimer(data.activeTimer);
         invalidateHomeData();
+        invalidateTaskData();
       } finally {
         setIsStarting(false);
       }
@@ -153,6 +156,7 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
       });
       setActiveTimer(null);
       invalidateHomeData();
+      invalidateTaskData();
     } finally {
       setIsPausing(false);
     }

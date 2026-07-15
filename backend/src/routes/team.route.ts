@@ -29,6 +29,11 @@ export async function teamRoutes(app: FastifyInstance) {
     { preHandler: [app.authenticate] },
     controller.removeMember,
   );
+  app.patch(
+    '/teams/:id/members/:userId/admin',
+    { preHandler: [app.authenticate] },
+    controller.transferAdmin,
+  );
   app.post(
     '/teams',
     { preHandler: [app.authenticate, requireAdmin] },

@@ -28,6 +28,11 @@ export const MENSAGENS = {
   ULTIMO_ADMIN_NAO_PODE_SER_REMOVIDO:
     'Não é possível remover o único administrador da equipe',
   MEMBRO_ADICIONADO_SUCESSO: 'Membro adicionado com sucesso',
+  ADMIN_TRANSFERIDO_SUCESSO:
+    'Administrador da equipe alterado com sucesso',
+  NAO_PODE_TRANSFERIR_ADMIN_PARA_SI_MESMO:
+    'Você já é o administrador desta equipe',
+  MEMBRO_JA_E_ADMIN: 'Este membro já é administrador da equipe',
   USUARIO_JA_E_MEMBRO: 'Este usuário já faz parte da equipe',
   USUARIO_NAO_ENCONTRADO: 'Usuário não encontrado',
   ATIVIDADE_CRIADA_SUCESSO: 'Atividade criada com sucesso',
@@ -35,6 +40,10 @@ export const MENSAGENS = {
   PROJETO_CRIADO_SUCESSO: 'Projeto criado com sucesso',
   PROJETO_ATUALIZADO_SUCESSO: 'Projeto atualizado com sucesso',
   TAREFA_CRIADA_SUCESSO: 'Tarefa criada com sucesso',
+  TAREFA_TIMER_STATUS_INVALIDO:
+    'Não é possível iniciar o timer de uma tarefa concluída ou cancelada',
+  TAREFA_JA_EM_ANDAMENTO:
+    'Esta tarefa já está em andamento por outro usuário',
   TIMER_INICIADO_SUCESSO: 'Timer iniciado com sucesso',
   TIMER_JA_ATIVO: 'Já existe um timer ativo para esta atividade',
   TIMER_PAUSADO_SUCESSO: 'Timer pausado com sucesso',

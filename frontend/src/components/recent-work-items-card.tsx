@@ -12,6 +12,7 @@ import {
 } from '@/lib/task-status';
 import { cn } from '@/lib/utils';
 import { useActiveTimer } from '@/hooks/use-active-timer';
+import type { TaskStatus } from '@/types/task';
 import type { RecentWorkItem, RecentWorkItemKind } from '@/types/time-entry';
 
 const KIND_CONFIG: Record<
@@ -133,17 +134,20 @@ function RecentWorkItemCard({ item }: { item: RecentWorkItem }) {
         </div>
 
         <div className='flex shrink-0 items-center gap-1'>
-          {item.canStartTimer && item.activityId ? (
+          {(item.canStartTimer || isTimerActive) && item.activityId ? (
             <StartActivityTimerButton
               teamId={item.teamId}
               activityId={item.activityId}
               size='icon-sm'
               className='size-6 text-muted-foreground hover:text-sidebar-primary'
             />
-          ) : item.canStartTimer && item.projectId && item.taskId ? (
+          ) : (item.canStartTimer || isTimerActive) &&
+            item.projectId &&
+            item.taskId ? (
             <StartTaskTimerButton
               projectId={item.projectId}
               taskId={item.taskId}
+              status={item.status as TaskStatus}
               size='icon-sm'
               className='size-6 text-muted-foreground hover:text-sidebar-primary'
             />

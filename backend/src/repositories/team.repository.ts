@@ -68,6 +68,24 @@ export class TeamRepository {
     });
   }
 
+  transferAdmin(teamId: string, fromUserId: string, toUserId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.teamMember.update({
+        where: {
+          teamId_userId: { teamId, userId: toUserId },
+        },
+        data: { role: 'ADMIN' },
+      });
+
+      await tx.teamMember.update({
+        where: {
+          teamId_userId: { teamId, userId: fromUserId },
+        },
+        data: { role: 'MEMBER' },
+      });
+    });
+  }
+
   createTeamWithCreatorMember(
     name: string,
     description: string | undefined,

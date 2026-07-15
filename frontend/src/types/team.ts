@@ -1,3 +1,5 @@
+import type { UnitType } from '@/types/auth'
+
 export type TeamRole = 'ADMIN' | 'MEMBER'
 
 export interface TeamMemberSummary {
@@ -38,6 +40,7 @@ export interface TeamUserOption {
   id: string
   name: string
   employeeId: string
+  unit: UnitType
 }
 
 export interface AvailableTeamMembersResponse {

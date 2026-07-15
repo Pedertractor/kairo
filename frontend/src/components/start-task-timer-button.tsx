@@ -2,10 +2,12 @@ import { Pause, Play } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { useActiveTimer } from '@/hooks/use-active-timer'
+import type { TaskStatus } from '@/types/task'
 
 interface StartTaskTimerButtonProps {
   projectId: string
   taskId: string
+  status?: TaskStatus
   size?: 'icon-xs' | 'icon-sm'
   className?: string
 }
@@ -13,6 +15,7 @@ interface StartTaskTimerButtonProps {
 export function StartTaskTimerButton({
   projectId,
   taskId,
+  status,
   size = 'icon-xs',
   className,
 }: StartTaskTimerButtonProps) {
@@ -35,14 +38,25 @@ export function StartTaskTimerButton({
     )
   }
 
+  const lockedByOther = status === 'IN_PROGRESS'
+
   return (
     <Button
       type="button"
       variant="ghost"
       size={size}
       className={className}
-      aria-label="Iniciar timer"
-      disabled={isStarting}
+      aria-label={
+        lockedByOther
+          ? 'Tarefa já em andamento por outro usuário'
+          : 'Iniciar timer'
+      }
+      title={
+        lockedByOther
+          ? 'Esta tarefa já está em andamento por outro usuário'
+          : undefined
+      }
+      disabled={isStarting || lockedByOther}
       onClick={() => void startTaskTimer(projectId, taskId)}
     >
       <Play />

@@ -99,8 +99,16 @@ const TAB_EMPTY: Record<
   },
 }
 
-function canStartFromStatus(status: string) {
-  return !['DONE', 'CANCELED'].includes(status)
+function canStartFromStatus(status: string, kind?: StartableWorkItem['kind']) {
+  if (['DONE', 'CANCELED'].includes(status)) {
+    return false
+  }
+
+  if (kind === 'TASK' && status === 'IN_PROGRESS') {
+    return false
+  }
+
+  return true
 }
 
 function toStartableFromFavorite(item: FavoriteWorkItem): StartableWorkItem {
@@ -112,7 +120,8 @@ function toStartableFromFavorite(item: FavoriteWorkItem): StartableWorkItem {
     teamName: item.teamName,
     status: item.status,
     parentTitle: item.parentTitle,
-    canStartTimer: item.canStartTimer && canStartFromStatus(item.status),
+    canStartTimer:
+      item.canStartTimer && canStartFromStatus(item.status, item.kind),
     activityId: item.activityId,
     projectId: item.projectId,
     taskId: item.taskId,
@@ -132,7 +141,8 @@ function toStartableFromRecent(item: RecentWorkItem): StartableWorkItem | null {
     teamName: item.teamName,
     status: item.status,
     parentTitle: item.parentTitle,
-    canStartTimer: item.canStartTimer,
+    canStartTimer:
+      item.canStartTimer && canStartFromStatus(item.status, item.kind),
     activityId: item.activityId,
     projectId: item.projectId,
     taskId: item.taskId,

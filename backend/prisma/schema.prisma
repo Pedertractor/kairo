@@ -46,6 +46,7 @@ enum CardStatus {
 enum TaskStatus {
   TODO
   IN_PROGRESS
+  PAUSED
   DONE
   CANCELED
 }
