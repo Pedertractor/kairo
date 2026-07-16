@@ -67,10 +67,15 @@ function getItemHref(item: RecentWorkItem): string | null {
 
 function getStatusBadgeClass(
   item: RecentWorkItem,
-  isTimerActive: boolean,
+  isTimerRunning: boolean,
+  isTimerPaused: boolean,
 ): string {
-  if (isTimerActive) {
-    return CARD_STATUS_BADGE_CLASS.IN_PROGRESS;
+  if (isTimerRunning) {
+    return CARD_STATUS_BADGE_CLASS.IN_PROGRESS
+  }
+
+  if (isTimerPaused) {
+    return CARD_STATUS_BADGE_CLASS.PAUSED
   }
 
   if (item.kind === 'TASK') {
@@ -89,20 +94,37 @@ function getStatusBadgeClass(
 }
 
 function RecentWorkItemCard({ item }: { item: RecentWorkItem }) {
-  const { isActivityActive, isTaskActive } = useActiveTimer();
+  const {
+    isActivityActive,
+    isTaskActive,
+    isActivityPaused,
+    isTaskPaused,
+    isActivityCurrent,
+    isTaskCurrent,
+  } = useActiveTimer();
   const config = KIND_CONFIG[item.kind];
   const Icon = config.icon;
   const href = getItemHref(item);
-  const isTimerActive =
+  const isTimerRunning =
     (item.activityId !== null && isActivityActive(item.activityId)) ||
     (item.taskId !== null && isTaskActive(item.taskId));
-  const statusLabel = isTimerActive ? 'Em andamento' : getStatusLabel(item);
+  const isTimerPaused =
+    (item.activityId !== null && isActivityPaused(item.activityId)) ||
+    (item.taskId !== null && isTaskPaused(item.taskId));
+  const isTimerCurrent =
+    (item.activityId !== null && isActivityCurrent(item.activityId)) ||
+    (item.taskId !== null && isTaskCurrent(item.taskId));
+  const statusLabel = isTimerRunning
+    ? 'Em andamento'
+    : isTimerPaused
+      ? 'Pausado'
+      : getStatusLabel(item);
 
   return (
     <Card
       className={cn(
         'gap-0 rounded-xl border border-border/60 bg-card py-0 shadow-sm transition-all',
-        isTimerActive &&
+        isTimerCurrent &&
           'border-sidebar-primary bg-sidebar-primary/10 shadow-md shadow-sidebar-primary/15 ring-1 ring-sidebar-primary/35',
       )}
     >
@@ -134,14 +156,14 @@ function RecentWorkItemCard({ item }: { item: RecentWorkItem }) {
         </div>
 
         <div className='flex shrink-0 items-center gap-1'>
-          {(item.canStartTimer || isTimerActive) && item.activityId ? (
+          {(item.canStartTimer || isTimerCurrent) && item.activityId ? (
             <StartActivityTimerButton
               teamId={item.teamId}
               activityId={item.activityId}
               size='icon-sm'
               className='size-6 text-muted-foreground hover:text-sidebar-primary'
             />
-          ) : (item.canStartTimer || isTimerActive) &&
+          ) : (item.canStartTimer || isTimerCurrent) &&
             item.projectId &&
             item.taskId ? (
             <StartTaskTimerButton
@@ -159,7 +181,7 @@ function RecentWorkItemCard({ item }: { item: RecentWorkItem }) {
 
           <span
             className={cn(
-              getStatusBadgeClass(item, isTimerActive),
+              getStatusBadgeClass(item, isTimerRunning, isTimerPaused),
               'rounded-full px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap',
             )}
           >

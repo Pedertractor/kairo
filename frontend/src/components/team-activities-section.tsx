@@ -17,7 +17,7 @@ interface TeamActivitiesSectionProps {
 }
 
 export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
-  const { isActivityActive } = useActiveTimer();
+  const { isActivityCurrent } = useActiveTimer();
   const [activities, setActivities] = useState<ActivitySummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -76,7 +76,7 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
       ) : (
         <ul className='grid gap-2 sm:grid-cols-2 lg:grid-cols-3'>
           {activities.map((activity) => {
-            const isTimerActive = isActivityActive(activity.id);
+            const isTimerActive = isActivityCurrent(activity.id);
 
             return (
               <li

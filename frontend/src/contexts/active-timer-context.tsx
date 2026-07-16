@@ -12,25 +12,37 @@ import {
 
 import { api } from '@/lib/api-handler';
 import { invalidateHomeData } from '@/lib/home-data-invalidation';
+import {
+  readPausedTimerTarget,
+  writePausedTimerTarget,
+} from '@/lib/paused-timer-storage';
 import { invalidateTaskData } from '@/lib/task-data-invalidation';
 import type {
   ActiveTimer,
   ActiveTimerResponse,
   PauseTimerResponse,
+  PausedTimerTarget,
   StartTimerResponse,
 } from '@/types/time-entry';
 
 interface ActiveTimerContextValue {
   activeTimer: ActiveTimer | null;
+  pausedTarget: PausedTimerTarget | null;
   isActive: boolean;
+  hasTimerBar: boolean;
   isStarting: boolean;
   isPausing: boolean;
   refresh: () => Promise<void>;
   startTimer: (teamId: string, activityId: string) => Promise<void>;
   startTaskTimer: (projectId: string, taskId: string) => Promise<void>;
   pauseTimer: () => Promise<void>;
+  resumeTimer: () => Promise<void>;
   isActivityActive: (activityId: string) => boolean;
   isTaskActive: (taskId: string) => boolean;
+  isActivityPaused: (activityId: string) => boolean;
+  isTaskPaused: (taskId: string) => boolean;
+  isActivityCurrent: (activityId: string) => boolean;
+  isTaskCurrent: (taskId: string) => boolean;
 }
 
 interface ElapsedStore {
@@ -67,8 +79,23 @@ function createElapsedStore(): ElapsedStore {
   };
 }
 
+function toPausedTarget(activeTimer: ActiveTimer): PausedTimerTarget | null {
+  if (activeTimer.activity) {
+    return { activity: activeTimer.activity };
+  }
+
+  if (activeTimer.task) {
+    return { task: activeTimer.task };
+  }
+
+  return null;
+}
+
 export function ActiveTimerProvider({ children }: { children: ReactNode }) {
   const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(null);
+  const [pausedTarget, setPausedTarget] = useState<PausedTimerTarget | null>(
+    () => readPausedTimerTarget(),
+  );
   const [isStarting, setIsStarting] = useState(false);
   const [isPausing, setIsPausing] = useState(false);
   const elapsedStoreRef = useRef<ElapsedStore | null>(null);
@@ -79,12 +106,26 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
 
   const elapsedStore = elapsedStoreRef.current;
 
+  const clearPausedTarget = useCallback(() => {
+    setPausedTarget(null);
+    writePausedTimerTarget(null);
+  }, []);
+
+  const setPausedTargetState = useCallback((target: PausedTimerTarget | null) => {
+    setPausedTarget(target);
+    writePausedTimerTarget(target);
+  }, []);
+
   const refresh = useCallback(async () => {
     const data = await api<ActiveTimerResponse>('/time-entries/active', {
       toastOnError: false,
     });
     setActiveTimer(data.activeTimer);
-  }, []);
+
+    if (data.activeTimer) {
+      clearPausedTarget();
+    }
+  }, [clearPausedTarget]);
 
   useEffect(() => {
     void refresh();
@@ -121,12 +162,13 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
         { method: 'POST' },
       );
       setActiveTimer(data.activeTimer);
+      clearPausedTarget();
       invalidateHomeData();
       invalidateTaskData();
     } finally {
       setIsStarting(false);
     }
-  }, []);
+  }, [clearPausedTarget]);
 
   const startTaskTimer = useCallback(
     async (projectId: string, taskId: string) => {
@@ -138,16 +180,22 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
           { method: 'POST' },
         );
         setActiveTimer(data.activeTimer);
+        clearPausedTarget();
         invalidateHomeData();
         invalidateTaskData();
       } finally {
         setIsStarting(false);
       }
     },
-    [],
+    [clearPausedTarget],
   );
 
   const pauseTimer = useCallback(async () => {
+    if (!activeTimer) {
+      return;
+    }
+
+    const nextPausedTarget = toPausedTarget(activeTimer);
     setIsPausing(true);
 
     try {
@@ -155,12 +203,34 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
         method: 'POST',
       });
       setActiveTimer(null);
+
+      if (nextPausedTarget) {
+        setPausedTargetState(nextPausedTarget);
+      }
+
       invalidateHomeData();
       invalidateTaskData();
     } finally {
       setIsPausing(false);
     }
-  }, []);
+  }, [activeTimer, setPausedTargetState]);
+
+  const resumeTimer = useCallback(async () => {
+    if (pausedTarget?.activity) {
+      await startTimer(
+        pausedTarget.activity.teamId,
+        pausedTarget.activity.id,
+      );
+      return;
+    }
+
+    if (pausedTarget?.task) {
+      await startTaskTimer(
+        pausedTarget.task.projectId,
+        pausedTarget.task.id,
+      );
+    }
+  }, [pausedTarget, startTimer, startTaskTimer]);
 
   const isActivityActive = useCallback(
     (activityId: string) => activeTimer?.activity?.id === activityId,
@@ -172,29 +242,66 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
     [activeTimer],
   );
 
+  const isActivityPaused = useCallback(
+    (activityId: string) =>
+      !activeTimer && pausedTarget?.activity?.id === activityId,
+    [activeTimer, pausedTarget],
+  );
+
+  const isTaskPaused = useCallback(
+    (taskId: string) => !activeTimer && pausedTarget?.task?.id === taskId,
+    [activeTimer, pausedTarget],
+  );
+
+  const isActivityCurrent = useCallback(
+    (activityId: string) =>
+      activeTimer?.activity?.id === activityId ||
+      pausedTarget?.activity?.id === activityId,
+    [activeTimer, pausedTarget],
+  );
+
+  const isTaskCurrent = useCallback(
+    (taskId: string) =>
+      activeTimer?.task?.id === taskId || pausedTarget?.task?.id === taskId,
+    [activeTimer, pausedTarget],
+  );
+
   const value = useMemo(
     () => ({
       activeTimer,
+      pausedTarget,
       isActive: activeTimer !== null,
+      hasTimerBar: activeTimer !== null || pausedTarget !== null,
       isStarting,
       isPausing,
       refresh,
       startTimer,
       startTaskTimer,
       pauseTimer,
+      resumeTimer,
       isActivityActive,
       isTaskActive,
+      isActivityPaused,
+      isTaskPaused,
+      isActivityCurrent,
+      isTaskCurrent,
     }),
     [
       activeTimer,
+      pausedTarget,
       isStarting,
       isPausing,
       refresh,
       startTimer,
       startTaskTimer,
       pauseTimer,
+      resumeTimer,
       isActivityActive,
       isTaskActive,
+      isActivityPaused,
+      isTaskPaused,
+      isActivityCurrent,
+      isTaskCurrent,
     ],
   );
 

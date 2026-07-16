@@ -23,7 +23,7 @@ export function HomePage() {
     isLoadingTimeline,
     isLoadingRecent,
   } = useHomeData(selectedDate);
-  const { isActive } = useActiveTimer();
+  const { hasTimerBar } = useActiveTimer();
 
   return (
     <div className='relative flex min-w-0 flex-1 flex-col gap-5 pb-4'>
@@ -50,7 +50,7 @@ export function HomePage() {
         size='icon-lg'
         className={cn(
           'fixed right-6 z-20 size-14 rounded-full shadow-lg lg:right-10',
-          isActive ? 'bottom-24' : 'bottom-6',
+          hasTimerBar ? 'bottom-24' : 'bottom-6',
         )}
         aria-label='Iniciar apontamento'
         onClick={() => setStartDialogOpen(true)}
