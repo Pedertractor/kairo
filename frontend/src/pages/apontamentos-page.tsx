@@ -55,7 +55,7 @@ export function ApontamentosPage() {
     null,
   );
   const [startDialogOpen, setStartDialogOpen] = useState(false);
-  const { isActive } = useActiveTimer();
+  const { hasTimerBar } = useActiveTimer();
 
   const loadTimeEntries = useCallback(async () => {
     setIsLoading(true);
@@ -140,7 +140,7 @@ export function ApontamentosPage() {
         size='icon-lg'
         className={cn(
           'fixed right-6 z-20 size-14 rounded-full shadow-lg lg:right-10',
-          isActive ? 'bottom-24' : 'bottom-6',
+          hasTimerBar ? 'bottom-24' : 'bottom-6',
         )}
         aria-label='Iniciar apontamento'
         onClick={() => setStartDialogOpen(true)}
@@ -168,7 +168,7 @@ export function ApontamentosPage() {
             <div className='overflow-x-auto'>
               <table className='w-full min-w-[800px] text-sm'>
                 <thead>
-                  <tr className='border-b bg-[#C5D3FF] text-left text-xs text-sidebar-primary'>
+                  <tr className='border-b bg-brand-soft text-left text-xs text-sidebar-primary'>
                     <th className='px-4 py-3 font-medium'>Item</th>
                     <th className='px-4 py-3 font-medium'>Equipe</th>
                     <th className='px-4 py-3 font-medium'>Início</th>

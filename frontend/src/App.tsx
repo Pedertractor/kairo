@@ -93,7 +93,7 @@ function App() {
       <Route
         path="/"
         element={
-          <ProtectedRoute hideHeader mainClassName="bg-[#F8F9FB]">
+          <ProtectedRoute hideHeader mainClassName="bg-background">
             <HomePage />
           </ProtectedRoute>
         }

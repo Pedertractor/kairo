@@ -9,7 +9,12 @@ import {
 } from 'react'
 
 import { api } from '@/lib/api-handler'
-import { clearStoredToken, getStoredToken, setStoredToken } from '@/lib/auth-storage'
+import {
+  clearStoredToken,
+  getStoredRefreshToken,
+  getStoredToken,
+  setStoredSession,
+} from '@/lib/auth-storage'
 import type {
   AuthResponse,
   ChangePasswordInput,
@@ -49,21 +54,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPendingUser(null)
   }, [])
 
+  const applySession = useCallback((accessToken: string, refreshToken: string, nextUser: User) => {
+    setStoredSession(accessToken, refreshToken)
+    setToken(accessToken)
+    setUser(nextUser)
+  }, [])
+
   const restoreSession = useCallback(async () => {
     const storedToken = getStoredToken()
+    const storedRefreshToken = getStoredRefreshToken()
 
-    if (!storedToken) {
+    if (!storedToken && !storedRefreshToken) {
       setIsLoading(false)
       return
     }
 
-    setToken(storedToken)
+    if (storedToken) {
+      setToken(storedToken)
+    }
 
     try {
       const { user: currentUser } = await api<MeResponse>('/auth/me', {
         toastOnError: false,
       })
       setUser(currentUser)
+      setToken(getStoredToken())
     } catch {
       clearSession()
     } finally {
@@ -75,23 +90,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void restoreSession()
   }, [restoreSession])
 
-  const login = useCallback(async (credentials: LoginCredentials): Promise<boolean> => {
-    const response = await api<LoginResponse>('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify(credentials),
-    })
-
-    if (response.requiresPasswordChange) {
-      setPendingCredentials(credentials)
-      setPendingUser(response.user)
-      return false
+  useEffect(() => {
+    const onSessionExpired = () => {
+      clearSession()
     }
 
-    setStoredToken(response.token)
-    setToken(response.token)
-    setUser(response.user)
-    return true
-  }, [])
+    window.addEventListener('kairo:session-expired', onSessionExpired)
+    return () => {
+      window.removeEventListener('kairo:session-expired', onSessionExpired)
+    }
+  }, [clearSession])
+
+  const login = useCallback(
+    async (credentials: LoginCredentials): Promise<boolean> => {
+      const response = await api<LoginResponse>('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify(credentials),
+      })
+
+      if (response.requiresPasswordChange) {
+        setPendingCredentials(credentials)
+        setPendingUser(response.user)
+        return false
+      }
+
+      applySession(response.token, response.refreshToken, response.user)
+      return true
+    },
+    [applySession],
+  )
 
   const changePassword = useCallback(
     async ({ newPassword, confirmPassword }: ChangePasswordInput) => {
@@ -106,28 +133,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         confirmPassword,
       }
 
-      const { token: accessToken, user: authenticatedUser } = await api<AuthResponse>(
-        '/auth/change-password',
-        {
-          method: 'POST',
-          body: JSON.stringify(payload),
-        },
-      )
+      const {
+        token: accessToken,
+        refreshToken,
+        user: authenticatedUser,
+      } = await api<AuthResponse>('/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      })
 
       setPendingCredentials(null)
       setPendingUser(null)
-      setStoredToken(accessToken)
-      setToken(accessToken)
-      setUser(authenticatedUser)
+      applySession(accessToken, refreshToken, authenticatedUser)
     },
-    [pendingCredentials],
+    [applySession, pendingCredentials],
   )
 
   const logout = useCallback(async () => {
     try {
       if (getStoredToken()) {
+        const refreshToken = getStoredRefreshToken()
         await api<null>('/auth/logout', {
           method: 'POST',
+          body: JSON.stringify(refreshToken ? { refreshToken } : {}),
           toastOnSuccess: false,
         })
       }

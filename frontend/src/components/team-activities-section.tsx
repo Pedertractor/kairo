@@ -2,16 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { CreateActivityDialog } from '@/components/create-activity-dialog';
-import { ActivityStatusActions } from '@/components/activity-status-actions';
-import { UpdateActivityStatusDialog } from '@/components/update-activity-status-dialog';
+import { FavoriteButton } from '@/components/favorite-button';
+import { StartActivityTimerButton } from '@/components/start-activity-timer-button';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useActiveTimer } from '@/hooks/use-active-timer';
 import { api } from '@/lib/api-handler';
-import {
-  CARD_STATUS_BADGE_CLASS,
-  CARD_STATUS_CARD_CLASS,
-} from '@/lib/card-status';
 import { CardTimeBudget } from '@/components/card-time-budget';
 import { cn } from '@/lib/utils';
 import type { ActivitiesListResponse, ActivitySummary } from '@/types/card';
@@ -21,12 +17,10 @@ interface TeamActivitiesSectionProps {
 }
 
 export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
-  const { isActivityActive } = useActiveTimer();
+  const { isActivityCurrent } = useActiveTimer();
   const [activities, setActivities] = useState<ActivitySummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [activityToUpdate, setActivityToUpdate] =
-    useState<ActivitySummary | null>(null);
 
   const loadActivities = useCallback(async () => {
     setIsLoading(true);
@@ -66,18 +60,6 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
         onCreated={loadActivities}
       />
 
-      <UpdateActivityStatusDialog
-        teamId={teamId}
-        activity={activityToUpdate}
-        open={activityToUpdate !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setActivityToUpdate(null);
-          }
-        }}
-        onUpdated={loadActivities}
-      />
-
       {isLoading ? (
         <div className='grid gap-2 sm:grid-cols-2 lg:grid-cols-3'>
           {Array.from({ length: 3 }).map((_, index) => (
@@ -94,14 +76,13 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
       ) : (
         <ul className='grid gap-2 sm:grid-cols-2 lg:grid-cols-3'>
           {activities.map((activity) => {
-            const isTimerActive = isActivityActive(activity.id);
+            const isTimerActive = isActivityCurrent(activity.id);
 
             return (
               <li
                 key={activity.id}
                 className={cn(
-                  'flex flex-col gap-2 rounded-lg border p-3 transition-all',
-                  CARD_STATUS_CARD_CLASS[activity.status],
+                  'flex flex-col gap-2 rounded-lg border border-border bg-card p-3 transition-all',
                   isTimerActive &&
                     'border-sidebar-primary shadow-md shadow-sidebar-primary/15 ring-2 ring-sidebar-primary/35',
                 )}
@@ -113,21 +94,30 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
                   >
                     {activity.title}
                   </Link>
-                  <ActivityStatusActions
-                    teamId={teamId}
-                    activity={activity}
-                    onStatusClick={() => setActivityToUpdate(activity)}
-                    onFavoriteToggle={(isFavorite) => {
-                      setActivities((current) =>
-                        current.map((item) =>
-                          item.id === activity.id
-                            ? { ...item, isFavorite }
-                            : item,
-                        ),
-                      );
-                    }}
-                    statusClassName={CARD_STATUS_BADGE_CLASS[activity.status]}
-                  />
+                  <div className='flex shrink-0 items-center gap-0.5'>
+                    <FavoriteButton
+                      target={{
+                        kind: 'activity',
+                        teamId,
+                        activityId: activity.id,
+                      }}
+                      isFavorite={activity.isFavorite}
+                      onToggle={(isFavorite) => {
+                        setActivities((current) =>
+                          current.map((item) =>
+                            item.id === activity.id
+                              ? { ...item, isFavorite }
+                              : item,
+                          ),
+                        );
+                      }}
+                    />
+                    <StartActivityTimerButton
+                      teamId={teamId}
+                      activityId={activity.id}
+                      className='text-muted-foreground hover:text-sidebar-primary'
+                    />
+                  </div>
                 </div>
                 {activity.description ? (
                   <p className='line-clamp-2 text-xs text-muted-foreground'>

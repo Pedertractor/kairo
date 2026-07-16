@@ -15,11 +15,12 @@ export interface User {
 
 export interface AuthResponse {
   token: string
+  refreshToken: string
   user: User
 }
 
 export type LoginResponse =
-  | { token: string; user: User; requiresPasswordChange?: false }
+  | { token: string; refreshToken: string; user: User; requiresPasswordChange?: false }
   | { user: User; requiresPasswordChange: true }
 
 export interface MeResponse {

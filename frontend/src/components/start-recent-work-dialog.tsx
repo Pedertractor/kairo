@@ -181,10 +181,15 @@ function getStatusLabel(item: StartableWorkItem): string {
 
 function getStatusBadgeClass(
   item: StartableWorkItem,
-  isActive: boolean,
+  isTimerRunning: boolean,
+  isTimerPaused: boolean,
 ): string {
-  if (isActive) {
+  if (isTimerRunning) {
     return CARD_STATUS_BADGE_CLASS.IN_PROGRESS
+  }
+
+  if (isTimerPaused) {
+    return CARD_STATUS_BADGE_CLASS.PAUSED
   }
 
   if (item.kind === 'TASK') {
@@ -214,7 +219,7 @@ function getItemHref(item: StartableWorkItem): string | null {
   return null
 }
 
-function isItemActive(
+function isItemRunning(
   item: StartableWorkItem,
   isActivityActive: (activityId: string) => boolean,
   isTaskActive: (taskId: string) => boolean,
@@ -225,6 +230,38 @@ function isItemActive(
 
   if (item.kind === 'TASK' && item.taskId) {
     return isTaskActive(item.taskId)
+  }
+
+  return false
+}
+
+function isItemPaused(
+  item: StartableWorkItem,
+  isActivityPaused: (activityId: string) => boolean,
+  isTaskPaused: (taskId: string) => boolean,
+): boolean {
+  if (item.kind === 'ACTIVITY' && item.activityId) {
+    return isActivityPaused(item.activityId)
+  }
+
+  if (item.kind === 'TASK' && item.taskId) {
+    return isTaskPaused(item.taskId)
+  }
+
+  return false
+}
+
+function isItemCurrent(
+  item: StartableWorkItem,
+  isActivityCurrent: (activityId: string) => boolean,
+  isTaskCurrent: (taskId: string) => boolean,
+): boolean {
+  if (item.kind === 'ACTIVITY' && item.activityId) {
+    return isActivityCurrent(item.activityId)
+  }
+
+  if (item.kind === 'TASK' && item.taskId) {
+    return isTaskCurrent(item.taskId)
   }
 
   return false
@@ -291,7 +328,14 @@ function WorkItemList({
   onStart: (item: StartableWorkItem) => void
   onClose: () => void
 }) {
-  const { isActivityActive, isTaskActive } = useActiveTimer()
+  const {
+    isActivityActive,
+    isTaskActive,
+    isActivityPaused,
+    isTaskPaused,
+    isActivityCurrent,
+    isTaskCurrent,
+  } = useActiveTimer()
 
   return (
     <ul className="flex flex-col gap-2">
@@ -299,16 +343,39 @@ function WorkItemList({
         const config = KIND_CONFIG[item.kind]
         const Icon = config.icon
         const href = getItemHref(item)
-        const isActive = isItemActive(item, isActivityActive, isTaskActive)
+        const isTimerRunning = isItemRunning(
+          item,
+          isActivityActive,
+          isTaskActive,
+        )
+        const isTimerPaused = isItemPaused(
+          item,
+          isActivityPaused,
+          isTaskPaused,
+        )
+        const isTimerCurrent = isItemCurrent(
+          item,
+          isActivityCurrent,
+          isTaskCurrent,
+        )
         const itemKey = `${item.kind}-${item.id}`
         const isStarting = startingItemKey === itemKey
-        const statusLabel = isActive ? 'Em andamento' : getStatusLabel(item)
-        const canStart = item.canStartTimer && !isActive && !startingItemKey
+        const statusLabel = isTimerRunning
+          ? 'Em andamento'
+          : isTimerPaused
+            ? 'Pausado'
+            : getStatusLabel(item)
+        const canStart =
+          item.canStartTimer && !isTimerRunning && !startingItemKey
 
         return (
           <li
             key={itemKey}
-            className="flex items-center gap-3 rounded-xl border bg-card p-3"
+            className={cn(
+              'flex items-center gap-3 rounded-xl border bg-card p-3',
+              isTimerCurrent &&
+                'border-sidebar-primary shadow-md shadow-sidebar-primary/15 ring-1 ring-sidebar-primary/35',
+            )}
           >
             <div
               className={cn(
@@ -361,7 +428,7 @@ function WorkItemList({
 
               <span
                 className={cn(
-                  getStatusBadgeClass(item, isActive),
+                  getStatusBadgeClass(item, isTimerRunning, isTimerPaused),
                   'rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap',
                 )}
               >

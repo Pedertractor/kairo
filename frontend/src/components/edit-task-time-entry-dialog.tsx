@@ -11,7 +11,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { FieldGroup } from '@/components/ui/field'
+import { useActiveTimer } from '@/hooks/use-active-timer'
 import { api } from '@/lib/api-handler'
+import { invalidateHomeData } from '@/lib/home-data-invalidation'
+import { invalidateTaskData } from '@/lib/task-data-invalidation'
 import type {
   UpdateTaskTimeEntryResponse,
   UpdateUserTimeEntryResponse,
@@ -40,6 +43,7 @@ export function EditTaskTimeEntryDialog({
   onOpenChange,
   onUpdated,
 }: EditTaskTimeEntryDialogProps) {
+  const { refresh } = useActiveTimer()
   const [startedAt, setStartedAt] = useState<string | null>(null)
   const [endedAt, setEndedAt] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -70,23 +74,22 @@ export function EditTaskTimeEntryDialog({
             }),
           },
         )
-
-        onOpenChange(false)
-        onUpdated()
-        return
+      } else {
+        await api<UpdateUserTimeEntryResponse>(
+          `/time-entries/${entry.id}`,
+          {
+            method: 'PATCH',
+            body: JSON.stringify({
+              startedAt,
+              endedAt,
+            }),
+          },
+        )
       }
 
-      await api<UpdateUserTimeEntryResponse>(
-        `/time-entries/${entry.id}`,
-        {
-          method: 'PATCH',
-          body: JSON.stringify({
-            startedAt,
-            endedAt,
-          }),
-        },
-      )
-
+      await refresh()
+      invalidateHomeData()
+      invalidateTaskData()
       onOpenChange(false)
       onUpdated()
     } finally {

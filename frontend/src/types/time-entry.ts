@@ -34,6 +34,11 @@ export interface ActiveTimer {
   task?: ActiveTimerTask;
 }
 
+export interface PausedTimerTarget {
+  activity?: ActiveTimerActivity;
+  task?: ActiveTimerTask;
+}
+
 export interface ActiveTimerResponse {
   activeTimer: ActiveTimer | null;
 }

@@ -84,8 +84,28 @@ model User {
   sentInvites     TeamInvite[] @relation("InviteSender")
   acceptedInvites TeamInvite[] @relation("InviteAcceptedBy")
 
+  refreshTokens RefreshToken[]
+
   @@unique([unit, cardNumber])
   @@map("users")
+}
+
+model RefreshToken {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tokenHash String @unique
+
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  replacedById String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
 }
 
 model Team {

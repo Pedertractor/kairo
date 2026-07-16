@@ -29,7 +29,7 @@ const TASK_CARD_STATUS_CLASS: Record<TaskStatus, string> = {
 };
 
 export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
-  const { isTaskActive } = useActiveTimer();
+  const { isTaskCurrent } = useActiveTimer();
   const [tasks, setTasks] = useState<TaskSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -95,7 +95,7 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
       ) : (
         <ul className='grid gap-3 sm:grid-cols-2 lg:grid-cols-3'>
           {tasks.map((task) => {
-            const isTimerActive = isTaskActive(task.id);
+            const isTimerActive = isTaskCurrent(task.id);
 
             return (
               <li
@@ -156,7 +156,6 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
                           ),
                         );
                       }}
-                      className='text-muted-foreground hover:text-amber-500'
                     />
                     <StartTaskTimerButton
                       projectId={projectId}

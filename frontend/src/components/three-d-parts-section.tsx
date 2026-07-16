@@ -125,7 +125,7 @@ export function ThreeDPartsSection() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-sm">
               <thead>
-                <tr className="border-b bg-[#C5D3FF] text-left text-xs text-sidebar-primary">
+                <tr className="border-b bg-brand-soft text-left text-xs text-sidebar-primary">
                   <th className="px-4 py-3 font-medium">Nome</th>
                   <th className="px-4 py-3 font-medium">Código</th>
                   <th className="px-4 py-3 font-medium">Tempo (min)</th>
