@@ -1,6 +1,11 @@
 import { toast } from 'sonner'
 
-import { getStoredToken } from '@/lib/auth-storage'
+import {
+  clearStoredToken,
+  getStoredRefreshToken,
+  getStoredToken,
+  setStoredSession,
+} from '@/lib/auth-storage'
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? '/api'
 
@@ -31,6 +36,8 @@ export type ApiRequestOptions = RequestInit & {
   toastOnSuccess?: boolean
   /** Exibe toast de erro automaticamente. Padrão: `true`. */
   toastOnError?: boolean
+  /** Evita nova tentativa de refresh nesta requisição. Uso interno. */
+  _skipRefresh?: boolean
 }
 
 function extractMensagem(body: unknown): string | undefined {
@@ -75,6 +82,63 @@ function showErrorToast(status: number, body: unknown): string {
   return mensagem
 }
 
+const AUTH_PATHS_WITHOUT_REFRESH = new Set([
+  '/auth/login',
+  '/auth/refresh',
+  '/auth/change-password',
+])
+
+let refreshInFlight: Promise<boolean> | null = null
+
+async function refreshAccessToken(): Promise<boolean> {
+  if (refreshInFlight) {
+    return refreshInFlight
+  }
+
+  refreshInFlight = (async () => {
+    const refreshToken = getStoredRefreshToken()
+    if (!refreshToken) {
+      return false
+    }
+
+    try {
+      const response = await fetch(`${BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refreshToken }),
+      })
+
+      const body = await parseBody(response)
+      if (!response.ok) {
+        clearStoredToken()
+        window.dispatchEvent(new Event('kairo:session-expired'))
+        return false
+      }
+
+      const dados = extractDados<{ token: string; refreshToken: string }>(body)
+      if (!dados?.token || !dados?.refreshToken) {
+        clearStoredToken()
+        window.dispatchEvent(new Event('kairo:session-expired'))
+        return false
+      }
+
+      setStoredSession(dados.token, dados.refreshToken)
+      return true
+    } catch {
+      clearStoredToken()
+      window.dispatchEvent(new Event('kairo:session-expired'))
+      return false
+    } finally {
+      refreshInFlight = null
+    }
+  })()
+
+  return refreshInFlight
+}
+
 /**
  * Processa uma resposta HTTP da API, exibe toasts e retorna os dados.
  * Use `api()` para novas requisições — este handler é o núcleo compartilhado.
@@ -109,7 +173,12 @@ export async function api<T>(
   path: string,
   options: ApiRequestOptions = {},
 ): Promise<T> {
-  const { toastOnSuccess, toastOnError = true, ...init } = options
+  const {
+    toastOnSuccess,
+    toastOnError = true,
+    _skipRefresh = false,
+    ...init
+  } = options
   const token = getStoredToken()
   const hasBody =
     init.body !== undefined && init.body !== null && init.body !== ''
@@ -132,6 +201,22 @@ export async function api<T>(
       toast.error(mensagem)
     }
     throw new ApiError(0, mensagem)
+  }
+
+  const shouldTryRefresh =
+    response.status === 401 &&
+    !_skipRefresh &&
+    !AUTH_PATHS_WITHOUT_REFRESH.has(path) &&
+    Boolean(getStoredRefreshToken())
+
+  if (shouldTryRefresh) {
+    const refreshed = await refreshAccessToken()
+    if (refreshed) {
+      return api<T>(path, {
+        ...options,
+        _skipRefresh: true,
+      })
+    }
   }
 
   return handleApiResponse<T>(response, { toastOnSuccess, toastOnError })

@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { UserRole } from '../generated/client.js';
 import { env } from '../config/env.js';
 import { EmployeeService } from './employee.service.js';
+import { RefreshTokenRepository } from '../repositories/refresh-token.repository.js';
 import { UserRepository } from '../repositories/user.repository.js';
 import type { SafeUser } from '../types/auth.types.js';
 import type { EmployeeLookupResult } from '../types/employee.types.js';
@@ -12,7 +13,10 @@ import { toEmployeeId, toSafeUser } from '../utils/user.js';
 export class UserService {
   private readonly employeeService = new EmployeeService();
 
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly refreshTokenRepository: RefreshTokenRepository,
+  ) {}
 
   async lookupEmployee(
     cardNumber: string,
@@ -109,6 +113,7 @@ export class UserService {
       targetUserId,
       passwordHash,
     );
+    await this.refreshTokenRepository.revokeAllForUser(targetUserId);
 
     return toSafeUser(updated);
   }
@@ -139,6 +144,7 @@ export class UserService {
     }
 
     const updated = await this.userRepository.setActive(targetUserId, false);
+    await this.refreshTokenRepository.revokeAllForUser(targetUserId);
     return toSafeUser(updated);
   }
 

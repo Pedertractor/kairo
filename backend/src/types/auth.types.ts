@@ -20,11 +20,12 @@ export interface LoginInput {
 
 export interface AuthPayload {
   token: string;
+  refreshToken: string;
   user: SafeUser;
 }
 
 export type LoginResponse =
-  | { token: string; user: SafeUser; requiresPasswordChange?: false }
+  | { token: string; refreshToken: string; user: SafeUser; requiresPasswordChange?: false }
   | { user: SafeUser; requiresPasswordChange: true };
 
 export interface ChangePasswordInput {
