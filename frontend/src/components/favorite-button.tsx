@@ -69,10 +69,10 @@ export function FavoriteButton({
       variant="ghost"
       size={size}
       className={cn(
-        currentFavorite
-          ? 'text-amber-500 hover:text-amber-600'
-          : 'text-muted-foreground hover:text-amber-500',
         className,
+        currentFavorite
+          ? 'text-amber-500 hover:text-amber-500'
+          : 'text-muted-foreground hover:text-amber-500',
       )}
       aria-label={
         currentFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'

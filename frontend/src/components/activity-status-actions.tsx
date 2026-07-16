@@ -30,7 +30,6 @@ export function ActivityStatusActions({
         }}
         isFavorite={activity.isFavorite}
         onToggle={onFavoriteToggle}
-        className="text-muted-foreground hover:text-amber-500"
       />
       <StartActivityTimerButton
         teamId={teamId}

@@ -157,7 +157,7 @@ export function TeamTimeEntriesSection({ teamId }: TeamTimeEntriesSectionProps) 
             <div className='overflow-x-auto'>
               <table className='w-full min-w-[880px] text-sm'>
                 <thead>
-                  <tr className='border-b bg-[#C5D3FF] text-left text-xs text-sidebar-primary'>
+                  <tr className='border-b bg-brand-soft text-left text-xs text-sidebar-primary'>
                     <th className='px-4 py-3 font-medium'>Membro</th>
                     <th className='px-4 py-3 font-medium'>Item</th>
                     <th className='px-4 py-3 font-medium'>Início</th>

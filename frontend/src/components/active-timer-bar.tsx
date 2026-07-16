@@ -45,7 +45,7 @@ export function ActiveTimerBar() {
         <div
           className={cn(
             'pointer-events-auto mx-auto flex max-w-5xl items-center justify-between gap-4 rounded-2xl border border-sidebar-primary/25 px-4 py-2.5 shadow-lg shadow-sidebar-primary/10',
-            'bg-[#C5D3FF]/45 backdrop-blur-md',
+            'bg-brand-soft/45 backdrop-blur-md',
             'dark:border-sidebar-primary/30 dark:bg-sidebar-primary/20 dark:shadow-sidebar-primary/15',
           )}
         >

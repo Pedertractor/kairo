@@ -9,17 +9,17 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "border-transparent bg-[#15803D] text-white hover:bg-[#15803D]/90 dark:bg-[#15803D] dark:hover:bg-[#15803D]/90",
+          "border-transparent bg-brand text-white hover:bg-brand/90 dark:bg-brand dark:hover:bg-brand/90",
         blue:
           "border-transparent bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 dark:bg-sidebar-primary dark:hover:bg-sidebar-primary/90",
         outline:
-          "border-sidebar-primary/40 bg-background text-sidebar-primary hover:bg-[#C5D3FF]/60 hover:text-sidebar-primary aria-expanded:bg-[#C5D3FF]/60 aria-expanded:text-sidebar-primary dark:border-sidebar-primary/40 dark:bg-input/30 dark:hover:bg-[#C5D3FF]/20",
+          "border-sidebar-primary/40 bg-background text-sidebar-primary hover:bg-brand-soft/60 hover:text-sidebar-primary aria-expanded:bg-brand-soft/60 aria-expanded:text-sidebar-primary dark:border-sidebar-primary/40 dark:bg-input/30 dark:hover:bg-brand-soft/20",
         cancel:
           "border-destructive/40 bg-background text-destructive hover:bg-destructive/10 hover:text-destructive aria-expanded:bg-destructive/10 dark:border-destructive/40 dark:bg-input/30 dark:hover:bg-destructive/20",
         secondary:
-          "bg-[#C5D3FF] text-sidebar-primary hover:bg-[#C5D3FF]/80 aria-expanded:bg-[#C5D3FF] aria-expanded:text-sidebar-primary",
+          "bg-brand-soft text-sidebar-primary hover:bg-brand-soft/80 aria-expanded:bg-brand-soft aria-expanded:text-sidebar-primary",
         ghost:
-          "text-sidebar-primary hover:bg-[#C5D3FF]/50 hover:text-sidebar-primary aria-expanded:bg-[#C5D3FF]/50 aria-expanded:text-sidebar-primary dark:hover:bg-[#C5D3FF]/20",
+          "text-sidebar-primary hover:bg-brand-soft/50 hover:text-sidebar-primary aria-expanded:bg-brand-soft/50 aria-expanded:text-sidebar-primary dark:hover:bg-brand-soft/20",
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
         link: "text-sidebar-primary underline-offset-4 hover:underline",

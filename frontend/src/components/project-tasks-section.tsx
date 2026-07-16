@@ -156,7 +156,6 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
                           ),
                         );
                       }}
-                      className='text-muted-foreground hover:text-amber-500'
                     />
                     <StartTaskTimerButton
                       projectId={projectId}
