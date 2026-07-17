@@ -190,6 +190,14 @@ export function TeamDayTimeline({
       .sort((left, right) => left.userName.localeCompare(right.userName));
   }, [blocks, memberColorMap]);
 
+  const memberColumnMap = useMemo(
+    () =>
+      new Map(
+        memberLegend.map((member, column) => [member.userId, column] as const),
+      ),
+    [memberLegend],
+  );
+
   const laidOutBlocks = useMemo(
     () => layoutOverlappingBlocks(blocks, rangeStart, rangeEnd, now),
     [blocks, rangeStart, rangeEnd, now],
@@ -372,23 +380,32 @@ export function TeamDayTimeline({
         ) : (
           <>
             {memberLegend.length > 0 ? (
-              <div className='mb-4 flex flex-wrap gap-3'>
-                {memberLegend.map((member) => (
-                  <div
-                    key={member.userId}
-                    className='flex items-center gap-2 text-xs text-muted-foreground'
-                  >
-                    <span
-                      className={cn(
-                        'size-2.5 shrink-0 rounded-full',
-                        member.colors.legend,
-                      )}
-                    />
-                    <span className='font-medium text-foreground'>
-                      {member.userName}
-                    </span>
-                  </div>
-                ))}
+              <div className='mb-3 grid grid-cols-[3rem_minmax(0,1fr)] gap-x-3 sm:grid-cols-[3.25rem_minmax(0,1fr)] sm:gap-x-4'>
+                <div />
+                <div
+                  className='grid min-w-0'
+                  style={{
+                    gridTemplateColumns: `repeat(${memberLegend.length}, minmax(0, 1fr))`,
+                  }}
+                >
+                  {memberLegend.map((member) => (
+                    <div
+                      key={member.userId}
+                      className='flex min-w-0 items-center justify-center gap-1.5 px-1 text-xs'
+                      title={member.userName}
+                    >
+                      <span
+                        className='size-2.5 shrink-0 rounded-full'
+                        style={{
+                          backgroundColor: member.colors.backgroundColor,
+                        }}
+                      />
+                      <span className='truncate font-medium text-foreground'>
+                        {member.userName}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : null}
 
@@ -421,6 +438,19 @@ export function TeamDayTimeline({
                 </div>
 
                 <div className='relative min-w-0'>
+                  {memberLegend.map((member, column) => (
+                    <div
+                      key={member.userId}
+                      className='pointer-events-none absolute inset-y-0 border-l border-border/35'
+                      style={{
+                        left: `${(column / memberLegend.length) * 100}%`,
+                      }}
+                    />
+                  ))}
+                  {memberLegend.length > 0 ? (
+                    <div className='pointer-events-none absolute inset-y-0 right-0 border-r border-border/35' />
+                  ) : null}
+
                   {ticks.map((tick) => (
                     <div
                       key={tick.minutes}
@@ -444,8 +474,11 @@ export function TeamDayTimeline({
                       3,
                     );
                     const colors = memberColorMap.get(layout.block.userId);
+                    const memberColumn = memberColumnMap.get(
+                      layout.block.userId,
+                    );
 
-                    if (!colors) {
+                    if (colors === undefined || memberColumn === undefined) {
                       return null;
                     }
 
@@ -455,8 +488,8 @@ export function TeamDayTimeline({
                         block={layout.block}
                         top={top}
                         height={height}
-                        column={layout.column}
-                        totalColumns={layout.totalColumns}
+                        column={memberColumn}
+                        totalColumns={memberLegend.length}
                         colors={colors}
                       />
                     );
