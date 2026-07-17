@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { TeamActivitiesSection } from '@/components/team-activities-section';
 import { TeamMembersSection } from '@/components/team-members-section';
 import { TeamProjectsSection } from '@/components/team-projects-section';
@@ -19,11 +19,39 @@ type TeamTab =
   | 'apontamentos'
   | 'timeline';
 
+const TEAM_TABS = new Set<TeamTab>([
+  'atividades',
+  'projetos',
+  'membros',
+  'apontamentos',
+  'timeline',
+]);
+
+function parseTeamTab(value: string | null): TeamTab | null {
+  if (!value || !TEAM_TABS.has(value as TeamTab)) {
+    return null;
+  }
+
+  return value as TeamTab;
+}
+
 export function TeamDetailPage() {
   const { teamId } = useParams<{ teamId: string }>();
+  const [searchParams] = useSearchParams();
+  const tabFromUrl = parseTeamTab(searchParams.get('tab'));
+  const dateFromUrl = searchParams.get('date') ?? undefined;
+  const userIdFromUrl = searchParams.get('userId') ?? undefined;
   const [team, setTeam] = useState<TeamResponse['team'] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<TeamTab>('atividades');
+  const [activeTab, setActiveTab] = useState<TeamTab>(
+    tabFromUrl ?? 'atividades',
+  );
+
+  useEffect(() => {
+    if (tabFromUrl) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
 
   useEffect(() => {
     if (!teamId) {
@@ -142,7 +170,11 @@ export function TeamDetailPage() {
             </TabsContent>
 
             <TabsContent value='timeline'>
-              <TeamTimelineSection teamId={team.id} />
+              <TeamTimelineSection
+                teamId={team.id}
+                initialDate={dateFromUrl}
+                userId={userIdFromUrl}
+              />
             </TabsContent>
           </Tabs>
         </>

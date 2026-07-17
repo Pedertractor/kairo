@@ -5,7 +5,10 @@ export function toEmployeeId(unit: UnitType, cardNumber: string): string {
   return `${unit}-${cardNumber}`;
 }
 
-export function toSafeUser(user: User): SafeUser {
+export function toSafeUser(
+  user: User,
+  hasOwnedTeams = false,
+): SafeUser {
   return {
     id: user.id,
     employeeId: user.employeeId,
@@ -16,5 +19,6 @@ export function toSafeUser(user: User): SafeUser {
     active: user.active,
     firstLogin: user.firstLogin,
     printerOperator: user.printerOperator,
+    hasOwnedTeams,
   };
 }

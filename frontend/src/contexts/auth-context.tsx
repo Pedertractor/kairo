@@ -34,6 +34,7 @@ interface AuthContextValue {
   pendingUser: User | null
   login: (credentials: LoginCredentials) => Promise<boolean>
   changePassword: (input: ChangePasswordInput) => Promise<void>
+  refreshUser: () => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -149,6 +150,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [applySession, pendingCredentials],
   )
 
+  const refreshUser = useCallback(async () => {
+    const { user: currentUser } = await api<MeResponse>('/auth/me', {
+      toastOnError: false,
+    })
+    setUser(currentUser)
+  }, [])
+
   const logout = useCallback(async () => {
     try {
       if (getStoredToken()) {
@@ -176,9 +184,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       pendingUser,
       login,
       changePassword,
+      refreshUser,
       logout,
     }),
-    [user, token, isLoading, pendingCredentials, pendingUser, login, changePassword, logout],
+    [
+      user,
+      token,
+      isLoading,
+      pendingCredentials,
+      pendingUser,
+      login,
+      changePassword,
+      refreshUser,
+      logout,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

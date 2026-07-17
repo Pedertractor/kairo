@@ -8,11 +8,21 @@ import type { TeamDayDashboard } from '@/types/time-entry';
 
 interface TeamTimelineSectionProps {
   teamId: string;
+  initialDate?: string;
+  userId?: string;
 }
 
-export function TeamTimelineSection({ teamId }: TeamTimelineSectionProps) {
+export function TeamTimelineSection({
+  teamId,
+  initialDate,
+  userId,
+}: TeamTimelineSectionProps) {
   const todayKey = useMemo(() => toDateKey(new Date()), []);
-  const [selectedDate, setSelectedDate] = useState(todayKey);
+  const [selectedDate, setSelectedDate] = useState(
+    initialDate && /^\d{4}-\d{2}-\d{2}$/.test(initialDate)
+      ? initialDate
+      : todayKey,
+  );
   const [todayDashboard, setTodayDashboard] = useState<TeamDayDashboard | null>(
     null,
   );
@@ -20,6 +30,12 @@ export function TeamTimelineSection({ teamId }: TeamTimelineSectionProps) {
     useState<TeamDayDashboard | null>(null);
   const [isLoadingToday, setIsLoadingToday] = useState(true);
   const [isLoadingTimeline, setIsLoadingTimeline] = useState(true);
+
+  useEffect(() => {
+    if (initialDate && /^\d{4}-\d{2}-\d{2}$/.test(initialDate)) {
+      setSelectedDate(initialDate);
+    }
+  }, [initialDate]);
 
   const loadToday = useCallback(async () => {
     setIsLoadingToday(true);
@@ -65,13 +81,37 @@ export function TeamTimelineSection({ teamId }: TeamTimelineSectionProps) {
 
   const timelineDashboard =
     selectedDate === todayKey ? todayDashboard : otherDayDashboard;
-  const timelineBlocks = timelineDashboard?.blocks ?? [];
+  const allBlocks = timelineDashboard?.blocks ?? [];
+  const timelineBlocks = userId
+    ? allBlocks.filter((block) => block.userId === userId)
+    : allBlocks;
+  const filteredUserName = userId
+    ? allBlocks.find((block) => block.userId === userId)?.userName
+    : undefined;
   const timelineLoading =
     selectedDate === todayKey ? isLoadingToday : isLoadingTimeline;
 
   return (
     <div className='flex flex-col gap-5'>
-      <TeamDayStatsCards stats={todayDashboard?.stats ?? null} isLoading={isLoadingToday} />
+      <TeamDayStatsCards
+        stats={todayDashboard?.stats ?? null}
+        isLoading={isLoadingToday}
+      />
+
+      {userId ? (
+        <p className='text-sm text-muted-foreground'>
+          Mostrando timeline
+          {filteredUserName ? (
+            <>
+              {' '}
+              de <span className='font-medium text-foreground'>{filteredUserName}</span>
+            </>
+          ) : (
+            ' do funcionário selecionado'
+          )}{' '}
+          no dia filtrado.
+        </p>
+      ) : null}
 
       <TeamDayTimeline
         blocks={timelineBlocks}

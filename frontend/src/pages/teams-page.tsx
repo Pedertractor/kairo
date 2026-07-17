@@ -9,7 +9,7 @@ import { api } from '@/lib/api-handler'
 import type { TeamSummary, TeamsListResponse } from '@/types/team'
 
 export function TeamsPage() {
-  const { user } = useAuth()
+  const { user, refreshUser } = useAuth()
   const [teams, setTeams] = useState<TeamSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
@@ -28,6 +28,10 @@ export function TeamsPage() {
   useEffect(() => {
     void loadTeams()
   }, [loadTeams])
+
+  const handleTeamCreated = useCallback(async () => {
+    await Promise.all([loadTeams(), refreshUser()])
+  }, [loadTeams, refreshUser])
 
   const isAdmin = user?.role === 'ADMIN'
 
@@ -68,7 +72,7 @@ export function TeamsPage() {
         <CreateTeamDialog
           open={isCreateDialogOpen}
           onOpenChange={setIsCreateDialogOpen}
-          onCreated={loadTeams}
+          onCreated={handleTeamCreated}
         />
       ) : null}
     </div>

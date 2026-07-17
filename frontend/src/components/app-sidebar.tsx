@@ -14,6 +14,7 @@ import {
 import { useAuth } from '@/hooks/use-auth';
 import type { UnitType } from '@/types/auth';
 import {
+  ChartNoAxesCombinedIcon,
   BoxIcon,
   ClockIcon,
   FolderKanbanIcon,
@@ -58,6 +59,14 @@ const printerOperatorNavItems = [
   },
 ];
 
+const teamOwnerNavItems = [
+  {
+    title: 'Analytics',
+    url: '/analytics',
+    icon: <ChartNoAxesCombinedIcon />,
+  },
+];
+
 const adminNavItems = [
   {
     title: 'Usuários',
@@ -72,6 +81,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
 
   const navItems = [
     ...baseNavItems,
+    ...(user?.hasOwnedTeams ? teamOwnerNavItems : []),
     ...(user?.printerOperator ? printerOperatorNavItems : []),
     ...(user?.role === 'ADMIN' ? adminNavItems : []),
   ];
