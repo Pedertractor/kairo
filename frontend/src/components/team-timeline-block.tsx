@@ -51,6 +51,7 @@ export function TeamTimelineBlock({
               height,
               left: `calc(${leftPercent}% + ${COLUMN_GAP_PX / 2}px)`,
               width: `calc(${widthPercent}% - ${COLUMN_GAP_PX}px)`,
+              backgroundColor: colors.backgroundColor,
             }}
           >
             {showTitle ? (
