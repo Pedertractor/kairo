@@ -6,6 +6,7 @@ import type {
 } from '../types/analytics.types.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
+import { getEntryDurationSeconds } from '../utils/time-entry-duration.js';
 
 const DAILY_AVAILABILITY_SECONDS = 8 * 60 * 60 + 48 * 60;
 
@@ -43,7 +44,12 @@ export class AnalyticsService {
 
   async getDashboard(
     ownerId: string,
-    options: { date?: string; teamId?: string; employeeId?: string },
+    options: {
+      date?: string;
+      teamId?: string;
+      employeeId?: string;
+      projectId?: string;
+    },
   ): Promise<AnalyticsDashboard> {
     const ownedTeams = await this.repository.findOwnedTeams(ownerId);
 
@@ -61,9 +67,25 @@ export class AnalyticsService {
     const scopedTeams = options.teamId
       ? ownedTeams.filter((team) => team.id === options.teamId)
       : ownedTeams;
+    const projects = await this.repository.findProjectsForTeams(
+      scopedTeams.map((team) => team.id),
+    );
+    const selectedProject = options.projectId
+      ? projects.find((project) => project.id === options.projectId)
+      : undefined;
+
+    if (options.projectId && !selectedProject) {
+      throw new AppError(403, MENSAGENS.PROIBIDO);
+    }
+
     const employeesById = new Map<
       string,
-      { id: string; name: string; teamNames: Set<string> }
+      {
+        id: string;
+        name: string;
+        teamId: string;
+        teamNames: Set<string>;
+      }
     >();
 
     for (const team of scopedTeams) {
@@ -76,6 +98,7 @@ export class AnalyticsService {
           employeesById.set(membership.user.id, {
             id: membership.user.id,
             name: membership.user.name,
+            teamId: team.id,
             teamNames: new Set([team.name]),
           });
         }
@@ -92,11 +115,17 @@ export class AnalyticsService {
 
     const date = options.date ?? formatDateKey(new Date());
     const { dayStart, dayEnd } = getDayBounds(date);
-    const entries = await this.repository.findEntriesForTeams(
-      scopedTeams.map((team) => team.id),
-      dayStart,
-      dayEnd,
-    );
+    const [entries, projectEntries] = await Promise.all([
+      this.repository.findEntriesForTeams(
+        scopedTeams.map((team) => team.id),
+        dayStart,
+        dayEnd,
+        selectedProject?.id,
+      ),
+      selectedProject
+        ? this.repository.findEntriesForProject(selectedProject.id)
+        : Promise.resolve([]),
+    ]);
     const now = new Date();
     const totalsByEmployee = new Map<
       string,
@@ -134,6 +163,7 @@ export class AnalyticsService {
         return {
           employeeId: employee.id,
           employeeName: employee.name,
+          teamId: employee.teamId,
           teamNames: [...employee.teamNames].sort(),
           availabilitySeconds: DAILY_AVAILABILITY_SECONDS,
           loggedSeconds: totals.loggedSeconds,
@@ -172,10 +202,70 @@ export class AnalyticsService {
           )
         : 0;
 
+    const estimatedSeconds = selectedProject?.estimatedHours
+      ? Math.round(Number(selectedProject.estimatedHours) * 60 * 60)
+      : null;
+    const projectTotalsByEmployee = new Map<
+      string,
+      { employeeName: string; spentSeconds: number }
+    >();
+
+    for (const entry of projectEntries) {
+      if (options.employeeId && entry.userId !== options.employeeId) {
+        continue;
+      }
+
+      const current = projectTotalsByEmployee.get(entry.userId) ?? {
+        employeeName: entry.user.name,
+        spentSeconds: 0,
+      };
+      current.spentSeconds += getEntryDurationSeconds(entry, now);
+      projectTotalsByEmployee.set(entry.userId, current);
+    }
+
+    const projectUsers = [...projectTotalsByEmployee.entries()]
+      .map(([employeeId, total]) => ({
+        employeeId,
+        employeeName: total.employeeName,
+        spentSeconds: total.spentSeconds,
+        estimatedTimePercent:
+          estimatedSeconds && estimatedSeconds > 0
+            ? Math.round((total.spentSeconds / estimatedSeconds) * 100)
+            : null,
+      }))
+      .sort((a, b) => b.spentSeconds - a.spentSeconds);
+    const projectSpentSeconds = projectUsers.reduce(
+      (total, user) => total + user.spentSeconds,
+      0,
+    );
+
     return {
       date,
       teams: ownedTeams.map(({ id, name }) => ({ id, name })),
       employees,
+      projects: projects.map((project) => ({
+        id: project.id,
+        title: project.title,
+        teamId: project.teamId,
+        teamName: project.team.name,
+      })),
+      selectedProject: selectedProject
+        ? {
+            id: selectedProject.id,
+            title: selectedProject.title,
+            teamId: selectedProject.teamId,
+            teamName: selectedProject.team.name,
+            estimatedSeconds,
+            spentSeconds: projectSpentSeconds,
+            estimatedTimePercent:
+              estimatedSeconds && estimatedSeconds > 0
+                ? Math.round(
+                    (projectSpentSeconds / estimatedSeconds) * 100,
+                  )
+                : null,
+            users: projectUsers,
+          }
+        : null,
       summary,
       rows,
     };

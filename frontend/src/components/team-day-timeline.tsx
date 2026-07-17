@@ -31,6 +31,7 @@ interface TeamDayTimelineProps {
   selectedDate: string;
   onDateChange: (date: string) => void;
   isLoading: boolean;
+  showDateOptions?: boolean;
 }
 
 interface DateOption {
@@ -44,10 +45,10 @@ interface TimelineTick {
   label: string | null;
 }
 
-function buildDateOptions(): DateOption[] {
+function buildDateOptions(extraDate?: string): DateOption[] {
   const today = new Date();
 
-  return Array.from({ length: 4 }, (_, index) => {
+  const options = Array.from({ length: 4 }, (_, index) => {
     const date = new Date(today);
     date.setDate(date.getDate() - index);
 
@@ -64,6 +65,16 @@ function buildDateOptions(): DateOption[] {
 
     return { key, label };
   });
+
+  if (extraDate && !options.some((option) => option.key === extraDate)) {
+    options.push({
+      key: extraDate,
+      label: dayjs(extraDate).format('DD/MM'),
+    });
+    options.sort((left, right) => right.key.localeCompare(left.key));
+  }
+
+  return options;
 }
 
 function clampZoom(value: number) {
@@ -125,8 +136,12 @@ export function TeamDayTimeline({
   selectedDate,
   onDateChange,
   isLoading,
+  showDateOptions = true,
 }: TeamDayTimelineProps) {
-  const dateOptions = useMemo(() => buildDateOptions(), []);
+  const dateOptions = useMemo(
+    () => buildDateOptions(selectedDate),
+    [selectedDate],
+  );
   const isToday = selectedDate === toDateKey(new Date());
   const [now, setNow] = useState(() => new Date());
   const [zoom, setZoom] = useState(MIN_ZOOM);
@@ -321,27 +336,29 @@ export function TeamDayTimeline({
           </div>
         </div>
 
-        <div className='flex shrink-0 rounded-full bg-muted p-1'>
-          {dateOptions.map((option) => {
-            const isActive = option.key === selectedDate;
+        {showDateOptions ? (
+          <div className='flex shrink-0 rounded-full bg-muted p-1'>
+            {dateOptions.map((option) => {
+              const isActive = option.key === selectedDate;
 
-            return (
-              <button
-                key={option.key}
-                type='button'
-                onClick={() => onDateChange(option.key)}
-                className={cn(
-                  'rounded-full px-3 py-1 text-xs font-medium capitalize transition-colors',
-                  isActive
-                    ? 'bg-card text-primary shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                {option.label}
-              </button>
-            );
-          })}
-        </div>
+              return (
+                <button
+                  key={option.key}
+                  type='button'
+                  onClick={() => onDateChange(option.key)}
+                  className={cn(
+                    'rounded-full px-3 py-1 text-xs font-medium capitalize transition-colors',
+                    isActive
+                      ? 'bg-card text-primary shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
       </CardHeader>
 
       <CardContent className='px-5'>

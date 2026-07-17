@@ -7,4 +7,5 @@ export const analyticsQuerySchema = z.object({
     .optional(),
   teamId: z.string().min(1).optional(),
   employeeId: z.string().min(1).optional(),
+  projectId: z.string().min(1).optional(),
 });

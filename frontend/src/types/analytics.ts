@@ -8,9 +8,35 @@ export interface AnalyticsEmployeeOption {
   name: string
 }
 
+export interface AnalyticsProjectOption {
+  id: string
+  title: string
+  teamId: string
+  teamName: string
+}
+
+export interface ProjectUserAnalytics {
+  employeeId: string
+  employeeName: string
+  spentSeconds: number
+  estimatedTimePercent: number | null
+}
+
+export interface ProjectAnalytics {
+  id: string
+  title: string
+  teamId: string
+  teamName: string
+  estimatedSeconds: number | null
+  spentSeconds: number
+  estimatedTimePercent: number | null
+  users: ProjectUserAnalytics[]
+}
+
 export interface EmployeeDayAnalytics {
   employeeId: string
   employeeName: string
+  teamId: string
   teamNames: string[]
   availabilitySeconds: number
   loggedSeconds: number
@@ -23,6 +49,8 @@ export interface AnalyticsDashboard {
   date: string
   teams: AnalyticsTeamOption[]
   employees: AnalyticsEmployeeOption[]
+  projects: AnalyticsProjectOption[]
+  selectedProject: ProjectAnalytics | null
   summary: {
     availabilitySeconds: number
     loggedSeconds: number

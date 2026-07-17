@@ -34,8 +34,18 @@ export function DatePicker({
 }: DatePickerProps) {
   const [open, setOpen] = useState(false)
 
+  function handleOpenChange(nextOpen: boolean) {
+    const scrollY = window.scrollY
+    setOpen(nextOpen)
+
+    // Prevent focus management from jumping the page when the popover opens/closes.
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: scrollY })
+    })
+  }
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         disabled={disabled}
         render={
@@ -56,7 +66,12 @@ export function DatePicker({
           ? format(date, displayFormat, { locale: dateFnsPtBR })
           : placeholder}
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent
+        className="w-auto p-0"
+        align="start"
+        initialFocus={false}
+        finalFocus={false}
+      >
         <Calendar
           mode="single"
           selected={date}
@@ -65,7 +80,6 @@ export function DatePicker({
             setOpen(false)
           }}
           locale={dayPickerPtBR}
-          autoFocus
         />
       </PopoverContent>
     </Popover>
