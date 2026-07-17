@@ -2,7 +2,6 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 
 import { AppLayout } from '@/components/app-layout'
 import { useAuth } from '@/hooks/use-auth'
-import { useHasOwnedTeams } from '@/hooks/use-has-owned-teams'
 import { AnalyticsPage } from '@/pages/analytics-page'
 import { ChangePasswordPage } from '@/pages/change-password-page'
 import { HomePage } from '@/pages/home-page'
@@ -35,8 +34,6 @@ function ProtectedRoute({
   requireTeamOwner?: boolean
 }) {
   const { isAuthenticated, user } = useAuth()
-  const { hasOwnedTeams, isLoading: isLoadingOwnedTeams } =
-    useHasOwnedTeams(requireTeamOwner)
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
@@ -50,15 +47,7 @@ function ProtectedRoute({
     return <Navigate to="/" replace />
   }
 
-  if (requireTeamOwner && isLoadingOwnedTeams) {
-    return (
-      <div className="flex min-h-svh items-center justify-center">
-        <p className="text-sm text-muted-foreground">Carregando...</p>
-      </div>
-    )
-  }
-
-  if (requireTeamOwner && !hasOwnedTeams) {
+  if (requireTeamOwner && !user?.hasOwnedTeams) {
     return <Navigate to="/" replace />
   }
 

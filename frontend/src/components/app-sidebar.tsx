@@ -12,7 +12,6 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/use-auth';
-import { useHasOwnedTeams } from '@/hooks/use-has-owned-teams';
 import type { UnitType } from '@/types/auth';
 import {
   ChartNoAxesCombinedIcon,
@@ -78,12 +77,11 @@ const adminNavItems = [
 
 export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
-  const { hasOwnedTeams } = useHasOwnedTeams();
   const { pathname } = useLocation();
 
   const navItems = [
     ...baseNavItems,
-    ...(hasOwnedTeams ? teamOwnerNavItems : []),
+    ...(user?.hasOwnedTeams ? teamOwnerNavItems : []),
     ...(user?.printerOperator ? printerOperatorNavItems : []),
     ...(user?.role === 'ADMIN' ? adminNavItems : []),
   ];

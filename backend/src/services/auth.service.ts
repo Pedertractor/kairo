@@ -161,7 +161,7 @@ export class AuthService {
     await this.refreshTokenRepository.revoke(existing.id, created.id);
 
     return {
-      user: toSafeUser(existing.user),
+      user: await this.toAuthenticatedUser(existing.user),
       refreshToken: nextPlainToken,
     };
   }

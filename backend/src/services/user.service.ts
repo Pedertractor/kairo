@@ -61,7 +61,7 @@ export class UserService {
 
   async listUsers(): Promise<SafeUser[]> {
     const users = await this.userRepository.findAll();
-    return users.map(toSafeUser);
+    return users.map((user) => toSafeUser(user));
   }
 
   async updateRole(
