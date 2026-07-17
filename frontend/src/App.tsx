@@ -2,6 +2,8 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 
 import { AppLayout } from '@/components/app-layout'
 import { useAuth } from '@/hooks/use-auth'
+import { useHasOwnedTeams } from '@/hooks/use-has-owned-teams'
+import { AnalyticsPage } from '@/pages/analytics-page'
 import { ChangePasswordPage } from '@/pages/change-password-page'
 import { HomePage } from '@/pages/home-page'
 import { LoginPage } from '@/pages/login-page'
@@ -22,6 +24,7 @@ function ProtectedRoute({
   mainClassName,
   requireAdmin = false,
   requirePrinterOperator = false,
+  requireTeamOwner = false,
 }: {
   children: React.ReactNode
   title?: string
@@ -29,8 +32,11 @@ function ProtectedRoute({
   mainClassName?: string
   requireAdmin?: boolean
   requirePrinterOperator?: boolean
+  requireTeamOwner?: boolean
 }) {
   const { isAuthenticated, user } = useAuth()
+  const { hasOwnedTeams, isLoading: isLoadingOwnedTeams } =
+    useHasOwnedTeams(requireTeamOwner)
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
@@ -41,6 +47,18 @@ function ProtectedRoute({
   }
 
   if (requirePrinterOperator && !user?.printerOperator) {
+    return <Navigate to="/" replace />
+  }
+
+  if (requireTeamOwner && isLoadingOwnedTeams) {
+    return (
+      <div className="flex min-h-svh items-center justify-center">
+        <p className="text-sm text-muted-foreground">Carregando...</p>
+      </div>
+    )
+  }
+
+  if (requireTeamOwner && !hasOwnedTeams) {
     return <Navigate to="/" replace />
   }
 
@@ -93,7 +111,7 @@ function App() {
       <Route
         path="/"
         element={
-          <ProtectedRoute hideHeader mainClassName="bg-background">
+          <ProtectedRoute key="home" hideHeader mainClassName="bg-background">
             <HomePage />
           </ProtectedRoute>
         }
@@ -101,7 +119,7 @@ function App() {
       <Route
         path="/equipes"
         element={
-          <ProtectedRoute title="Equipes">
+          <ProtectedRoute key="equipes" title="Equipes">
             <TeamsPage />
           </ProtectedRoute>
         }
@@ -109,7 +127,7 @@ function App() {
       <Route
         path="/projetos"
         element={
-          <ProtectedRoute title="Projetos">
+          <ProtectedRoute key="projetos" title="Projetos">
             <ProjetosPage />
           </ProtectedRoute>
         }
@@ -117,15 +135,23 @@ function App() {
       <Route
         path="/apontamentos"
         element={
-          <ProtectedRoute title="Apontamentos">
+          <ProtectedRoute key="apontamentos" title="Apontamentos">
             <ApontamentosPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/analytics"
+        element={
+          <ProtectedRoute key="analytics" title="Analytics" requireTeamOwner>
+            <AnalyticsPage />
           </ProtectedRoute>
         }
       />
       <Route
         path="/3d"
         element={
-          <ProtectedRoute title="3D" requirePrinterOperator>
+          <ProtectedRoute key="3d" title="3D" requirePrinterOperator>
             <ThreeDPage />
           </ProtectedRoute>
         }
@@ -133,7 +159,7 @@ function App() {
       <Route
         path="/usuarios"
         element={
-          <ProtectedRoute title="Usuários" requireAdmin>
+          <ProtectedRoute key="usuarios" title="Usuários" requireAdmin>
             <UsuariosPage />
           </ProtectedRoute>
         }
@@ -141,7 +167,7 @@ function App() {
       <Route
         path="/projetos/:projectId/tarefas/:taskId"
         element={
-          <ProtectedRoute title="Tarefa">
+          <ProtectedRoute key="tarefa" title="Tarefa">
             <TaskDetailPage />
           </ProtectedRoute>
         }
@@ -149,7 +175,7 @@ function App() {
       <Route
         path="/projetos/:projectId"
         element={
-          <ProtectedRoute title="Projeto">
+          <ProtectedRoute key="projeto" title="Projeto">
             <ProjectDetailPage />
           </ProtectedRoute>
         }
@@ -157,7 +183,7 @@ function App() {
       <Route
         path="/equipes/:teamId"
         element={
-          <ProtectedRoute title="Equipe">
+          <ProtectedRoute key="equipe" title="Equipe">
             <TeamDetailPage />
           </ProtectedRoute>
         }
@@ -165,7 +191,7 @@ function App() {
       <Route
         path="/equipes/:teamId/atividades/:activityId"
         element={
-          <ProtectedRoute title="Atividade">
+          <ProtectedRoute key="atividade" title="Atividade">
             <ActivityDetailPage />
           </ProtectedRoute>
         }

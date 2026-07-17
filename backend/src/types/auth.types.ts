@@ -10,6 +10,7 @@ export interface SafeUser {
   active: boolean;
   firstLogin: boolean;
   printerOperator: boolean;
+  hasOwnedTeams: boolean;
 }
 
 export interface LoginInput {

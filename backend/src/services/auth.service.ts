@@ -25,6 +25,11 @@ export class AuthService {
     private readonly refreshTokenRepository: RefreshTokenRepository,
   ) {}
 
+  private async toAuthenticatedUser(user: User) {
+    const hasOwnedTeams = await this.userRepository.hasOwnedTeams(user.id);
+    return toSafeUser(user, hasOwnedTeams);
+  }
+
   async login({ cardNumber, unit, password }: LoginInput) {
     const user = await this.userRepository.findByUnitAndCardNumber(
       unit,
@@ -41,7 +46,7 @@ export class AuthService {
       throw new AppError(401, MENSAGENS.CREDENCIAIS_INVALIDAS);
     }
 
-    return toSafeUser(user);
+    return this.toAuthenticatedUser(user);
   }
 
   async changePassword(input: ChangePasswordInput) {
@@ -65,7 +70,10 @@ export class AuthService {
     }
 
     if (!user.firstLogin) {
-      return { user: toSafeUser(user), passwordChanged: false };
+      return {
+        user: await this.toAuthenticatedUser(user),
+        passwordChanged: false,
+      };
     }
 
     if (newPassword === env.DEFAULT_PASSWORD) {
@@ -78,7 +86,10 @@ export class AuthService {
       passwordHash,
     );
 
-    return { user: toSafeUser(updated), passwordChanged: true };
+    return {
+      user: await this.toAuthenticatedUser(updated),
+      passwordChanged: true,
+    };
   }
 
   async getAuthenticatedUser(userId: string) {
@@ -88,15 +99,15 @@ export class AuthService {
       throw new AppError(401, MENSAGENS.NAO_AUTORIZADO);
     }
 
-    return toSafeUser(user);
+    return this.toAuthenticatedUser(user);
   }
 
-  validateUserForToken(user: User | null) {
+  async validateUserForToken(user: User | null) {
     if (!user || !user.active) {
       throw new AppError(401, MENSAGENS.NAO_AUTORIZADO);
     }
 
-    return toSafeUser(user);
+    return this.toAuthenticatedUser(user);
   }
 
   async issueRefreshToken(userId: string): Promise<string> {

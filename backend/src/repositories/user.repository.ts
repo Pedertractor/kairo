@@ -17,6 +17,15 @@ export class UserRepository {
     });
   }
 
+  async hasOwnedTeams(userId: string): Promise<boolean> {
+    const ownedTeam = await this.prisma.team.findFirst({
+      where: { createdById: userId },
+      select: { id: true },
+    });
+
+    return ownedTeam !== null;
+  }
+
   findAvailableForTeam(teamId: string) {
     return this.prisma.user.findMany({
       where: {
