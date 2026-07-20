@@ -30,6 +30,16 @@ export const updateActivityStatusSchema = z.object({
   status: cardStatusSchema,
 });
 
+export const updateActivitySchema = z
+  .object({
+    title: z.string().trim().min(1, 'Título é obrigatório').optional(),
+    status: cardStatusSchema.optional(),
+  })
+  .refine(
+    (data) => data.title !== undefined || data.status !== undefined,
+    { message: 'Informe ao menos um campo para atualizar' },
+  );
+
 export const createActivitySchema = z.object({
   title: z.string().trim().min(1, 'Título é obrigatório'),
   description: z.string().trim().optional(),

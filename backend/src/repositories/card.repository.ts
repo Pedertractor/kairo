@@ -27,6 +27,19 @@ export class CardRepository {
     });
   }
 
+  updateActivity(
+    activityId: string,
+    data: { title?: string; status?: CardStatus },
+  ) {
+    return this.prisma.card.update({
+      where: { id: activityId },
+      data: {
+        ...(data.title !== undefined ? { title: data.title } : {}),
+        ...(data.status !== undefined ? { status: data.status } : {}),
+      },
+    });
+  }
+
   createActivity(data: {
     teamId: string;
     createdById: string;

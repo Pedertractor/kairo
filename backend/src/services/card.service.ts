@@ -152,6 +152,15 @@ export class CardService {
     userId: string,
     status: CardStatus,
   ): Promise<ActivitySummary> {
+    return this.updateActivity(teamId, activityId, userId, { status });
+  }
+
+  async updateActivity(
+    teamId: string,
+    activityId: string,
+    userId: string,
+    data: { title?: string; status?: CardStatus },
+  ): Promise<ActivitySummary> {
     await this.assertTeamMember(teamId, userId);
 
     const card = await this.cardRepository.findActivityById(activityId);
@@ -160,10 +169,7 @@ export class CardService {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
     }
 
-    const updated = await this.cardRepository.updateActivityStatus(
-      activityId,
-      status,
-    );
+    const updated = await this.cardRepository.updateActivity(activityId, data);
 
     const [loggedByCard, favorite] = await Promise.all([
       this.timeEntryRepository.getLoggedSecondsByCardIds([activityId]),

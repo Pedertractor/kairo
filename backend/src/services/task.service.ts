@@ -136,4 +136,31 @@ export class TaskService {
       loggedSeconds,
     };
   }
+
+  async updateTask(
+    projectId: string,
+    taskId: string,
+    userId: string,
+    title: string,
+  ): Promise<TaskDetail> {
+    await this.assertProjectAccess(projectId, userId);
+
+    const task = await this.taskRepository.findById(taskId);
+
+    if (!task || task.cardId !== projectId) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    const updated = await this.taskRepository.update(taskId, { title });
+
+    const [loggedSeconds, favorite] = await Promise.all([
+      this.timeEntryRepository.getLoggedSecondsByTaskId(taskId),
+      this.favoriteRepository.findTaskFavorite(userId, taskId),
+    ]);
+
+    return {
+      ...toTaskSummary(updated, favorite !== null),
+      loggedSeconds,
+    };
+  }
 }

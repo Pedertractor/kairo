@@ -34,7 +34,7 @@ export async function cardRoutes(app: FastifyInstance) {
   app.patch(
     '/teams/:teamId/activities/:activityId',
     { preHandler: [app.authenticate] },
-    controller.updateActivityStatus,
+    controller.updateActivity,
   );
 
   app.get(

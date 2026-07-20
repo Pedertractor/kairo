@@ -41,6 +41,7 @@ export const MENSAGENS = {
   PROJETO_CRIADO_SUCESSO: 'Projeto criado com sucesso',
   PROJETO_ATUALIZADO_SUCESSO: 'Projeto atualizado com sucesso',
   TAREFA_CRIADA_SUCESSO: 'Tarefa criada com sucesso',
+  TAREFA_ATUALIZADA_SUCESSO: 'Tarefa atualizada com sucesso',
   TAREFA_TIMER_STATUS_INVALIDO:
     'Não é possível iniciar o timer de uma tarefa concluída ou cancelada',
   TAREFA_JA_EM_ANDAMENTO:

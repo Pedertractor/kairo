@@ -27,6 +27,16 @@ export class TaskRepository {
     });
   }
 
+  update(taskId: string, data: { title: string }) {
+    return this.prisma.task.update({
+      where: { id: taskId },
+      data: { title: data.title },
+      include: {
+        assignedTo: { select: { id: true, name: true } },
+      },
+    });
+  }
+
   /** Updates status unless the task is already DONE or CANCELED. */
   updateStatusIfOpen(taskId: string, status: TaskStatus) {
     return this.prisma.task.updateMany({

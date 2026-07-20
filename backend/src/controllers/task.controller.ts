@@ -3,6 +3,7 @@ import {
   createTaskSchema,
   projectIdParamSchema,
   taskParamSchema,
+  updateTaskSchema,
 } from '../schemas/task.schema.js';
 import { TaskService } from '../services/task.service.js';
 import { AppError, handleControllerError } from '../utils/errors.js';
@@ -72,6 +73,33 @@ export class TaskController {
         { task },
         201,
         MENSAGENS.TAREFA_CRIADA_SUCESSO,
+      );
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  updateTask = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const params = taskParamSchema.safeParse(request.params);
+      const body = updateTaskSchema.safeParse(request.body);
+
+      if (!params.success || !body.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const task = await this.service.updateTask(
+        params.data.projectId,
+        params.data.taskId,
+        request.user.sub,
+        body.data.title,
+      );
+
+      return sendSuccess(
+        reply,
+        { task },
+        200,
+        MENSAGENS.TAREFA_ATUALIZADA_SUCESSO,
       );
     } catch (error) {
       return handleControllerError(error, reply);
