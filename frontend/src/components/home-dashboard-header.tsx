@@ -1,21 +1,21 @@
-import { useState } from 'react'
-import { Bell, Calendar, Settings } from 'lucide-react'
+import { useState } from 'react';
+import { Settings } from 'lucide-react';
 
-import { PaletteDialog } from '@/components/palette-dialog'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { SidebarTrigger } from '@/components/ui/sidebar'
-import { useAuth } from '@/hooks/use-auth'
-import { useIsMobile } from '@/hooks/use-mobile'
-import { getFirstName, getGreeting } from '@/lib/greeting'
-import { getInitials } from '@/lib/initials'
+import { PaletteDialog } from '@/components/palette-dialog';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { SidebarTrigger } from '@/components/ui/sidebar';
+import { useAuth } from '@/hooks/use-auth';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { getFirstName, getGreeting } from '@/lib/greeting';
+import { getInitials } from '@/lib/initials';
 
 export function HomeDashboardHeader() {
-  const { user } = useAuth()
-  const isMobile = useIsMobile()
-  const [paletteOpen, setPaletteOpen] = useState(false)
-  const greeting = getGreeting()
-  const firstName = user?.name ? getFirstName(user.name) : ''
-  const initials = user?.name ? getInitials(user.name) : '?'
+  const { user } = useAuth();
+  const isMobile = useIsMobile();
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const greeting = getGreeting();
+  const firstName = user?.name ? getFirstName(user.name) : '';
+  const initials = user?.name ? getInitials(user.name) : '?';
 
   return (
     <>
@@ -29,23 +29,6 @@ export function HomeDashboardHeader() {
         </div>
 
         <div className='flex items-center gap-2 sm:gap-3'>
-          <button
-            type='button'
-            className='flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
-            aria-label='Calendário'
-          >
-            <Calendar className='size-5' />
-          </button>
-
-          <button
-            type='button'
-            className='relative flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
-            aria-label='Notificações'
-          >
-            <Bell className='size-5' />
-            <span className='absolute top-1.5 right-1.5 size-2 rounded-full bg-destructive' />
-          </button>
-
           <button
             type='button'
             className='flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
@@ -65,5 +48,5 @@ export function HomeDashboardHeader() {
 
       <PaletteDialog open={paletteOpen} onOpenChange={setPaletteOpen} />
     </>
-  )
+  );
 }
