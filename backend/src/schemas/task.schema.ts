@@ -17,3 +17,7 @@ export const createTaskSchema = z.object({
     .positive('Horas estimadas deve ser um valor positivo')
     .optional(),
 });
+
+export const updateTaskSchema = z.object({
+  title: z.string().trim().min(1, 'Título é obrigatório'),
+});

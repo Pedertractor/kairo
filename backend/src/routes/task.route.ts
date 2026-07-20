@@ -33,4 +33,9 @@ export async function taskRoutes(app: FastifyInstance) {
     { preHandler: [app.authenticate] },
     controller.createTask,
   );
+  app.patch(
+    '/projects/:projectId/tasks/:taskId',
+    { preHandler: [app.authenticate] },
+    controller.updateTask,
+  );
 }

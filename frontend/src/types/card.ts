@@ -37,6 +37,11 @@ export interface UpdateActivityStatusInput {
   status: CardStatus;
 }
 
+export interface UpdateActivityInput {
+  title?: string;
+  status?: CardStatus;
+}
+
 export interface ProjectSummary {
   id: string;
   teamId: string;

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Pencil } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 
+import { EditTaskTitleDialog } from '@/components/edit-task-title-dialog'
 import { FavoriteButton } from '@/components/favorite-button'
 import { StartTaskTimerButton } from '@/components/start-task-timer-button'
 import { TaskTimeEntriesSection } from '@/components/task-time-entries-section'
@@ -21,6 +22,7 @@ export function TaskDetailPage() {
   }>()
   const [task, setTask] = useState<TaskDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isEditTitleDialogOpen, setIsEditTitleDialogOpen] = useState(false)
 
   const loadTask = useCallback(async () => {
     if (!projectId || !taskId) {
@@ -99,7 +101,18 @@ export function TaskDetailPage() {
         <>
           <div className="flex flex-col gap-2">
             <div className="flex items-start justify-between gap-4">
-              <h1 className="text-2xl font-bold">{task.title}</h1>
+              <div className="flex min-w-0 items-center gap-2">
+                <h1 className="text-2xl font-bold">{task.title}</h1>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Editar título"
+                  onClick={() => setIsEditTitleDialogOpen(true)}
+                >
+                  <Pencil />
+                </Button>
+              </div>
               <div className="flex shrink-0 items-center gap-2">
                 {projectId ? (
                   <>
@@ -152,6 +165,16 @@ export function TaskDetailPage() {
               className="text-sm"
             />
           </div>
+
+          {projectId ? (
+            <EditTaskTitleDialog
+              projectId={projectId}
+              task={task}
+              open={isEditTitleDialogOpen}
+              onOpenChange={setIsEditTitleDialogOpen}
+              onUpdated={setTask}
+            />
+          ) : null}
 
           {projectId && taskId ? (
             <TaskTimeEntriesSection

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Pencil } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 
+import { EditActivityTitleDialog } from '@/components/edit-activity-title-dialog'
 import { UpdateActivityStatusDialog } from '@/components/update-activity-status-dialog'
 import { ActivityStatusActions } from '@/components/activity-status-actions'
 import { Button } from '@/components/ui/button'
@@ -18,6 +19,7 @@ export function ActivityDetailPage() {
   const [activity, setActivity] = useState<ActivitySummary | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
+  const [isEditTitleDialogOpen, setIsEditTitleDialogOpen] = useState(false)
 
   useEffect(() => {
     if (!teamId || !activityId) {
@@ -85,7 +87,18 @@ export function ActivityDetailPage() {
         <>
           <div className="flex flex-col gap-2">
             <div className="flex items-start justify-between gap-4">
-              <h1 className="text-2xl font-bold">{activity.title}</h1>
+              <div className="flex min-w-0 items-center gap-2">
+                <h1 className="text-2xl font-bold">{activity.title}</h1>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Editar título"
+                  onClick={() => setIsEditTitleDialogOpen(true)}
+                >
+                  <Pencil />
+                </Button>
+              </div>
               {teamId ? (
                 <ActivityStatusActions
                   teamId={teamId}
@@ -111,13 +124,22 @@ export function ActivityDetailPage() {
           </div>
 
           {teamId ? (
-            <UpdateActivityStatusDialog
-              teamId={teamId}
-              activity={activity}
-              open={isStatusDialogOpen}
-              onOpenChange={setIsStatusDialogOpen}
-              onUpdated={reloadActivity}
-            />
+            <>
+              <EditActivityTitleDialog
+                teamId={teamId}
+                activity={activity}
+                open={isEditTitleDialogOpen}
+                onOpenChange={setIsEditTitleDialogOpen}
+                onUpdated={setActivity}
+              />
+              <UpdateActivityStatusDialog
+                teamId={teamId}
+                activity={activity}
+                open={isStatusDialogOpen}
+                onOpenChange={setIsStatusDialogOpen}
+                onUpdated={reloadActivity}
+              />
+            </>
           ) : null}
         </>
       ) : (

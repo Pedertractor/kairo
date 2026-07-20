@@ -42,3 +42,7 @@ export interface CreateTaskInput {
   description?: string
   estimatedHours?: number
 }
+
+export interface UpdateTaskInput {
+  title: string
+}
