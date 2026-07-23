@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Pencil } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 
+import { EditProjectTitleDialog } from '@/components/edit-project-title-dialog'
 import { ProjectStatusActions } from '@/components/project-status-actions'
 import { ProjectTasksSection } from '@/components/project-tasks-section'
 import { UpdateProjectStatusDialog } from '@/components/update-project-status-dialog'
@@ -16,6 +17,7 @@ export function ProjectDetailPage() {
   const [project, setProject] = useState<ProjectSummary | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
+  const [isEditTitleDialogOpen, setIsEditTitleDialogOpen] = useState(false)
 
   useEffect(() => {
     if (!projectId) {
@@ -75,7 +77,18 @@ export function ProjectDetailPage() {
         <>
           <div className="flex flex-col gap-2">
             <div className="flex items-start justify-between gap-4">
-              <h1 className="text-2xl font-bold">{project.title}</h1>
+              <div className="flex min-w-0 items-center gap-2">
+                <h1 className="text-2xl font-bold">{project.title}</h1>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Editar título"
+                  onClick={() => setIsEditTitleDialogOpen(true)}
+                >
+                  <Pencil />
+                </Button>
+              </div>
               <ProjectStatusActions
                 project={project}
                 onStatusClick={() => setIsStatusDialogOpen(true)}
@@ -102,6 +115,23 @@ export function ProjectDetailPage() {
               className="text-sm"
             />
           </div>
+
+          <EditProjectTitleDialog
+            teamId={project.teamId}
+            project={project}
+            open={isEditTitleDialogOpen}
+            onOpenChange={setIsEditTitleDialogOpen}
+            onUpdated={(updated) =>
+              setProject((current) =>
+                current
+                  ? {
+                      ...updated,
+                      teamName: updated.teamName ?? current.teamName,
+                    }
+                  : updated,
+              )
+            }
+          />
 
           <UpdateProjectStatusDialog
             teamId={project.teamId}

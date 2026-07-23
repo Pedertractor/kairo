@@ -3,6 +3,8 @@ import { Search } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { CardTimeBudget } from '@/components/card-time-budget'
+import { CreateProjectDialog } from '@/components/create-project-dialog'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -36,6 +38,7 @@ function getStatusFilterLabel(value: StatusFilter): string {
 export function ProjetosPage() {
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [nameFilter, setNameFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(ALL_STATUSES)
 
@@ -72,12 +75,23 @@ export function ProjetosPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-bold">Projetos</h1>
-        <p className="text-sm text-muted-foreground">
-          Projetos das suas equipes.
-        </p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Projetos</h1>
+          <p className="text-sm text-muted-foreground">
+            Projetos das suas equipes.
+          </p>
+        </div>
+        <Button onClick={() => setIsCreateDialogOpen(true)}>
+          Criar novo projeto
+        </Button>
       </div>
+
+      <CreateProjectDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onCreated={loadProjects}
+      />
 
       {!isLoading && projects.length > 0 ? (
         <div className="flex w-full flex-col gap-3 sm:w-1/2 sm:flex-row">

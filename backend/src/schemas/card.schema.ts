@@ -52,3 +52,5 @@ export const createActivitySchema = z.object({
 export const createProjectSchema = createActivitySchema;
 
 export const updateProjectStatusSchema = updateActivityStatusSchema;
+
+export const updateProjectSchema = updateActivitySchema;

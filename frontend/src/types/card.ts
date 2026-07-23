@@ -73,3 +73,8 @@ export interface CreateProjectInput {
 export interface UpdateProjectStatusInput {
   status: CardStatus;
 }
+
+export interface UpdateProjectInput {
+  title?: string;
+  status?: CardStatus;
+}
