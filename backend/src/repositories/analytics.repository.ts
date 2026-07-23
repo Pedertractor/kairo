@@ -15,6 +15,7 @@ export class AnalyticsRepository {
         id: true,
         name: true,
         members: {
+          where: { role: 'MEMBER' },
           orderBy: { user: { name: 'asc' } },
           select: {
             user: {
