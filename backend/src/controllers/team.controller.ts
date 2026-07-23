@@ -60,7 +60,7 @@ export class TeamController {
     }
   };
 
-  transferAdmin = async (request: FastifyRequest, reply: FastifyReply) => {
+  promoteAdmin = async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const parsed = teamMemberParamSchema.safeParse(request.params);
 
@@ -68,7 +68,7 @@ export class TeamController {
         throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
       }
 
-      const team = await this.service.transferAdmin(
+      const team = await this.service.promoteAdmin(
         parsed.data.id,
         request.user.sub,
         parsed.data.userId,
@@ -78,7 +78,32 @@ export class TeamController {
         reply,
         { team },
         200,
-        MENSAGENS.ADMIN_TRANSFERIDO_SUCESSO,
+        MENSAGENS.ADMIN_PROMOVIDO_SUCESSO,
+      );
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  demoteAdmin = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const parsed = teamMemberParamSchema.safeParse(request.params);
+
+      if (!parsed.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const team = await this.service.demoteAdmin(
+        parsed.data.id,
+        request.user.sub,
+        parsed.data.userId,
+      );
+
+      return sendSuccess(
+        reply,
+        { team },
+        200,
+        MENSAGENS.ADMIN_REBAIXADO_SUCESSO,
       );
     } catch (error) {
       return handleControllerError(error, reply);

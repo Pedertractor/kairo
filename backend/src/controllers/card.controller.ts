@@ -7,7 +7,7 @@ import {
   projectParamSchema,
   teamIdParamSchema,
   updateActivitySchema,
-  updateProjectStatusSchema,
+  updateProjectSchema,
 } from '../schemas/card.schema.js';
 import { CardService } from '../services/card.service.js';
 import { AppError, handleControllerError } from '../utils/errors.js';
@@ -206,23 +206,20 @@ export class CardController {
     }
   };
 
-  updateProjectStatus = async (
-    request: FastifyRequest,
-    reply: FastifyReply,
-  ) => {
+  updateProject = async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const params = projectParamSchema.safeParse(request.params);
-      const body = updateProjectStatusSchema.safeParse(request.body);
+      const body = updateProjectSchema.safeParse(request.body);
 
       if (!params.success || !body.success) {
         throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
       }
 
-      const project = await this.service.updateProjectStatus(
+      const project = await this.service.updateProject(
         params.data.teamId,
         params.data.projectId,
         request.user.sub,
-        body.data.status,
+        body.data,
       );
 
       return sendSuccess(

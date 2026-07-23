@@ -108,13 +108,13 @@ export class TeamService {
     return this.getTeamForMember(teamId, actorUserId);
   }
 
-  async transferAdmin(
+  async promoteAdmin(
     teamId: string,
     actorUserId: string,
     targetUserId: string,
   ): Promise<TeamSummary> {
     if (actorUserId === targetUserId) {
-      throw new AppError(400, MENSAGENS.NAO_PODE_TRANSFERIR_ADMIN_PARA_SI_MESMO);
+      throw new AppError(400, MENSAGENS.NAO_PODE_PROMOVER_SI_MESMO);
     }
 
     const actorMembership = await this.teamRepository.findMembershipByTeamAndUser(
@@ -143,7 +143,49 @@ export class TeamService {
       throw new AppError(400, MENSAGENS.MEMBRO_JA_E_ADMIN);
     }
 
-    await this.teamRepository.transferAdmin(teamId, actorUserId, targetUserId);
+    await this.teamRepository.promoteToAdmin(teamId, targetUserId);
+
+    return this.getTeamForMember(teamId, actorUserId);
+  }
+
+  async demoteAdmin(
+    teamId: string,
+    actorUserId: string,
+    targetUserId: string,
+  ): Promise<TeamSummary> {
+    const actorMembership = await this.teamRepository.findMembershipByTeamAndUser(
+      teamId,
+      actorUserId,
+    );
+
+    if (!actorMembership) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    if (actorMembership.role !== TeamRole.ADMIN) {
+      throw new AppError(403, MENSAGENS.PROIBIDO);
+    }
+
+    const targetMembership = await this.teamRepository.findMembershipByTeamAndUser(
+      teamId,
+      targetUserId,
+    );
+
+    if (!targetMembership) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    if (targetMembership.role !== TeamRole.ADMIN) {
+      throw new AppError(400, MENSAGENS.MEMBRO_NAO_E_ADMIN);
+    }
+
+    const adminCount = await this.teamRepository.countAdminsByTeamId(teamId);
+
+    if (adminCount <= 1) {
+      throw new AppError(400, MENSAGENS.ULTIMO_ADMIN_NAO_PODE_SER_REBAIXADO);
+    }
+
+    await this.teamRepository.demoteAdmin(teamId, targetUserId);
 
     return this.getTeamForMember(teamId, actorUserId);
   }
@@ -153,13 +195,16 @@ export class TeamService {
     actorUserId: string,
     targetUserId: string,
   ): Promise<TeamSummary> {
-    const team = await this.teamRepository.findById(teamId);
+    const actorMembership = await this.teamRepository.findMembershipByTeamAndUser(
+      teamId,
+      actorUserId,
+    );
 
-    if (!team) {
+    if (!actorMembership) {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
     }
 
-    if (team.createdById !== actorUserId) {
+    if (actorMembership.role !== TeamRole.ADMIN) {
       throw new AppError(403, MENSAGENS.PROIBIDO);
     }
 
@@ -188,13 +233,16 @@ export class TeamService {
     teamId: string,
     actorUserId: string,
   ): Promise<TeamUserOption[]> {
-    const team = await this.teamRepository.findById(teamId);
+    const actorMembership = await this.teamRepository.findMembershipByTeamAndUser(
+      teamId,
+      actorUserId,
+    );
 
-    if (!team) {
+    if (!actorMembership) {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
     }
 
-    if (team.createdById !== actorUserId) {
+    if (actorMembership.role !== TeamRole.ADMIN) {
       throw new AppError(403, MENSAGENS.PROIBIDO);
     }
 

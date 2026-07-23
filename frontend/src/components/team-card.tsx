@@ -14,22 +14,22 @@ import type { TeamSummary } from '@/types/team'
 
 interface TeamCardProps {
   team: TeamSummary
-  isCreator: boolean
+  isAdmin: boolean
 }
 
-export function TeamCard({ team, isCreator }: TeamCardProps) {
+export function TeamCard({ team, isAdmin }: TeamCardProps) {
   return (
     <div className="relative pt-3">
-      {isCreator ? (
+      {isAdmin ? (
         <div className="absolute top-0 left-1/2 z-10 -translate-x-1/2">
-          <Crown className="size-5 text-amber-500" aria-label="Criador da equipe" />
+          <Crown className="size-5 text-amber-500" aria-label="Administrador da equipe" />
         </div>
       ) : null}
       <Link to={`/equipes/${team.id}`} className="block">
         <Card
           className={cn(
             'transition-colors hover:bg-muted/50',
-            isCreator && 'pt-5',
+            isAdmin && 'pt-5',
           )}
         >
           <CardHeader>

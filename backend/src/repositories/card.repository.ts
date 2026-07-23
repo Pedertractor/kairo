@@ -93,9 +93,19 @@ export class CardRepository {
   }
 
   updateProjectStatus(projectId: string, status: CardStatus) {
+    return this.updateProject(projectId, { status });
+  }
+
+  updateProject(
+    projectId: string,
+    data: { title?: string; status?: CardStatus },
+  ) {
     return this.prisma.card.update({
       where: { id: projectId },
-      data: { status },
+      data: {
+        ...(data.title !== undefined ? { title: data.title } : {}),
+        ...(data.status !== undefined ? { status: data.status } : {}),
+      },
     });
   }
 

@@ -133,6 +133,10 @@ export class AnalyticsService {
     >();
 
     for (const entry of entries) {
+      if (!employeesById.has(entry.userId)) {
+        continue;
+      }
+
       const current = totalsByEmployee.get(entry.userId) ?? {
         loggedSeconds: 0,
         timeEntryCount: 0,
@@ -211,6 +215,10 @@ export class AnalyticsService {
     >();
 
     for (const entry of projectEntries) {
+      if (!employeesById.has(entry.userId)) {
+        continue;
+      }
+
       if (options.employeeId && entry.userId !== options.employeeId) {
         continue;
       }

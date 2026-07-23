@@ -287,6 +287,15 @@ export class CardService {
     userId: string,
     status: CardStatus,
   ): Promise<ProjectSummary> {
+    return this.updateProject(teamId, projectId, userId, { status });
+  }
+
+  async updateProject(
+    teamId: string,
+    projectId: string,
+    userId: string,
+    data: { title?: string; status?: CardStatus },
+  ): Promise<ProjectSummary> {
     await this.assertTeamMember(teamId, userId);
 
     const card = await this.cardRepository.findProjectById(projectId);
@@ -295,10 +304,7 @@ export class CardService {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
     }
 
-    const updated = await this.cardRepository.updateProjectStatus(
-      projectId,
-      status,
-    );
+    const updated = await this.cardRepository.updateProject(projectId, data);
 
     const loggedByProject =
       await this.timeEntryRepository.getLoggedSecondsByProjectIds([projectId]);
@@ -306,6 +312,7 @@ export class CardService {
     return toProjectSummary(
       updated,
       loggedByProject.get(projectId) ?? 0,
+      card.team.name,
     );
   }
 }
