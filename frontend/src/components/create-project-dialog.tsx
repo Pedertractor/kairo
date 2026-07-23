@@ -147,7 +147,7 @@ export function CreateProjectDialog({
                 <FieldLabel htmlFor="project-team">Equipe</FieldLabel>
                 <Select
                   value={selectedTeamId || undefined}
-                  onValueChange={setSelectedTeamId}
+                  onValueChange={(value) => setSelectedTeamId(value ?? '')}
                   disabled={isSubmitting || isLoadingTeams}
                 >
                   <SelectTrigger id="project-team" className="w-full">
