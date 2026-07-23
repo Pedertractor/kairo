@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   BarChart3,
   Clock3,
@@ -8,66 +8,69 @@ import {
   TimerReset,
   Users,
   X,
-} from 'lucide-react'
+} from 'lucide-react';
 
-import { DatePicker } from '@/components/date-picker'
-import { TeamDayTimeline } from '@/components/team-day-timeline'
-import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
+import { DatePicker } from '@/components/date-picker';
+import { TeamDayTimeline } from '@/components/team-day-timeline';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { Skeleton } from '@/components/ui/skeleton'
-import { api } from '@/lib/api-handler'
-import { fromDateKey, toDateKey } from '@/lib/date'
-import { formatDuration } from '@/lib/time-format'
-import type { AnalyticsDashboard } from '@/types/analytics'
-import type { TeamDayDashboard, TeamDayTimelineBlock } from '@/types/time-entry'
+} from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { api } from '@/lib/api-handler';
+import { fromDateKey, toDateKey } from '@/lib/date';
+import { formatDuration } from '@/lib/time-format';
+import type { AnalyticsDashboard } from '@/types/analytics';
+import type {
+  TeamDayDashboard,
+  TeamDayTimelineBlock,
+} from '@/types/time-entry';
 
-const ALL = 'all'
+const ALL = 'all';
 
 interface SelectedEmployeeTimeline {
-  employeeId: string
-  employeeName: string
-  teamId: string
+  employeeId: string;
+  employeeName: string;
+  teamId: string;
 }
 
 function utilizationColor(percent: number) {
-  if (percent >= 100) return 'from-fuchsia-500 to-pink-500'
-  if (percent >= 75) return 'from-emerald-400 to-cyan-500'
-  if (percent >= 40) return 'from-amber-400 to-orange-500'
-  return 'from-violet-500 to-indigo-500'
+  if (percent >= 100) return 'from-fuchsia-500 to-pink-500';
+  if (percent >= 75) return 'from-emerald-400 to-cyan-500';
+  if (percent >= 40) return 'from-amber-400 to-orange-500';
+  return 'from-violet-500 to-indigo-500';
 }
 
 export function AnalyticsPage() {
-  const [date, setDate] = useState(toDateKey(new Date()))
-  const [teamId, setTeamId] = useState(ALL)
-  const [employeeId, setEmployeeId] = useState(ALL)
-  const [projectId, setProjectId] = useState(ALL)
-  const [dashboard, setDashboard] = useState<AnalyticsDashboard | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [date, setDate] = useState(toDateKey(new Date()));
+  const [teamId, setTeamId] = useState(ALL);
+  const [employeeId, setEmployeeId] = useState(ALL);
+  const [projectId, setProjectId] = useState(ALL);
+  const [dashboard, setDashboard] = useState<AnalyticsDashboard | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedTimeline, setSelectedTimeline] =
-    useState<SelectedEmployeeTimeline | null>(null)
+    useState<SelectedEmployeeTimeline | null>(null);
   const [timelineBlocks, setTimelineBlocks] = useState<TeamDayTimelineBlock[]>(
     [],
-  )
-  const [isLoadingTimeline, setIsLoadingTimeline] = useState(false)
-  const timelineSectionRef = useRef<HTMLElement>(null)
+  );
+  const [isLoadingTimeline, setIsLoadingTimeline] = useState(false);
+  const timelineSectionRef = useRef<HTMLElement>(null);
 
   const loadDashboard = useCallback(async () => {
     try {
-      const params = new URLSearchParams({ date })
-      if (teamId !== ALL) params.set('teamId', teamId)
-      if (employeeId !== ALL) params.set('employeeId', employeeId)
-      if (projectId !== ALL) params.set('projectId', projectId)
+      const params = new URLSearchParams({ date });
+      if (teamId !== ALL) params.set('teamId', teamId);
+      if (employeeId !== ALL) params.set('employeeId', employeeId);
+      if (projectId !== ALL) params.set('projectId', projectId);
 
       const data = await api<AnalyticsDashboard>(
         `/analytics?${params.toString()}`,
-      )
+      );
       setDashboard({
         ...data,
         projects: data.projects ?? [],
@@ -86,65 +89,63 @@ export function AnalyticsPage() {
           ...row,
           teamId: row.teamId ?? data.teams?.[0]?.id ?? '',
         })),
-      })
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }, [date, employeeId, projectId, teamId])
+  }, [date, employeeId, projectId, teamId]);
 
   useEffect(() => {
-    void loadDashboard()
-  }, [loadDashboard])
+    void loadDashboard();
+  }, [loadDashboard]);
 
   const loadEmployeeTimeline = useCallback(async () => {
     if (!selectedTimeline) {
-      setTimelineBlocks([])
-      return
+      setTimelineBlocks([]);
+      return;
     }
 
-    setIsLoadingTimeline(true)
+    setIsLoadingTimeline(true);
 
     try {
       const data = await api<TeamDayDashboard>(
         `/teams/${selectedTimeline.teamId}/time-entries/day?date=${encodeURIComponent(date)}`,
         { toastOnError: false },
-      )
+      );
       setTimelineBlocks(
         data.blocks.filter(
           (block) => block.userId === selectedTimeline.employeeId,
         ),
-      )
+      );
     } catch {
-      setTimelineBlocks([])
+      setTimelineBlocks([]);
     } finally {
-      setIsLoadingTimeline(false)
+      setIsLoadingTimeline(false);
     }
-  }, [date, selectedTimeline])
+  }, [date, selectedTimeline]);
 
   useEffect(() => {
-    void loadEmployeeTimeline()
-  }, [loadEmployeeTimeline])
+    void loadEmployeeTimeline();
+  }, [loadEmployeeTimeline]);
 
-  const previousTimelineEmployeeIdRef = useRef<string | null>(null)
+  const previousTimelineEmployeeIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!selectedTimeline) {
-      previousTimelineEmployeeIdRef.current = null
-      return
+      previousTimelineEmployeeIdRef.current = null;
+      return;
     }
 
-    if (
-      previousTimelineEmployeeIdRef.current === selectedTimeline.employeeId
-    ) {
-      return
+    if (previousTimelineEmployeeIdRef.current === selectedTimeline.employeeId) {
+      return;
     }
 
-    previousTimelineEmployeeIdRef.current = selectedTimeline.employeeId
+    previousTimelineEmployeeIdRef.current = selectedTimeline.employeeId;
     timelineSectionRef.current?.scrollIntoView({
       behavior: 'smooth',
       block: 'nearest',
-    })
-  }, [selectedTimeline])
+    });
+  }, [selectedTimeline]);
 
   function openEmployeeTimeline(
     nextEmployeeId: string,
@@ -152,19 +153,19 @@ export function AnalyticsPage() {
     nextTeamId: string,
   ) {
     if (!nextTeamId) {
-      return
+      return;
     }
 
     setSelectedTimeline({
       employeeId: nextEmployeeId,
       employeeName,
       teamId: nextTeamId,
-    })
+    });
   }
 
-  const summary = dashboard?.summary
-  const selectedProject = dashboard?.selectedProject
-  const selectedProjectTeamId = selectedProject?.teamId ?? ''
+  const summary = dashboard?.summary;
+  const selectedProject = dashboard?.selectedProject;
+  const selectedProjectTeamId = selectedProject?.teamId ?? '';
 
   return (
     <div className='flex flex-1 flex-col gap-6 pb-4'>
@@ -190,7 +191,7 @@ export function AnalyticsPage() {
                 displayFormat='dd-MM-yy'
                 className='mt-1 w-full border-white/30 bg-white/95 text-foreground'
                 onDateChange={(nextDate) => {
-                  if (nextDate) setDate(toDateKey(nextDate))
+                  if (nextDate) setDate(toDateKey(nextDate));
                 }}
               />
             </div>
@@ -199,10 +200,10 @@ export function AnalyticsPage() {
               <Select
                 value={teamId}
                 onValueChange={(value) => {
-                  setTeamId(value ?? ALL)
-                  setEmployeeId(ALL)
-                  setProjectId(ALL)
-                  setSelectedTimeline(null)
+                  setTeamId(value ?? ALL);
+                  setEmployeeId(ALL);
+                  setProjectId(ALL);
+                  setSelectedTimeline(null);
                 }}
               >
                 <SelectTrigger className='mt-1 w-full min-w-0 border-white/30 bg-white/95 text-foreground'>
@@ -309,16 +310,14 @@ export function AnalyticsPage() {
             <p className='mt-1 text-2xl font-bold'>
               {formatDuration(summary.loggedSeconds)}
             </p>
-            <p className='mt-1 text-xs opacity-60'>Soma dos time entries</p>
+            <p className='mt-1 text-xs opacity-60'>Soma dos apontamentos</p>
           </div>
           <div className='rounded-2xl border border-orange-200 bg-orange-50 p-5 text-orange-950 dark:border-orange-900 dark:bg-orange-950/40 dark:text-orange-100'>
             <TimerReset className='mb-4 size-6 text-orange-500' />
             <p className='text-xs font-semibold tracking-wide uppercase opacity-60'>
               Apontamentos
             </p>
-            <p className='mt-1 text-2xl font-bold'>
-              {summary.timeEntryCount}
-            </p>
+            <p className='mt-1 text-2xl font-bold'>{summary.timeEntryCount}</p>
             <p className='mt-1 text-xs opacity-60'>Registros no dia</p>
           </div>
           <div className='rounded-2xl border border-pink-200 bg-pink-50 p-5 text-pink-950 dark:border-pink-900 dark:bg-pink-950/40 dark:text-pink-100'>
@@ -471,15 +470,13 @@ export function AnalyticsPage() {
           <div className='grid gap-4 lg:grid-cols-2'>
             {dashboard?.rows.map((row) => {
               const isSelected =
-                selectedTimeline?.employeeId === row.employeeId
+                selectedTimeline?.employeeId === row.employeeId;
 
               return (
                 <article
                   key={row.employeeId}
                   className={`overflow-hidden rounded-2xl border bg-linear-to-br from-background to-muted/40 p-5 ${
-                    isSelected
-                      ? 'border-cyan-400 ring-2 ring-cyan-400/30'
-                      : ''
+                    isSelected ? 'border-cyan-400 ring-2 ring-cyan-400/30' : ''
                   }`}
                 >
                   <div className='flex items-start justify-between gap-3'>
@@ -542,7 +539,7 @@ export function AnalyticsPage() {
                     </div>
                   </div>
                 </article>
-              )
+              );
             })}
           </div>
         )}
@@ -568,7 +565,7 @@ export function AnalyticsPage() {
                   date={fromDateKey(date)}
                   displayFormat='dd-MM-yy'
                   onDateChange={(nextDate) => {
-                    if (nextDate) setDate(toDateKey(nextDate))
+                    if (nextDate) setDate(toDateKey(nextDate));
                   }}
                 />
               </div>
@@ -595,5 +592,5 @@ export function AnalyticsPage() {
         </section>
       ) : null}
     </div>
-  )
+  );
 }
