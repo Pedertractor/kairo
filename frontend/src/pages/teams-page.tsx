@@ -62,7 +62,7 @@ export function TeamsPage() {
             <TeamCard
               key={team.id}
               team={team}
-              isCreator={team.createdById === user?.id}
+              isAdmin={team.role === 'ADMIN'}
             />
           ))}
         </div>

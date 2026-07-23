@@ -18,12 +18,12 @@ export class UserRepository {
   }
 
   async hasOwnedTeams(userId: string): Promise<boolean> {
-    const ownedTeam = await this.prisma.team.findFirst({
-      where: { createdById: userId },
+    const ownedMembership = await this.prisma.teamMember.findFirst({
+      where: { userId, role: 'ADMIN' },
       select: { id: true },
     });
 
-    return ownedTeam !== null;
+    return ownedMembership !== null;
   }
 
   findAvailableForTeam(teamId: string) {

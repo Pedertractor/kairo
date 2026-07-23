@@ -5,7 +5,11 @@ export class AnalyticsRepository {
 
   findOwnedTeams(userId: string) {
     return this.prisma.team.findMany({
-      where: { createdById: userId },
+      where: {
+        members: {
+          some: { userId, role: 'ADMIN' },
+        },
+      },
       orderBy: { name: 'asc' },
       select: {
         id: true,

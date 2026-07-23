@@ -12,21 +12,21 @@ import {
 import { api } from '@/lib/api-handler'
 import type { TeamMemberSummary, TeamResponse, TeamSummary } from '@/types/team'
 
-interface TransferTeamAdminDialogProps {
+interface DemoteTeamAdminDialogProps {
   teamId: string
   member: TeamMemberSummary | null
   open: boolean
   onOpenChange: (open: boolean) => void
-  onTransferred: (team: TeamSummary) => void
+  onDemoted: (team: TeamSummary) => void
 }
 
-export function TransferTeamAdminDialog({
+export function DemoteTeamAdminDialog({
   teamId,
   member,
   open,
   onOpenChange,
-  onTransferred,
-}: TransferTeamAdminDialogProps) {
+  onDemoted,
+}: DemoteTeamAdminDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   async function handleConfirm() {
@@ -39,11 +39,11 @@ export function TransferTeamAdminDialog({
     try {
       const data = await api<TeamResponse>(
         `/teams/${teamId}/members/${member.id}/admin`,
-        { method: 'PATCH' },
+        { method: 'DELETE' },
       )
 
       onOpenChange(false)
-      onTransferred(data.team)
+      onDemoted(data.team)
     } finally {
       setIsSubmitting(false)
     }
@@ -53,11 +53,11 @@ export function TransferTeamAdminDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Alterar administrador da equipe</DialogTitle>
+          <DialogTitle>Remover administrador</DialogTitle>
           <DialogDescription>
-            Deseja tornar{' '}
-            <span className="font-medium text-foreground">{member?.name}</span>{' '}
-            o novo administrador desta equipe?
+            Deseja remover o cargo de administrador de{' '}
+            <span className="font-medium text-foreground">{member?.name}</span>
+            ?
           </DialogDescription>
         </DialogHeader>
 
@@ -65,11 +65,8 @@ export function TransferTeamAdminDialog({
           <p>
             Ao confirmar,{' '}
             <span className="font-medium text-foreground">{member?.name}</span>{' '}
-            passará a gerenciar a equipe (por exemplo, remover membros).
-          </p>
-          <p>
-            Você deixará de ser administrador e passará a ser um membro comum,
-            perdendo essas permissões.
+            passará a ser um membro comum e perderá permissões de
+            gerenciamento da equipe.
           </p>
         </div>
 
@@ -87,7 +84,7 @@ export function TransferTeamAdminDialog({
             disabled={isSubmitting || !member}
             onClick={() => void handleConfirm()}
           >
-            {isSubmitting ? 'Alterando...' : 'Alterar administrador'}
+            {isSubmitting ? 'Removendo...' : 'Remover administrador'}
           </Button>
         </DialogFooter>
       </DialogContent>

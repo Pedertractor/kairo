@@ -32,7 +32,12 @@ export async function teamRoutes(app: FastifyInstance) {
   app.patch(
     '/teams/:id/members/:userId/admin',
     { preHandler: [app.authenticate] },
-    controller.transferAdmin,
+    controller.promoteAdmin,
+  );
+  app.delete(
+    '/teams/:id/members/:userId/admin',
+    { preHandler: [app.authenticate] },
+    controller.demoteAdmin,
   );
   app.post(
     '/teams',

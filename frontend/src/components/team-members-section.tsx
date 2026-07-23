@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Crown, UserPlus, X } from 'lucide-react';
+import { Crown, UserMinus, UserPlus, X } from 'lucide-react';
 
 import { AddTeamMemberDialog } from '@/components/add-team-member-dialog';
+import { DemoteTeamAdminDialog } from '@/components/demote-team-admin-dialog';
+import { PromoteTeamAdminDialog } from '@/components/promote-team-admin-dialog';
 import { RemoveTeamMemberDialog } from '@/components/remove-team-member-dialog';
-import { TransferTeamAdminDialog } from '@/components/transfer-team-admin-dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/use-auth';
@@ -17,7 +18,6 @@ const ROLE_LABELS: Record<TeamMemberSummary['role'], string> = {
 
 interface TeamMembersSectionProps {
   teamId: string;
-  createdById: string;
   members: TeamMemberSummary[];
   currentUserRole: TeamRole;
   onTeamUpdated: (team: TeamSummary) => void;
@@ -25,7 +25,6 @@ interface TeamMembersSectionProps {
 
 export function TeamMembersSection({
   teamId,
-  createdById,
   members,
   currentUserRole,
   onTeamUpdated,
@@ -33,13 +32,15 @@ export function TeamMembersSection({
   const { user } = useAuth();
   const [memberToRemove, setMemberToRemove] =
     useState<TeamMemberSummary | null>(null);
-  const [memberToTransferAdmin, setMemberToTransferAdmin] =
+  const [memberToPromoteAdmin, setMemberToPromoteAdmin] =
+    useState<TeamMemberSummary | null>(null);
+  const [memberToDemoteAdmin, setMemberToDemoteAdmin] =
     useState<TeamMemberSummary | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const canManageMembers = currentUserRole === 'ADMIN';
-  const isCreator = user?.id === createdById;
+  const adminCount = members.filter((member) => member.role === 'ADMIN').length;
 
-  const addMemberButton = isCreator ? (
+  const addMemberButton = canManageMembers ? (
     <Button size='sm' onClick={() => setIsAddDialogOpen(true)}>
       <UserPlus />
       adicionar novo membro
@@ -48,7 +49,7 @@ export function TeamMembersSection({
 
   return (
     <div className='flex flex-col gap-3'>
-      {isCreator ? (
+      {canManageMembers ? (
         <AddTeamMemberDialog
           teamId={teamId}
           open={isAddDialogOpen}
@@ -69,19 +70,31 @@ export function TeamMembersSection({
         onRemoved={onTeamUpdated}
       />
 
-      <TransferTeamAdminDialog
+      <PromoteTeamAdminDialog
         teamId={teamId}
-        member={memberToTransferAdmin}
-        open={memberToTransferAdmin !== null}
+        member={memberToPromoteAdmin}
+        open={memberToPromoteAdmin !== null}
         onOpenChange={(open) => {
           if (!open) {
-            setMemberToTransferAdmin(null);
+            setMemberToPromoteAdmin(null);
           }
         }}
-        onTransferred={onTeamUpdated}
+        onPromoted={onTeamUpdated}
       />
 
-      {members.length === 0 && !isCreator ? (
+      <DemoteTeamAdminDialog
+        teamId={teamId}
+        member={memberToDemoteAdmin}
+        open={memberToDemoteAdmin !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setMemberToDemoteAdmin(null);
+          }
+        }}
+        onDemoted={onTeamUpdated}
+      />
+
+      {members.length === 0 && !canManageMembers ? (
         <p className='text-sm text-muted-foreground'>
           Nenhum membro nesta equipe.
         </p>
@@ -89,10 +102,15 @@ export function TeamMembersSection({
         <ul className='grid gap-2 sm:grid-cols-2 lg:grid-cols-3'>
           {members.map((member) => {
             const canRemove = canManageMembers && user?.id !== member.id;
-            const canTransferAdmin =
+            const canPromoteAdmin =
               canManageMembers &&
               user?.id !== member.id &&
               member.role === 'MEMBER';
+            const canDemoteAdmin =
+              canManageMembers &&
+              user?.id !== member.id &&
+              member.role === 'ADMIN' &&
+              adminCount > 1;
 
             return (
               <li
@@ -122,16 +140,29 @@ export function TeamMembersSection({
                   </p>
                 </div>
 
-                {canTransferAdmin ? (
+                {canPromoteAdmin ? (
                   <Button
                     type='button'
                     variant='ghost'
                     size='icon-xs'
                     className='shrink-0 text-muted-foreground hover:text-sidebar-primary'
                     aria-label={`Tornar ${member.name} administrador`}
-                    onClick={() => setMemberToTransferAdmin(member)}
+                    onClick={() => setMemberToPromoteAdmin(member)}
                   >
                     <Crown />
+                  </Button>
+                ) : null}
+
+                {canDemoteAdmin ? (
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    size='icon-xs'
+                    className='shrink-0 text-muted-foreground hover:text-sidebar-primary'
+                    aria-label={`Remover administrador de ${member.name}`}
+                    onClick={() => setMemberToDemoteAdmin(member)}
+                  >
+                    <UserMinus />
                   </Button>
                 ) : null}
 
