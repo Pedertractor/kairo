@@ -64,6 +64,14 @@ export function DateTimePickerField({
     const fallbackDate = date ?? new Date()
     const next = { date: fallbackDate, time: nextTime }
     setDateTime(next)
+
+    // Native `type="time"` clears to "" on Backspace. Emitting null here would
+    // flip optional fields to "Em andamento", unmount this input, and the dialog
+    // focus manager treats that focus loss as a dismiss.
+    if (!nextTime) {
+      return
+    }
+
     emitChange(next.date, next.time)
   }
 
@@ -126,6 +134,11 @@ export function DateTimePickerField({
                 disabled={disabled}
                 className="appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
                 onChange={(event) => handleTimeChange(event.target.value)}
+                onBlur={() => {
+                  if (!time) {
+                    setDateTime(splitDateTimeValue(value))
+                  }
+                }}
               />
               <InputGroupAddon align="inline-end">
                 <Clock2 className="text-muted-foreground" />
