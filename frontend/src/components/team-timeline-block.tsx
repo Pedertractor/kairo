@@ -41,7 +41,7 @@ export function TeamTimelineBlock({
         render={
           <div
             className={cn(
-              'absolute overflow-hidden rounded-xl transition-shadow hover:ring-2 hover:ring-sidebar-primary/25',
+              'absolute overflow-hidden rounded-sm transition-shadow hover:ring-2 hover:ring-sidebar-primary/25',
               colors.bar,
               showTitle ? 'px-2' : 'px-0.5',
               showTime ? 'py-2' : showTitle ? 'flex items-center py-0.5' : '',

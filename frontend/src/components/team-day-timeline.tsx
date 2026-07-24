@@ -25,6 +25,10 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 10;
 const ZOOM_IN_FACTOR = 1.45;
 const ZOOM_OUT_FACTOR = 1 / ZOOM_IN_FACTOR;
+/** Keeps the now line just past the newest block so the day feels like it's growing. */
+const NOW_LINE_LEAD_MINUTES = 8;
+/** Pixel gap under a running block — 0 keeps the marker glued to the tip. */
+const NOW_LINE_LIVE_LEAD_PX = 0;
 
 interface TeamDayTimelineProps {
   blocks: TeamDayTimelineBlock[];
@@ -242,10 +246,12 @@ export function TeamDayTimeline({
       return;
     }
 
-    const interval = window.setInterval(() => setNow(new Date()), 60_000);
+    const hasLiveAppointment = blocks.some((block) => block.endedAt === null);
+    const intervalMs = hasLiveAppointment ? 1_000 : 60_000;
+    const interval = window.setInterval(() => setNow(new Date()), intervalMs);
 
     return () => window.clearInterval(interval);
-  }, [isToday]);
+  }, [blocks, isToday]);
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -303,9 +309,25 @@ export function TeamDayTimeline({
   }, [isLoading, setZoomAtPointer]);
 
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const hasLiveAppointment = blocks.some((block) => block.endedAt === null);
+  const newestEndMinutes =
+    laidOutBlocks.length === 0
+      ? null
+      : Math.max(...laidOutBlocks.map((layout) => layout.endMinutes));
+  const liveBlockEndMinutes =
+    newestEndMinutes === null
+      ? currentMinutes
+      : Math.min(newestEndMinutes, currentMinutes);
+  const nowLineMinutes = hasLiveAppointment
+    ? liveBlockEndMinutes
+    : newestEndMinutes === null
+      ? Math.min(rangeEnd, currentMinutes + NOW_LINE_LEAD_MINUTES)
+      : Math.min(rangeEnd, liveBlockEndMinutes + NOW_LINE_LEAD_MINUTES);
   const showNowLine =
-    isToday && currentMinutes >= rangeStart && currentMinutes <= rangeEnd;
-  const nowTop = minutesToTop(currentMinutes);
+    isToday && nowLineMinutes >= rangeStart && nowLineMinutes <= rangeEnd;
+  const nowTop = hasLiveAppointment
+    ? minutesToTop(nowLineMinutes) + NOW_LINE_LIVE_LEAD_PX
+    : minutesToTop(nowLineMinutes);
 
   return (
     <Card className='gap-0 rounded-2xl border-0 py-5 shadow-sm'>
@@ -497,12 +519,29 @@ export function TeamDayTimeline({
 
                   {showNowLine ? (
                     <div
-                      className='absolute right-0 left-0 z-10 flex items-center'
+                      className='absolute right-0 left-0 z-10 flex -translate-y-1/2 items-center'
                       style={{ top: nowTop }}
                     >
-                      <span className='size-2.5 shrink-0 rounded-full bg-sidebar-primary' />
-                      <div className='h-px flex-1 border-t border-dashed border-sidebar-primary' />
-                      <span className='shrink-0 pl-2 text-xs font-semibold text-sidebar-primary'>
+                      <span className='relative flex size-2.5 shrink-0 items-center justify-center'>
+                        {hasLiveAppointment ? (
+                          <span className='absolute inset-0 animate-ping rounded-full bg-red-500/70' />
+                        ) : null}
+                        <span
+                          className={cn(
+                            'relative size-2.5 rounded-full bg-red-500',
+                            hasLiveAppointment &&
+                              'animate-[live-blink_1.1s_ease-in-out_infinite]',
+                          )}
+                        />
+                      </span>
+                      <div
+                        className={cn(
+                          'h-px flex-1 border-t border-dashed border-red-500',
+                          hasLiveAppointment &&
+                            'animate-[live-blink_1.1s_ease-in-out_infinite]',
+                        )}
+                      />
+                      <span className='ml-2 shrink-0 rounded-md bg-background/95 px-1.5 py-0.5 text-xs font-semibold text-red-500 shadow-sm ring-1 ring-red-500/20'>
                         {formatCurrentTime(now)}
                       </span>
                     </div>

@@ -33,7 +33,7 @@ export function TimelineBlock({
         render={
           <div
             className={cn(
-              'absolute right-0 left-0 overflow-hidden rounded-xl transition-shadow hover:ring-2 hover:ring-sidebar-primary/25',
+              'absolute right-0 left-0 overflow-hidden rounded-sm transition-shadow hover:ring-2 hover:ring-sidebar-primary/25',
               colors.bar,
               showTitle ? 'px-3' : 'px-0.5',
               showTime ? 'py-2' : showTitle ? 'flex items-center py-0.5' : '',
