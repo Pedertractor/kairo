@@ -1,14 +1,31 @@
 import { useState } from 'react';
-import { Crown, UserMinus, UserPlus, X } from 'lucide-react';
+import {
+  CalendarCheck,
+  CalendarOff,
+  Crown,
+  EllipsisIcon,
+  UserMinus,
+  UserPlus,
+  X,
+} from 'lucide-react';
 
 import { AddTeamMemberDialog } from '@/components/add-team-member-dialog';
 import { DemoteTeamAdminDialog } from '@/components/demote-team-admin-dialog';
 import { PromoteTeamAdminDialog } from '@/components/promote-team-admin-dialog';
 import { RemoveTeamMemberDialog } from '@/components/remove-team-member-dialog';
+import { SetMemberAbsentDialog } from '@/components/set-member-absent-dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/hooks/use-auth';
 import { getInitials } from '@/lib/initials';
+import { cn } from '@/lib/utils';
 import type { TeamMemberSummary, TeamRole, TeamSummary } from '@/types/team';
 
 const ROLE_LABELS: Record<TeamMemberSummary['role'], string> = {
@@ -35,6 +52,8 @@ export function TeamMembersSection({
   const [memberToPromoteAdmin, setMemberToPromoteAdmin] =
     useState<TeamMemberSummary | null>(null);
   const [memberToDemoteAdmin, setMemberToDemoteAdmin] =
+    useState<TeamMemberSummary | null>(null);
+  const [memberToToggleAbsent, setMemberToToggleAbsent] =
     useState<TeamMemberSummary | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const canManageMembers = currentUserRole === 'ADMIN';
@@ -94,6 +113,18 @@ export function TeamMembersSection({
         onDemoted={onTeamUpdated}
       />
 
+      <SetMemberAbsentDialog
+        teamId={teamId}
+        member={memberToToggleAbsent}
+        open={memberToToggleAbsent !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setMemberToToggleAbsent(null);
+          }
+        }}
+        onUpdated={onTeamUpdated}
+      />
+
       {members.length === 0 && !canManageMembers ? (
         <p className='text-sm text-muted-foreground'>
           Nenhum membro nesta equipe.
@@ -111,11 +142,13 @@ export function TeamMembersSection({
               user?.id !== member.id &&
               member.role === 'ADMIN' &&
               adminCount > 1;
-
             return (
               <li
                 key={member.id}
-                className='flex items-center gap-2 rounded-lg border bg-card px-2 py-1.5'
+                className={cn(
+                  'flex items-center gap-2 rounded-lg border bg-card px-2 py-1.5 transition-opacity',
+                  member.absent && 'opacity-45',
+                )}
               >
                 <Avatar size='sm'>
                   <AvatarFallback className='text-xs'>
@@ -137,46 +170,67 @@ export function TeamMembersSection({
                   </div>
                   <p className='text-xs text-muted-foreground'>
                     {ROLE_LABELS[member.role]}
+                    {member.absent ? ' · Ausente' : ''}
                   </p>
                 </div>
 
-                {canPromoteAdmin ? (
-                  <Button
-                    type='button'
-                    variant='ghost'
-                    size='icon-xs'
-                    className='shrink-0 text-muted-foreground hover:text-sidebar-primary'
-                    aria-label={`Tornar ${member.name} administrador`}
-                    onClick={() => setMemberToPromoteAdmin(member)}
-                  >
-                    <Crown />
-                  </Button>
-                ) : null}
+                {canManageMembers ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          type='button'
+                          variant='ghost'
+                          size='icon-xs'
+                          className='shrink-0 text-muted-foreground hover:text-foreground'
+                          aria-label={`Ações para ${member.name}`}
+                        />
+                      }
+                    >
+                      <EllipsisIcon />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align='end'>
+                      <DropdownMenuItem
+                        onClick={() => setMemberToToggleAbsent(member)}
+                      >
+                        {member.absent ? <CalendarCheck /> : <CalendarOff />}
+                        {member.absent
+                          ? 'Marcar como disponível'
+                          : 'Marcar como ausente'}
+                      </DropdownMenuItem>
 
-                {canDemoteAdmin ? (
-                  <Button
-                    type='button'
-                    variant='ghost'
-                    size='icon-xs'
-                    className='shrink-0 text-muted-foreground hover:text-sidebar-primary'
-                    aria-label={`Remover administrador de ${member.name}`}
-                    onClick={() => setMemberToDemoteAdmin(member)}
-                  >
-                    <UserMinus />
-                  </Button>
-                ) : null}
+                      {canPromoteAdmin ? (
+                        <DropdownMenuItem
+                          onClick={() => setMemberToPromoteAdmin(member)}
+                        >
+                          <Crown />
+                          Tornar administrador
+                        </DropdownMenuItem>
+                      ) : null}
 
-                {canRemove ? (
-                  <Button
-                    type='button'
-                    variant='ghost'
-                    size='icon-xs'
-                    className='shrink-0 text-muted-foreground hover:text-destructive'
-                    aria-label={`Remover ${member.name}`}
-                    onClick={() => setMemberToRemove(member)}
-                  >
-                    <X />
-                  </Button>
+                      {canDemoteAdmin ? (
+                        <DropdownMenuItem
+                          onClick={() => setMemberToDemoteAdmin(member)}
+                        >
+                          <UserMinus />
+                          Remover administrador
+                        </DropdownMenuItem>
+                      ) : null}
+
+                      {canRemove ? (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            variant='destructive'
+                            onClick={() => setMemberToRemove(member)}
+                          >
+                            <X />
+                            Remover membro
+                          </DropdownMenuItem>
+                        </>
+                      ) : null}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 ) : null}
               </li>
             );

@@ -22,3 +22,7 @@ export const changePasswordSchema = z
 export const refreshTokenSchema = z.object({
   refreshToken: z.string().min(1, 'Refresh token é obrigatório'),
 });
+
+export const updateAbsentSchema = z.object({
+  absent: z.boolean(),
+});

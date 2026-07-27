@@ -19,6 +19,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useActiveTimer } from '@/hooks/use-active-timer'
+import { useAuth } from '@/hooks/use-auth'
 import { api } from '@/lib/api-handler'
 import { CARD_STATUS_BADGE_CLASS, STATUS_LABELS } from '@/lib/card-status'
 import {
@@ -453,6 +454,7 @@ export function StartRecentWorkDialog({
   onOpenChange,
   onStarted,
 }: StartRecentWorkDialogProps) {
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<DialogTab>('favoritos')
   const [favorites, setFavorites] = useState<StartableWorkItem[]>([])
   const [recents, setRecents] = useState<StartableWorkItem[]>([])
@@ -549,6 +551,10 @@ export function StartRecentWorkDialog({
   }, [open, activeTab, loadedTabs])
 
   async function handleStart(item: StartableWorkItem) {
+    if (user?.absent) {
+      return
+    }
+
     const itemKey = `${item.kind}-${item.id}`
     setStartingItemKey(itemKey)
 
@@ -569,6 +575,17 @@ export function StartRecentWorkDialog({
   }
 
   function renderTabContent(tab: DialogTab, items: StartableWorkItem[]) {
+    if (user?.absent) {
+      return (
+        <div className="flex min-h-48 flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/30 p-8 text-center">
+          <p className="text-sm font-medium">Você está marcado como ausente</p>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            Altere seu status nas configurações para iniciar um apontamento.
+          </p>
+        </div>
+      )
+    }
+
     if (!loadedTabs[tab]) {
       return <WorkItemListSkeleton />
     }

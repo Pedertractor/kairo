@@ -6,10 +6,12 @@ import {
   useActiveTimer,
   useElapsedSeconds,
 } from '@/contexts/active-timer-context';
+import { useAuth } from '@/hooks/use-auth';
 import { formatElapsed } from '@/lib/format-elapsed';
 import { cn } from '@/lib/utils';
 
 export function ActiveTimerBar() {
+  const { user } = useAuth();
   const {
     activeTimer,
     pausedTarget,
@@ -112,7 +114,11 @@ export function ActiveTimerBar() {
                 size='sm'
                 variant='outline'
                 className='border-sidebar-primary/40 bg-background/60 hover:bg-background/90'
-                disabled={isStarting}
+                aria-label={
+                  user?.absent ? 'Indisponível enquanto ausente' : 'Retomar timer'
+                }
+                title={user?.absent ? 'Você está marcado como ausente' : undefined}
+                disabled={isStarting || user?.absent}
                 onClick={() => void resumeTimer()}
               >
                 <Play />

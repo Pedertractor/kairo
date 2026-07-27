@@ -397,11 +397,25 @@ export class TimeEntryService {
     await this.taskRepository.updateStatusIfOpen(taskId, 'PAUSED');
   }
 
+  private async assertUserPresent(userId: string): Promise<void> {
+    const user = await this.userRepository.findById(userId);
+
+    if (!user) {
+      throw new AppError(404, MENSAGENS.USUARIO_NAO_ENCONTRADO);
+    }
+
+    if (user.absent) {
+      throw new AppError(403, MENSAGENS.USUARIO_AUSENTE);
+    }
+  }
+
   async startActivityTimer(
     teamId: string,
     activityId: string,
     userId: string,
   ): Promise<ActiveTimer> {
+    await this.assertUserPresent(userId);
+
     const membership = await this.teamRepository.findMembershipByTeamAndUser(
       teamId,
       userId,
@@ -452,6 +466,8 @@ export class TimeEntryService {
     taskId: string,
     userId: string,
   ): Promise<ActiveTimer> {
+    await this.assertUserPresent(userId);
+
     const task = await this.taskRepository.findById(taskId);
 
     if (

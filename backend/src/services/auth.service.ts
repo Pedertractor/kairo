@@ -10,6 +10,7 @@ import { addDuration } from '../utils/duration.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 import { toSafeUser } from '../utils/user.js';
+import { AbsenceService } from './absence.service.js';
 
 function hashRefreshToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
@@ -23,6 +24,7 @@ export class AuthService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly refreshTokenRepository: RefreshTokenRepository,
+    private readonly absenceService: AbsenceService,
   ) {}
 
   private async toAuthenticatedUser(user: User) {
@@ -99,6 +101,11 @@ export class AuthService {
       throw new AppError(401, MENSAGENS.NAO_AUTORIZADO);
     }
 
+    return this.toAuthenticatedUser(user);
+  }
+
+  async updateAbsent(userId: string, absent: boolean) {
+    const user = await this.absenceService.setAbsent(userId, absent);
     return this.toAuthenticatedUser(user);
   }
 

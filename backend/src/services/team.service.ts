@@ -4,6 +4,7 @@ import { UserRepository } from '../repositories/user.repository.js';
 import type { TeamMemberSummary, TeamSummary, TeamUserOption } from '../types/team.types.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
+import { AbsenceService } from './absence.service.js';
 
 type TeamWithMembers = {
   id: string;
@@ -14,7 +15,7 @@ type TeamWithMembers = {
   _count: { members: number };
   members: Array<{
     role: TeamRole;
-    user: { id: string; name: string };
+    user: { id: string; name: string; absent: boolean };
   }>;
 };
 
@@ -25,6 +26,7 @@ function toTeamMembers(
     id: member.user.id,
     name: member.user.name,
     role: member.role,
+    absent: member.user.absent,
   }));
 }
 
@@ -45,6 +47,7 @@ export class TeamService {
   constructor(
     private readonly teamRepository: TeamRepository,
     private readonly userRepository: UserRepository,
+    private readonly absenceService: AbsenceService,
   ) {}
 
   async listUserTeams(userId: string): Promise<TeamSummary[]> {
@@ -225,6 +228,40 @@ export class TeamService {
     }
 
     await this.teamRepository.addMember(teamId, targetUser.id, TeamRole.MEMBER);
+
+    return this.getTeamForMember(teamId, actorUserId);
+  }
+
+  async updateMemberAbsent(
+    teamId: string,
+    actorUserId: string,
+    targetUserId: string,
+    absent: boolean,
+  ): Promise<TeamSummary> {
+    const actorMembership = await this.teamRepository.findMembershipByTeamAndUser(
+      teamId,
+      actorUserId,
+    );
+
+    if (!actorMembership) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    if (actorMembership.role !== TeamRole.ADMIN) {
+      throw new AppError(403, MENSAGENS.PROIBIDO);
+    }
+
+    const targetMembership =
+      await this.teamRepository.findMembershipByTeamAndUser(
+        teamId,
+        targetUserId,
+      );
+
+    if (!targetMembership) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    await this.absenceService.setAbsent(targetUserId, absent);
 
     return this.getTeamForMember(teamId, actorUserId);
   }

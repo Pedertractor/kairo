@@ -6,6 +6,7 @@ export interface TeamMemberSummary {
   id: string
   name: string
   role: TeamRole
+  absent: boolean
 }
 
 export interface TeamSummary {

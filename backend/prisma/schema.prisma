@@ -67,6 +67,7 @@ model User {
   active          Boolean  @default(true)
   firstLogin      Boolean  @default(true)
   printerOperator Boolean  @default(false)
+  absent          Boolean  @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

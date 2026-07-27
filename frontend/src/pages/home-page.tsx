@@ -9,10 +9,12 @@ import { StartRecentWorkDialog } from '@/components/start-recent-work-dialog';
 import { Button } from '@/components/ui/button';
 import { useHomeData } from '@/hooks/use-home-data';
 import { useActiveTimer } from '@/hooks/use-active-timer';
+import { useAuth } from '@/hooks/use-auth';
 import { toDateKey } from '@/lib/date';
 import { cn } from '@/lib/utils';
 
 export function HomePage() {
+  const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date()));
   const [startDialogOpen, setStartDialogOpen] = useState(false);
   const {
@@ -52,7 +54,11 @@ export function HomePage() {
           'fixed right-6 z-20 size-14 rounded-full shadow-lg lg:right-10',
           hasTimerBar ? 'bottom-24' : 'bottom-6',
         )}
-        aria-label='Iniciar apontamento'
+        aria-label={
+          user?.absent ? 'Indisponível enquanto ausente' : 'Iniciar apontamento'
+        }
+        title={user?.absent ? 'Você está marcado como ausente' : undefined}
+        disabled={user?.absent}
         onClick={() => setStartDialogOpen(true)}
       >
         <Plus className='size-6' />
