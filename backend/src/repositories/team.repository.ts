@@ -3,7 +3,7 @@ import type { PrismaClient, TeamRole } from '../generated/client.js';
 const memberInclude = {
   members: {
     include: {
-      user: { select: { id: true, name: true } },
+      user: { select: { id: true, name: true, absent: true } },
     },
     orderBy: { joinedAt: 'asc' as const },
   },

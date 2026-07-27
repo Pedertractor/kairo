@@ -17,3 +17,7 @@ export const teamMemberParamSchema = z.object({
 export const addTeamMemberSchema = z.object({
   userId: z.string().min(1, 'Usuário é obrigatório'),
 });
+
+export const updateMemberAbsentSchema = z.object({
+  absent: z.boolean(),
+});

@@ -11,6 +11,7 @@ export interface User {
   active: boolean
   firstLogin: boolean
   printerOperator: boolean
+  absent: boolean
   hasOwnedTeams: boolean
 }
 

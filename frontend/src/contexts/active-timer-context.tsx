@@ -9,7 +9,9 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from 'react';
+import { toast } from 'sonner';
 
+import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/lib/api-handler';
 import { invalidateHomeData } from '@/lib/home-data-invalidation';
 import {
@@ -92,6 +94,7 @@ function toPausedTarget(activeTimer: ActiveTimer): PausedTimerTarget | null {
 }
 
 export function ActiveTimerProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(null);
   const [pausedTarget, setPausedTarget] = useState<PausedTimerTarget | null>(
     () => readPausedTimerTarget(),
@@ -154,8 +157,12 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
   }, [activeTimer, elapsedStore]);
 
   const startTimer = useCallback(async (teamId: string, activityId: string) => {
-    setIsStarting(true);
+    if (user?.absent) {
+      toast.error('Você está ausente e não pode iniciar apontamentos.');
+      return;
+    }
 
+    setIsStarting(true);
     try {
       const data = await api<StartTimerResponse>(
         `/teams/${teamId}/activities/${activityId}/time-entries`,
@@ -168,10 +175,15 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsStarting(false);
     }
-  }, [clearPausedTarget]);
+  }, [clearPausedTarget, user?.absent]);
 
   const startTaskTimer = useCallback(
     async (projectId: string, taskId: string) => {
+      if (user?.absent) {
+        toast.error('Você está ausente e não pode iniciar apontamentos.');
+        return;
+      }
+
       setIsStarting(true);
 
       try {
@@ -187,7 +199,7 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
         setIsStarting(false);
       }
     },
-    [clearPausedTarget],
+    [clearPausedTarget, user?.absent],
   );
 
   const pauseTimer = useCallback(async () => {

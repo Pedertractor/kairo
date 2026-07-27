@@ -77,6 +77,13 @@ export class UserRepository {
     });
   }
 
+  setAbsent(id: string, absent: boolean) {
+    return this.prisma.user.update({
+      where: { id },
+      data: { absent },
+    });
+  }
+
   resetPassword(id: string, passwordHash: string) {
     return this.prisma.user.update({
       where: { id },

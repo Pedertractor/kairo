@@ -12,7 +12,7 @@ import { getInitials } from '@/lib/initials';
 export function HomeDashboardHeader() {
   const { user } = useAuth();
   const isMobile = useIsMobile();
-  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const greeting = getGreeting();
   const firstName = user?.name ? getFirstName(user.name) : '';
   const initials = user?.name ? getInitials(user.name) : '?';
@@ -32,8 +32,8 @@ export function HomeDashboardHeader() {
           <button
             type='button'
             className='flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
-            aria-label='Paleta de cores'
-            onClick={() => setPaletteOpen(true)}
+            aria-label='Configurações'
+            onClick={() => setSettingsOpen(true)}
           >
             <Settings className='size-5' />
           </button>
@@ -46,7 +46,7 @@ export function HomeDashboardHeader() {
         </div>
       </div>
 
-      <PaletteDialog open={paletteOpen} onOpenChange={setPaletteOpen} />
+      <PaletteDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
     </>
   );
 }

@@ -3,6 +3,7 @@ import {
   changePasswordSchema,
   loginSchema,
   refreshTokenSchema,
+  updateAbsentSchema,
 } from '../schemas/auth.schema.js';
 import { AuthService } from '../services/auth.service.js';
 import { AppError, handleControllerError } from '../utils/errors.js';
@@ -56,6 +57,30 @@ export class AuthController {
     try {
       const user = await this.service.getAuthenticatedUser(request.user.sub);
       return sendSuccess(reply, { user });
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  updateAbsent = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const parsed = updateAbsentSchema.safeParse(request.body);
+
+      if (!parsed.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const user = await this.service.updateAbsent(
+        request.user.sub,
+        parsed.data.absent,
+      );
+
+      return sendSuccess(
+        reply,
+        { user },
+        200,
+        MENSAGENS.AUSENCIA_ATUALIZADA_SUCESSO,
+      );
     } catch (error) {
       return handleControllerError(error, reply);
     }

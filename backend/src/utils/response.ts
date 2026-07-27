@@ -54,6 +54,9 @@ export const MENSAGENS = {
   TIMER_INICIADO_SUCESSO: 'Timer iniciado com sucesso',
   TIMER_JA_ATIVO: 'Já existe um timer ativo para esta atividade',
   TIMER_PAUSADO_SUCESSO: 'Timer pausado com sucesso',
+  USUARIO_AUSENTE:
+    'Não é possível iniciar um apontamento enquanto você estiver ausente',
+  AUSENCIA_ATUALIZADA_SUCESSO: 'Status de ausência atualizado com sucesso',
   APONTAMENTO_ATUALIZADO_SUCESSO: 'Apontamento atualizado com sucesso',
   USUARIO_ROLE_ATUALIZADO_SUCESSO: 'Função do usuário atualizada com sucesso',
   USUARIO_SENHA_REPOSTA_SUCESSO: 'Senha reposta com sucesso',
