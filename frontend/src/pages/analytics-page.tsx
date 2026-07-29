@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 
 import { DatePicker } from '@/components/date-picker';
+import { DateRangePicker } from '@/components/date-range-picker';
 import { TeamDayTimeline } from '@/components/team-day-timeline';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -46,8 +47,17 @@ function utilizationColor(percent: number) {
   return 'from-violet-500 to-indigo-500';
 }
 
+function getInclusiveDayCount(startDate: string, endDate: string): number {
+  const start = fromDateKey(startDate).getTime();
+  const end = fromDateKey(endDate).getTime();
+  return Math.floor((end - start) / (24 * 60 * 60 * 1000)) + 1;
+}
+
 export function AnalyticsPage() {
-  const [date, setDate] = useState(toDateKey(new Date()));
+  const todayKey = toDateKey(new Date());
+  const [startDate, setStartDate] = useState(todayKey);
+  const [endDate, setEndDate] = useState(todayKey);
+  const [timelineDate, setTimelineDate] = useState(todayKey);
   const [teamId, setTeamId] = useState(ALL);
   const [employeeId, setEmployeeId] = useState(ALL);
   const [projectId, setProjectId] = useState(ALL);
@@ -63,7 +73,7 @@ export function AnalyticsPage() {
 
   const loadDashboard = useCallback(async () => {
     try {
-      const params = new URLSearchParams({ date });
+      const params = new URLSearchParams({ startDate, endDate });
       if (teamId !== ALL) params.set('teamId', teamId);
       if (employeeId !== ALL) params.set('employeeId', employeeId);
       if (projectId !== ALL) params.set('projectId', projectId);
@@ -93,7 +103,7 @@ export function AnalyticsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [date, employeeId, projectId, teamId]);
+  }, [endDate, employeeId, projectId, startDate, teamId]);
 
   useEffect(() => {
     void loadDashboard();
@@ -109,7 +119,7 @@ export function AnalyticsPage() {
 
     try {
       const data = await api<TeamDayDashboard>(
-        `/teams/${selectedTimeline.teamId}/time-entries/day?date=${encodeURIComponent(date)}`,
+        `/teams/${selectedTimeline.teamId}/time-entries/day?date=${encodeURIComponent(timelineDate)}`,
         { toastOnError: false },
       );
       setTimelineBlocks(
@@ -122,7 +132,7 @@ export function AnalyticsPage() {
     } finally {
       setIsLoadingTimeline(false);
     }
-  }, [date, selectedTimeline]);
+  }, [selectedTimeline, timelineDate]);
 
   useEffect(() => {
     void loadEmployeeTimeline();
@@ -156,6 +166,7 @@ export function AnalyticsPage() {
       return;
     }
 
+    setTimelineDate(endDate);
     setSelectedTimeline({
       employeeId: nextEmployeeId,
       employeeName,
@@ -166,6 +177,7 @@ export function AnalyticsPage() {
   const summary = dashboard?.summary;
   const selectedProject = dashboard?.selectedProject;
   const selectedProjectTeamId = selectedProject?.teamId ?? '';
+  const periodDayCount = getInclusiveDayCount(startDate, endDate);
 
   return (
     <div className='flex flex-1 flex-col gap-6 pb-4'>
@@ -179,19 +191,25 @@ export function AnalyticsPage() {
             </div>
             <h1 className='text-3xl font-bold tracking-tight'>Analytics</h1>
             <p className='mt-1 max-w-xl text-sm text-white/80'>
-              Disponibilidade e apontamentos diários das suas equipes.
+              Disponibilidade e apontamentos das suas equipes por período.
             </p>
           </div>
 
           <div className='grid w-full min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-4'>
             <div className='min-w-0'>
-              <Label className='text-white/80'>Dia</Label>
-              <DatePicker
-                date={fromDateKey(date)}
+              <Label className='text-white/80'>Período</Label>
+              <DateRangePicker
+                range={{
+                  from: fromDateKey(startDate),
+                  to: fromDateKey(endDate),
+                }}
                 displayFormat='dd-MM-yy'
+                numberOfMonths={1}
                 className='mt-1 w-full border-white/30 bg-white/95 text-foreground'
-                onDateChange={(nextDate) => {
-                  if (nextDate) setDate(toDateKey(nextDate));
+                onRangeChange={(nextRange) => {
+                  if (!nextRange?.from || !nextRange.to) return;
+                  setStartDate(toDateKey(nextRange.from));
+                  setEndDate(toDateKey(nextRange.to));
                 }}
               />
             </div>
@@ -300,7 +318,11 @@ export function AnalyticsPage() {
             <p className='mt-1 text-2xl font-bold'>
               {formatDuration(summary.availabilitySeconds)}
             </p>
-            <p className='mt-1 text-xs opacity-60'>8h 48min por funcionário</p>
+            <p className='mt-1 text-xs opacity-60'>
+              {periodDayCount === 1
+                ? '8h 48min por funcionário'
+                : `8h 48min × ${periodDayCount} dias por funcionário`}
+            </p>
           </div>
           <div className='rounded-2xl border border-cyan-200 bg-cyan-50 p-5 text-cyan-950 dark:border-cyan-900 dark:bg-cyan-950/40 dark:text-cyan-100'>
             <Clock3 className='mb-4 size-6 text-cyan-500' />
@@ -318,7 +340,7 @@ export function AnalyticsPage() {
               Apontamentos
             </p>
             <p className='mt-1 text-2xl font-bold'>{summary.timeEntryCount}</p>
-            <p className='mt-1 text-xs opacity-60'>Registros no dia</p>
+            <p className='mt-1 text-xs opacity-60'>Registros no período</p>
           </div>
           <div className='rounded-2xl border border-pink-200 bg-pink-50 p-5 text-pink-950 dark:border-pink-900 dark:bg-pink-950/40 dark:text-pink-100'>
             <Gauge className='mb-4 size-6 text-pink-500' />
@@ -562,10 +584,10 @@ export function AnalyticsPage() {
                 <Label htmlFor='timeline-date'>Dia</Label>
                 <DatePicker
                   id='timeline-date'
-                  date={fromDateKey(date)}
+                  date={fromDateKey(timelineDate)}
                   displayFormat='dd-MM-yy'
                   onDateChange={(nextDate) => {
-                    if (nextDate) setDate(toDateKey(nextDate));
+                    if (nextDate) setTimelineDate(toDateKey(nextDate));
                   }}
                 />
               </div>
@@ -584,8 +606,8 @@ export function AnalyticsPage() {
 
           <TeamDayTimeline
             blocks={timelineBlocks}
-            selectedDate={date}
-            onDateChange={setDate}
+            selectedDate={timelineDate}
+            onDateChange={setTimelineDate}
             isLoading={isLoadingTimeline}
             showDateOptions={false}
           />
