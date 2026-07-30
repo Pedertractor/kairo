@@ -34,9 +34,13 @@ export const updateActivitySchema = z
   .object({
     title: z.string().trim().min(1, 'Título é obrigatório').optional(),
     status: cardStatusSchema.optional(),
+    tagId: z.string().min(1).nullable().optional(),
   })
   .refine(
-    (data) => data.title !== undefined || data.status !== undefined,
+    (data) =>
+      data.title !== undefined ||
+      data.status !== undefined ||
+      data.tagId !== undefined,
     { message: 'Informe ao menos um campo para atualizar' },
   );
 
@@ -47,6 +51,7 @@ export const createActivitySchema = z.object({
     .number()
     .positive('Horas estimadas deve ser um valor positivo')
     .optional(),
+  tagId: z.string().min(1).optional(),
 });
 
 export const createProjectSchema = createActivitySchema;

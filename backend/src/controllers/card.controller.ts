@@ -70,6 +70,7 @@ export class CardController {
         body.data.title,
         body.data.description,
         body.data.estimatedHours,
+        body.data.tagId,
       );
 
       return sendSuccess(

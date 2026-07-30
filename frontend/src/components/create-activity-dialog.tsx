@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 
+import { ActivityTagBadge } from '@/components/activity-tag-badge'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -11,15 +12,26 @@ import {
 } from '@/components/ui/dialog'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/lib/api-handler'
 import type { ActivityResponse, CreateActivityInput } from '@/types/card'
+import type { TagSummary } from '@/types/tag'
+
+const NO_TAG = '__none__'
 
 interface CreateActivityDialogProps {
   teamId: string
   open: boolean
   onOpenChange: (open: boolean) => void
   onCreated: () => void
+  tags?: TagSummary[]
 }
 
 export function CreateActivityDialog({
@@ -27,11 +39,13 @@ export function CreateActivityDialog({
   open,
   onOpenChange,
   onCreated,
+  tags = [],
 }: CreateActivityDialogProps) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [estimatedHours, setEstimatedHours] = useState('')
   const [indefiniteTime, setIndefiniteTime] = useState(false)
+  const [tagId, setTagId] = useState(NO_TAG)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   function resetForm() {
@@ -39,7 +53,14 @@ export function CreateActivityDialog({
     setDescription('')
     setEstimatedHours('')
     setIndefiniteTime(false)
+    setTagId(NO_TAG)
   }
+
+  useEffect(() => {
+    if (open) {
+      setTagId(NO_TAG)
+    }
+  }, [open])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -59,6 +80,10 @@ export function CreateActivityDialog({
 
       if (parsedHours !== undefined && !Number.isNaN(parsedHours)) {
         payload.estimatedHours = parsedHours
+      }
+
+      if (tagId !== NO_TAG) {
+        payload.tagId = tagId
       }
 
       await api<ActivityResponse>(`/teams/${teamId}/activities`, {
@@ -115,6 +140,51 @@ export function CreateActivityDialog({
                 disabled={isSubmitting}
                 rows={3}
               />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="activity-tag">Tag</FieldLabel>
+              <Select
+                value={tagId}
+                onValueChange={(value) => setTagId(value ?? NO_TAG)}
+                disabled={isSubmitting}
+              >
+                <SelectTrigger id="activity-tag" className="w-full">
+                  <SelectValue placeholder="Sem tag">
+                    {(selectedValue) => {
+                      const value = String(selectedValue ?? NO_TAG)
+                      if (value === NO_TAG) {
+                        return 'Sem tag'
+                      }
+
+                      const tag = tags.find((item) => item.id === value)
+                      if (!tag) {
+                        return 'Tag'
+                      }
+
+                      return (
+                        <span className="flex items-center gap-2">
+                          <ActivityTagBadge tag={tag} />
+                        </span>
+                      )
+                    }}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_TAG}>Sem tag</SelectItem>
+                  {tags.map((tag) => (
+                    <SelectItem key={tag.id} value={tag.id}>
+                      <span className="flex items-center gap-2">
+                        <span
+                          className="size-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: tag.color }}
+                          aria-hidden
+                        />
+                        {tag.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </Field>
             <Field>
               <FieldLabel htmlFor="activity-estimated-hours">

@@ -123,6 +123,7 @@ model Team {
   members TeamMember[]
   invites TeamInvite[]
   cards   Card[]
+  tags    Tag[]
 
   @@map("teams")
 }
@@ -169,6 +170,24 @@ model TeamInvite {
   @@map("team_invites")
 }
 
+model Tag {
+  id     String @id @default(cuid())
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  name  String
+  color String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cards Card[]
+
+  @@unique([teamId, name])
+  @@index([teamId])
+  @@map("tags")
+}
+
 model Card {
   id String @id @default(cuid())
 
@@ -177,6 +196,9 @@ model Card {
 
   createdById String
   createdBy   User   @relation("CardCreator", fields: [createdById], references: [id])
+
+  tagId String?
+  tag   Tag?    @relation(fields: [tagId], references: [id], onDelete: SetNull)
 
   title       String
   description String?
@@ -195,6 +217,7 @@ model Card {
 
   @@index([teamId])
   @@index([createdById])
+  @@index([tagId])
   @@map("cards")
 }
 
