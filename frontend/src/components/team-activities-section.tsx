@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { CreateActivityDialog } from '@/components/create-activity-dialog';
 import { FavoriteButton } from '@/components/favorite-button';
 import { StartActivityTimerButton } from '@/components/start-activity-timer-button';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useActiveTimer } from '@/hooks/use-active-timer';
 import { api } from '@/lib/api-handler';
@@ -21,6 +23,7 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
   const [activities, setActivities] = useState<ActivitySummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [nameFilter, setNameFilter] = useState('');
 
   const loadActivities = useCallback(async () => {
     setIsLoading(true);
@@ -38,6 +41,20 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
   useEffect(() => {
     void loadActivities();
   }, [loadActivities]);
+
+  const filteredActivities = useMemo(() => {
+    const query = nameFilter.trim().toLowerCase();
+
+    if (query === '') {
+      return activities;
+    }
+
+    return activities.filter((activity) =>
+      activity.title.toLowerCase().includes(query),
+    );
+  }, [activities, nameFilter]);
+
+  const hasActiveFilter = nameFilter.trim() !== '';
 
   return (
     <div className='flex flex-col gap-4'>
@@ -60,6 +77,20 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
         onCreated={loadActivities}
       />
 
+      {!isLoading && activities.length > 0 ? (
+        <div className='relative w-full sm:w-1/4'>
+          <Search className='pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground' />
+          <Input
+            type='search'
+            value={nameFilter}
+            onChange={(event) => setNameFilter(event.target.value)}
+            placeholder='Buscar por nome...'
+            className='pl-8'
+            aria-label='Buscar atividades por nome'
+          />
+        </div>
+      ) : null}
+
       {isLoading ? (
         <div className='grid gap-2 sm:grid-cols-2 lg:grid-cols-3'>
           {Array.from({ length: 3 }).map((_, index) => (
@@ -73,9 +104,18 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
             As atividades desta equipe aparecerão aqui.
           </p>
         </div>
+      ) : filteredActivities.length === 0 ? (
+        <div className='flex min-h-48 flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/30 p-8 text-center'>
+          <p className='text-sm font-medium'>Nenhuma atividade encontrada</p>
+          <p className='max-w-sm text-sm text-muted-foreground'>
+            {hasActiveFilter
+              ? 'Tente ajustar o termo de busca.'
+              : 'As atividades desta equipe aparecerão aqui.'}
+          </p>
+        </div>
       ) : (
         <ul className='grid gap-2 sm:grid-cols-2 lg:grid-cols-3'>
-          {activities.map((activity) => {
+          {filteredActivities.map((activity) => {
             const isTimerActive = isActivityCurrent(activity.id);
 
             return (
