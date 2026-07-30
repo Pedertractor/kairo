@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { ArrowLeft, Pencil } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 
+import { ActivityTagBadge } from '@/components/activity-tag-badge'
+import { EditActivityTagDialog } from '@/components/edit-activity-tag-dialog'
 import { EditActivityTitleDialog } from '@/components/edit-activity-title-dialog'
 import { UpdateActivityStatusDialog } from '@/components/update-activity-status-dialog'
 import { ActivityStatusActions } from '@/components/activity-status-actions'
@@ -20,6 +22,7 @@ export function ActivityDetailPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
   const [isEditTitleDialogOpen, setIsEditTitleDialogOpen] = useState(false)
+  const [isEditTagDialogOpen, setIsEditTagDialogOpen] = useState(false)
 
   useEffect(() => {
     if (!teamId || !activityId) {
@@ -113,6 +116,22 @@ export function ActivityDetailPage() {
                 />
               ) : null}
             </div>
+            <div className="flex items-center gap-2">
+              {activity.tag ? (
+                <ActivityTagBadge tag={activity.tag} className="text-sm" />
+              ) : (
+                <span className="text-sm text-muted-foreground">Sem tag</span>
+              )}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Editar tag"
+                onClick={() => setIsEditTagDialogOpen(true)}
+              >
+                <Pencil />
+              </Button>
+            </div>
             {activity.description ? (
               <p className="text-muted-foreground">{activity.description}</p>
             ) : null}
@@ -131,6 +150,13 @@ export function ActivityDetailPage() {
                 open={isEditTitleDialogOpen}
                 onOpenChange={setIsEditTitleDialogOpen}
                 onUpdated={setActivity}
+              />
+              <EditActivityTagDialog
+                teamId={teamId}
+                activity={activity}
+                open={isEditTagDialogOpen}
+                onOpenChange={setIsEditTagDialogOpen}
+                onUpdated={reloadActivity}
               />
               <UpdateActivityStatusDialog
                 teamId={teamId}

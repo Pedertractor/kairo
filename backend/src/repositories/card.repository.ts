@@ -4,12 +4,23 @@ import type {
   PrismaClient,
 } from '../generated/client.js';
 
+const activityTagInclude = {
+  tag: {
+    select: {
+      id: true,
+      name: true,
+      color: true,
+    },
+  },
+} as const;
+
 export class CardRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
   findActivitiesByTeamId(teamId: string) {
     return this.prisma.card.findMany({
       where: { teamId, type: 'ACTIVITY' as CardType },
+      include: activityTagInclude,
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -17,6 +28,7 @@ export class CardRepository {
   findActivityById(activityId: string) {
     return this.prisma.card.findUnique({
       where: { id: activityId },
+      include: activityTagInclude,
     });
   }
 
@@ -24,19 +36,22 @@ export class CardRepository {
     return this.prisma.card.update({
       where: { id: activityId },
       data: { status },
+      include: activityTagInclude,
     });
   }
 
   updateActivity(
     activityId: string,
-    data: { title?: string; status?: CardStatus },
+    data: { title?: string; status?: CardStatus; tagId?: string | null },
   ) {
     return this.prisma.card.update({
       where: { id: activityId },
       data: {
         ...(data.title !== undefined ? { title: data.title } : {}),
         ...(data.status !== undefined ? { status: data.status } : {}),
+        ...(data.tagId !== undefined ? { tagId: data.tagId } : {}),
       },
+      include: activityTagInclude,
     });
   }
 
@@ -47,6 +62,7 @@ export class CardRepository {
     description?: string;
     estimatedHours?: number;
     status?: CardStatus;
+    tagId?: string;
   }) {
     return this.prisma.card.create({
       data: {
@@ -57,7 +73,9 @@ export class CardRepository {
         type: 'ACTIVITY',
         status: data.status ?? 'TODO',
         estimatedHours: data.estimatedHours ?? null,
+        tagId: data.tagId ?? null,
       },
+      include: activityTagInclude,
     });
   }
 

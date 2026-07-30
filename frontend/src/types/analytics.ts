@@ -46,7 +46,8 @@ export interface EmployeeDayAnalytics {
 }
 
 export interface AnalyticsDashboard {
-  date: string
+  startDate: string
+  endDate: string
   teams: AnalyticsTeamOption[]
   employees: AnalyticsEmployeeOption[]
   projects: AnalyticsProjectOption[]

@@ -18,23 +18,34 @@ function formatDateKey(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-function getDayBounds(date: string): { dayStart: Date; dayEnd: Date } {
-  const dayStart = new Date(`${date}T00:00:00.000`);
-  const dayEnd = new Date(dayStart);
-  dayEnd.setDate(dayEnd.getDate() + 1);
+function getPeriodBounds(
+  startDate: string,
+  endDate: string,
+): { periodStart: Date; periodEnd: Date } {
+  const periodStart = new Date(`${startDate}T00:00:00.000`);
+  const periodEnd = new Date(`${endDate}T00:00:00.000`);
+  periodEnd.setDate(periodEnd.getDate() + 1);
 
-  return { dayStart, dayEnd };
+  return { periodStart, periodEnd };
+}
+
+function getInclusiveDayCount(startDate: string, endDate: string): number {
+  const start = new Date(`${startDate}T00:00:00.000`);
+  const end = new Date(`${endDate}T00:00:00.000`);
+  const diffMs = end.getTime() - start.getTime();
+
+  return Math.floor(diffMs / (24 * 60 * 60 * 1000)) + 1;
 }
 
 function getOverlapSeconds(
   startedAt: Date,
   endedAt: Date | null,
-  dayStart: Date,
-  dayEnd: Date,
+  periodStart: Date,
+  periodEnd: Date,
   now: Date,
 ): number {
-  const start = Math.max(startedAt.getTime(), dayStart.getTime());
-  const end = Math.min((endedAt ?? now).getTime(), dayEnd.getTime());
+  const start = Math.max(startedAt.getTime(), periodStart.getTime());
+  const end = Math.min((endedAt ?? now).getTime(), periodEnd.getTime());
 
   return Math.max(0, Math.floor((end - start) / 1000));
 }
@@ -45,7 +56,8 @@ export class AnalyticsService {
   async getDashboard(
     ownerId: string,
     options: {
-      date?: string;
+      startDate?: string;
+      endDate?: string;
       teamId?: string;
       employeeId?: string;
       projectId?: string;
@@ -113,13 +125,17 @@ export class AnalyticsService {
       throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
     }
 
-    const date = options.date ?? formatDateKey(new Date());
-    const { dayStart, dayEnd } = getDayBounds(date);
+    const todayKey = formatDateKey(new Date());
+    const startDate = options.startDate ?? todayKey;
+    const endDate = options.endDate ?? todayKey;
+    const { periodStart, periodEnd } = getPeriodBounds(startDate, endDate);
+    const dayCount = getInclusiveDayCount(startDate, endDate);
+    const availabilitySeconds = DAILY_AVAILABILITY_SECONDS * dayCount;
     const [entries, projectEntries] = await Promise.all([
       this.repository.findEntriesForTeams(
         scopedTeams.map((team) => team.id),
-        dayStart,
-        dayEnd,
+        periodStart,
+        periodEnd,
         selectedProject?.id,
       ),
       selectedProject
@@ -144,8 +160,8 @@ export class AnalyticsService {
       current.loggedSeconds += getOverlapSeconds(
         entry.startedAt,
         entry.endedAt,
-        dayStart,
-        dayEnd,
+        periodStart,
+        periodEnd,
         now,
       );
       current.timeEntryCount += 1;
@@ -169,15 +185,15 @@ export class AnalyticsService {
           employeeName: employee.name,
           teamId: employee.teamId,
           teamNames: [...employee.teamNames].sort(),
-          availabilitySeconds: DAILY_AVAILABILITY_SECONDS,
+          availabilitySeconds,
           loggedSeconds: totals.loggedSeconds,
           remainingSeconds: Math.max(
             0,
-            DAILY_AVAILABILITY_SECONDS - totals.loggedSeconds,
+            availabilitySeconds - totals.loggedSeconds,
           ),
           timeEntryCount: totals.timeEntryCount,
           utilizationPercent: Math.round(
-            (totals.loggedSeconds / DAILY_AVAILABILITY_SECONDS) * 100,
+            (totals.loggedSeconds / availabilitySeconds) * 100,
           ),
         };
       });
@@ -248,7 +264,8 @@ export class AnalyticsService {
     );
 
     return {
-      date,
+      startDate,
+      endDate,
       teams: ownedTeams.map(({ id, name }) => ({ id, name })),
       employees,
       projects: projects.map((project) => ({
