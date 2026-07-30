@@ -259,7 +259,12 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
                     />
                   </div>
                 </div>
-                {activity.tag ? <ActivityTagBadge tag={activity.tag} /> : null}
+                {activity.tag ? (
+                  <ActivityTagBadge
+                    tag={activity.tag}
+                    className='max-w-28 self-start'
+                  />
+                ) : null}
                 {activity.description ? (
                   <p className='line-clamp-2 text-xs text-muted-foreground'>
                     {activity.description}
