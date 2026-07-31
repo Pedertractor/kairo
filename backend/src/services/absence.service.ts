@@ -3,6 +3,7 @@ import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
 import { UserRepository } from '../repositories/user.repository.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
+import { releaseTaskIfIdle } from './task-status-sync.js';
 
 export class AbsenceService {
   constructor(
@@ -29,10 +30,11 @@ export class AbsenceService {
 
     if (activeEntry) {
       await this.timeEntryRepository.stopEntry(activeEntry, new Date());
-
-      if (activeEntry.taskId) {
-        await this.taskRepository.updateStatusIfOpen(activeEntry.taskId, 'PAUSED');
-      }
+      await releaseTaskIfIdle(
+        this.timeEntryRepository,
+        this.taskRepository,
+        activeEntry.taskId,
+      );
     }
 
     return updated;

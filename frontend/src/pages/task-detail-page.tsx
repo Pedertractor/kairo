@@ -133,7 +133,6 @@ export function TaskDetailPage() {
                     <StartTaskTimerButton
                       projectId={projectId}
                       taskId={task.id}
-                      status={task.status}
                       size="icon-sm"
                     />
                   </>

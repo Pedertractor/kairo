@@ -48,17 +48,6 @@ export class TaskRepository {
     });
   }
 
-  /** Atomically claims a task for work (TODO/PAUSED → IN_PROGRESS). */
-  claimForProgress(taskId: string) {
-    return this.prisma.task.updateMany({
-      where: {
-        id: taskId,
-        status: { in: ['TODO', 'PAUSED'] },
-      },
-      data: { status: 'IN_PROGRESS' },
-    });
-  }
-
   findByProjectId(projectId: string) {
     return this.prisma.task.findMany({
       where: { cardId: projectId },

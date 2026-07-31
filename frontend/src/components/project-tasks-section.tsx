@@ -160,7 +160,6 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
                     <StartTaskTimerButton
                       projectId={projectId}
                       taskId={task.id}
-                      status={task.status}
                       className='text-muted-foreground hover:text-sidebar-primary'
                     />
                     <span className={TASK_STATUS_BADGE_CLASS[task.status]}>

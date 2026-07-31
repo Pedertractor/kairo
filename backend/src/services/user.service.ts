@@ -3,12 +3,15 @@ import { UserRole } from '../generated/client.js';
 import { env } from '../config/env.js';
 import { EmployeeService } from './employee.service.js';
 import { RefreshTokenRepository } from '../repositories/refresh-token.repository.js';
+import { TaskRepository } from '../repositories/task.repository.js';
+import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
 import { UserRepository } from '../repositories/user.repository.js';
 import type { SafeUser } from '../types/auth.types.js';
 import type { EmployeeLookupResult } from '../types/employee.types.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 import { toEmployeeId, toSafeUser } from '../utils/user.js';
+import { releaseTaskIfIdle } from './task-status-sync.js';
 
 export class UserService {
   private readonly employeeService = new EmployeeService();
@@ -16,7 +19,26 @@ export class UserService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly refreshTokenRepository: RefreshTokenRepository,
+    private readonly timeEntryRepository: TimeEntryRepository,
+    private readonly taskRepository: TaskRepository,
   ) {}
+
+  /** Closes a leftover running timer so it never holds a task open. */
+  private async stopActiveTimer(userId: string): Promise<void> {
+    const activeEntry =
+      await this.timeEntryRepository.findActiveByUserId(userId);
+
+    if (!activeEntry) {
+      return;
+    }
+
+    await this.timeEntryRepository.stopEntry(activeEntry, new Date());
+    await releaseTaskIfIdle(
+      this.timeEntryRepository,
+      this.taskRepository,
+      activeEntry.taskId,
+    );
+  }
 
   async lookupEmployee(
     cardNumber: string,
@@ -145,6 +167,7 @@ export class UserService {
 
     const updated = await this.userRepository.setActive(targetUserId, false);
     await this.refreshTokenRepository.revokeAllForUser(targetUserId);
+    await this.stopActiveTimer(targetUserId);
     return toSafeUser(updated);
   }
 

@@ -68,9 +68,7 @@ export class FavoriteService {
           teamName: favorite.task.card.team.name,
           status: favorite.task.status,
           parentTitle: favorite.task.card.title,
-          canStartTimer: !['DONE', 'CANCELED', 'IN_PROGRESS'].includes(
-            favorite.task.status,
-          ),
+          canStartTimer: !['DONE', 'CANCELED'].includes(favorite.task.status),
           activityId: null,
           projectId: favorite.task.card.id,
           taskId: favorite.task.id,
