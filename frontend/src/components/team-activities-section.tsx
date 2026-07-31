@@ -222,19 +222,19 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
               <li
                 key={activity.id}
                 className={cn(
-                  'flex flex-col gap-2 rounded-lg border border-border bg-card p-3 transition-all',
+                  'relative flex flex-col gap-2 rounded-lg border border-border bg-card p-3 transition-all hover:bg-muted/50',
                   isTimerActive &&
                     'border-sidebar-primary shadow-md shadow-sidebar-primary/15 ring-2 ring-sidebar-primary/35',
                 )}
               >
-                <div className='flex items-start justify-between gap-2'>
-                  <Link
-                    to={`/equipes/${teamId}/atividades/${activity.id}`}
-                    className='text-sm font-medium hover:underline'
-                  >
-                    {activity.title}
-                  </Link>
-                  <div className='flex shrink-0 items-center gap-0.5'>
+                <Link
+                  to={`/equipes/${teamId}/atividades/${activity.id}`}
+                  className='absolute inset-0 rounded-lg'
+                  aria-label={activity.title}
+                />
+                <div className='pointer-events-none relative z-10 flex items-start justify-between gap-2'>
+                  <p className='text-sm font-medium'>{activity.title}</p>
+                  <div className='pointer-events-auto flex shrink-0 items-center gap-0.5'>
                     <FavoriteButton
                       target={{
                         kind: 'activity',
@@ -262,18 +262,20 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
                 {activity.tag ? (
                   <ActivityTagBadge
                     tag={activity.tag}
-                    className='max-w-28 self-start'
+                    className='pointer-events-none relative z-10 max-w-28 self-start'
                   />
                 ) : null}
                 {activity.description ? (
-                  <p className='line-clamp-2 text-xs text-muted-foreground'>
+                  <p className='pointer-events-none relative z-10 line-clamp-2 text-xs text-muted-foreground'>
                     {activity.description}
                   </p>
                 ) : null}
-                <CardTimeBudget
-                  loggedSeconds={activity.loggedSeconds}
-                  estimatedHours={activity.estimatedHours}
-                />
+                <div className='pointer-events-none relative z-10'>
+                  <CardTimeBudget
+                    loggedSeconds={activity.loggedSeconds}
+                    estimatedHours={activity.estimatedHours}
+                  />
+                </div>
               </li>
             );
           })}
