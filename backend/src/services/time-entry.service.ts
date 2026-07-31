@@ -24,6 +24,7 @@ import type {
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 import { getEntryDurationSeconds } from '../utils/time-entry-duration.js';
+import { releaseTaskIfIdle } from './task-status-sync.js';
 
 function toTimeEntrySummary(entry: TimeEntry): TimeEntrySummary {
   return {
@@ -263,9 +264,7 @@ function mapRecentEntry(entry: RecentEntry): RecentWorkItem | null {
       status: entry.task.status,
       parentTitle: parentCard.title,
       lastWorkedAt: entry.startedAt.toISOString(),
-      canStartTimer: !['DONE', 'CANCELED', 'IN_PROGRESS'].includes(
-        entry.task.status,
-      ),
+      canStartTimer: !['DONE', 'CANCELED'].includes(entry.task.status),
       activityId: null,
       projectId: parentCard.id,
       taskId: entry.task.id,
@@ -390,11 +389,11 @@ export class TimeEntryService {
   private async pauseTaskForStoppedEntry(
     taskId: string | null | undefined,
   ): Promise<void> {
-    if (!taskId) {
-      return;
-    }
-
-    await this.taskRepository.updateStatusIfOpen(taskId, 'PAUSED');
+    await releaseTaskIfIdle(
+      this.timeEntryRepository,
+      this.taskRepository,
+      taskId,
+    );
   }
 
   private async assertUserPresent(userId: string): Promise<void> {
@@ -492,53 +491,6 @@ export class TimeEntryService {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
     }
 
-    const activeOnTask =
-      await this.timeEntryRepository.findActiveByTaskId(taskId);
-
-    if (activeOnTask) {
-      if (activeOnTask.userId === userId) {
-        throw new AppError(400, MENSAGENS.TIMER_JA_ATIVO);
-      }
-
-      throw new AppError(
-        400,
-        `${MENSAGENS.TAREFA_JA_EM_ANDAMENTO} (${activeOnTask.user.name}).`,
-      );
-    }
-
-    const claimed = await this.taskRepository.claimForProgress(taskId);
-
-    if (claimed.count === 0) {
-      const activeAgain =
-        await this.timeEntryRepository.findActiveByTaskId(taskId);
-
-      if (activeAgain) {
-        if (activeAgain.userId === userId) {
-          throw new AppError(400, MENSAGENS.TIMER_JA_ATIVO);
-        }
-
-        throw new AppError(
-          400,
-          `${MENSAGENS.TAREFA_JA_EM_ANDAMENTO} (${activeAgain.user.name}).`,
-        );
-      }
-
-      const current = await this.taskRepository.findById(taskId);
-
-      if (
-        !current ||
-        current.status === 'DONE' ||
-        current.status === 'CANCELED'
-      ) {
-        throw new AppError(400, MENSAGENS.TAREFA_TIMER_STATUS_INVALIDO);
-      }
-
-      // Only orphaned IN_PROGRESS (no active timer) can be reclaimed.
-      if (current.status !== 'IN_PROGRESS') {
-        throw new AppError(400, MENSAGENS.TAREFA_JA_EM_ANDAMENTO);
-      }
-    }
-
     const activeEntry =
       await this.timeEntryRepository.findActiveByUserId(userId);
 
@@ -558,6 +510,17 @@ export class TimeEntryService {
       userId,
       startedAt,
     });
+
+    const marked = await this.taskRepository.updateStatusIfOpen(
+      taskId,
+      'IN_PROGRESS',
+    );
+
+    // The task was closed between the guard above and this write.
+    if (marked.count === 0) {
+      await this.timeEntryRepository.deleteById(entry.id);
+      throw new AppError(400, MENSAGENS.TAREFA_TIMER_STATUS_INVALIDO);
+    }
 
     return {
       timeEntry: toTimeEntrySummary(entry),
@@ -694,6 +657,8 @@ export class TimeEntryService {
       endedAtDate,
     );
 
+    await this.pauseTaskForStoppedEntry(taskId);
+
     return toTaskTimeEntrySummary(updated);
   }
 
@@ -740,6 +705,8 @@ export class TimeEntryService {
       startedAtDate,
       endedAtDate,
     );
+
+    await this.pauseTaskForStoppedEntry(entry.taskId);
 
     const updated =
       await this.timeEntryRepository.findByIdWithRelations(timeEntryId);

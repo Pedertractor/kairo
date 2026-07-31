@@ -2,6 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { UserController } from '../controllers/user.controller.js';
 import { createRequireAdmin } from '../middleware/require-admin.js';
 import { RefreshTokenRepository } from '../repositories/refresh-token.repository.js';
+import { TaskRepository } from '../repositories/task.repository.js';
+import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
 import { UserRepository } from '../repositories/user.repository.js';
 import { UserService } from '../services/user.service.js';
 
@@ -9,7 +11,12 @@ export async function userRoutes(app: FastifyInstance) {
   const userRepository = new UserRepository(app.prisma);
   const requireAdmin = createRequireAdmin(userRepository);
   const controller = new UserController(
-    new UserService(userRepository, new RefreshTokenRepository(app.prisma)),
+    new UserService(
+      userRepository,
+      new RefreshTokenRepository(app.prisma),
+      new TimeEntryRepository(app.prisma),
+      new TaskRepository(app.prisma),
+    ),
   );
 
   app.get('/users', { preHandler: [app.authenticate, requireAdmin] }, controller.list);

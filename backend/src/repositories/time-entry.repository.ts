@@ -43,6 +43,12 @@ export class TimeEntryRepository {
     });
   }
 
+  countActiveByTaskId(taskId: string) {
+    return this.prisma.timeEntry.count({
+      where: { taskId, endedAt: null, type: 'TIMER' },
+    });
+  }
+
   stopEntry(entry: TimeEntry, endedAt: Date) {
     const durationSeconds = Math.max(
       0,
@@ -75,6 +81,10 @@ export class TimeEntryRepository {
         startedAt: data.startedAt,
       },
     });
+  }
+
+  deleteById(id: string) {
+    return this.prisma.timeEntry.delete({ where: { id } });
   }
 
   findById(id: string) {

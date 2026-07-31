@@ -52,10 +52,8 @@ export const MENSAGENS = {
   TAREFA_ATUALIZADA_SUCESSO: 'Tarefa atualizada com sucesso',
   TAREFA_TIMER_STATUS_INVALIDO:
     'Não é possível iniciar o timer de uma tarefa concluída ou cancelada',
-  TAREFA_JA_EM_ANDAMENTO:
-    'Esta tarefa já está em andamento por outro usuário',
   TIMER_INICIADO_SUCESSO: 'Timer iniciado com sucesso',
-  TIMER_JA_ATIVO: 'Já existe um timer ativo para esta atividade',
+  TIMER_JA_ATIVO: 'Você já tem um timer ativo para este item',
   TIMER_PAUSADO_SUCESSO: 'Timer pausado com sucesso',
   USUARIO_AUSENTE:
     'Não é possível iniciar um apontamento enquanto você estiver ausente',
