@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Crown,
   EllipsisIcon,
   KeyRound,
   Plus,
+  Search,
   Shield,
   UserCheck,
   UserX,
@@ -22,6 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@/hooks/use-auth'
 import { api } from '@/lib/api-handler'
@@ -49,6 +51,7 @@ export function UsuariosPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [activeAction, setActiveAction] = useState<UserAction | null>(null)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [nameFilter, setNameFilter] = useState('')
 
   const loadUsers = useCallback(async () => {
     setIsLoading(true)
@@ -64,6 +67,18 @@ export function UsuariosPage() {
   useEffect(() => {
     void loadUsers()
   }, [loadUsers])
+
+  const filteredUsers = useMemo(() => {
+    const query = nameFilter.trim().toLowerCase()
+
+    if (query === '') {
+      return users
+    }
+
+    return users.filter((user) => user.name.toLowerCase().includes(query))
+  }, [users, nameFilter])
+
+  const hasActiveFilter = nameFilter.trim() !== ''
 
   function handleUserUpdated(updatedUser: User) {
     setUsers((currentUsers) =>
@@ -147,6 +162,20 @@ export function UsuariosPage() {
         onUpdated={handleUserUpdated}
       />
 
+      {!isLoading && users.length > 0 ? (
+        <div className="relative w-full sm:w-1/3">
+          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            value={nameFilter}
+            onChange={(event) => setNameFilter(event.target.value)}
+            placeholder="Buscar por nome..."
+            className="pl-8"
+            aria-label="Buscar usuários por nome"
+          />
+        </div>
+      ) : null}
+
       {isLoading ? (
         <div className="flex flex-col gap-2">
           {Array.from({ length: 5 }).map((_, index) => (
@@ -158,6 +187,15 @@ export function UsuariosPage() {
           <p className="text-sm font-medium">Nenhum usuário encontrado</p>
           <p className="max-w-sm text-sm text-muted-foreground">
             Os usuários cadastrados na plataforma aparecerão aqui.
+          </p>
+        </div>
+      ) : filteredUsers.length === 0 ? (
+        <div className="flex min-h-48 flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/30 p-8 text-center">
+          <p className="text-sm font-medium">Nenhum usuário encontrado</p>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            {hasActiveFilter
+              ? 'Tente ajustar o filtro de nome.'
+              : 'Os usuários cadastrados na plataforma aparecerão aqui.'}
           </p>
         </div>
       ) : (
@@ -176,7 +214,7 @@ export function UsuariosPage() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => (
+                {filteredUsers.map((user) => (
                   <tr
                     key={user.id}
                     className={cn(
