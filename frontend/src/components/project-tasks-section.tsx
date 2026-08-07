@@ -6,6 +6,7 @@ import { FavoriteButton } from '@/components/favorite-button';
 import { FinishItemButton } from '@/components/finish-item-button';
 import { FinishTaskDialog } from '@/components/finish-task-dialog';
 import { StartTaskTimerButton } from '@/components/start-task-timer-button';
+import { UpdateTaskStatusDialog } from '@/components/update-task-status-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -22,6 +23,7 @@ import {
   canFinishTaskStatus,
   isFinishedTaskStatus,
   TASK_STATUS_BADGE_CLASS,
+  TASK_STATUS_BADGE_HOVER_CLASS,
   TASK_STATUS_LABELS,
 } from '@/lib/task-status';
 import { cn } from '@/lib/utils';
@@ -51,6 +53,7 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [taskToFinish, setTaskToFinish] = useState<TaskSummary | null>(null);
+  const [taskToUpdate, setTaskToUpdate] = useState<TaskSummary | null>(null);
   const [visibilityFilter, setVisibilityFilter] = useState(VISIBILITY_ACTIVE);
 
   const loadTasks = useCallback(async (options?: { silent?: boolean }) => {
@@ -120,6 +123,18 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
           }
         }}
         onFinished={() => void loadTasks()}
+      />
+
+      <UpdateTaskStatusDialog
+        projectId={projectId}
+        task={taskToUpdate}
+        open={taskToUpdate !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setTaskToUpdate(null);
+          }
+        }}
+        onUpdated={() => void loadTasks()}
       />
 
       {!isLoading && tasks.length > 0 ? (
@@ -242,9 +257,17 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
                         onClick={() => setTaskToFinish(task)}
                       />
                     ) : null}
-                    <span className={TASK_STATUS_BADGE_CLASS[task.status]}>
+                    <button
+                      type='button'
+                      className={cn(
+                        TASK_STATUS_BADGE_CLASS[task.status],
+                        TASK_STATUS_BADGE_HOVER_CLASS[task.status],
+                      )}
+                      aria-label={`Alterar status de ${task.title}`}
+                      onClick={() => setTaskToUpdate(task)}
+                    >
                       {TASK_STATUS_LABELS[task.status]}
-                    </span>
+                    </button>
                   </div>
                 </div>
               </li>

@@ -129,7 +129,12 @@ export function ActivityDetailPage() {
             </div>
             <div className="flex items-center gap-2">
               {activity.tag ? (
-                <ActivityTagBadge tag={activity.tag} className="text-sm" />
+                <ActivityTagBadge
+                  tag={activity.tag}
+                  className="text-sm"
+                  aria-label={`Alterar tag de ${activity.title}`}
+                  onClick={() => setIsEditTagDialogOpen(true)}
+                />
               ) : (
                 <span className="text-sm text-muted-foreground">Sem tag</span>
               )}

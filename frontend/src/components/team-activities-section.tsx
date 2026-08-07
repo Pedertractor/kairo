@@ -5,10 +5,12 @@ import { Link } from 'react-router-dom';
 import { ActivityTagBadge } from '@/components/activity-tag-badge';
 import { CreateActivityDialog } from '@/components/create-activity-dialog';
 import { CreateTagDialog } from '@/components/create-tag-dialog';
+import { EditActivityTagDialog } from '@/components/edit-activity-tag-dialog';
 import { FavoriteButton } from '@/components/favorite-button';
 import { FinishActivityDialog } from '@/components/finish-activity-dialog';
 import { FinishItemButton } from '@/components/finish-item-button';
 import { StartActivityTimerButton } from '@/components/start-activity-timer-button';
+import { UpdateActivityStatusDialog } from '@/components/update-activity-status-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -49,6 +51,10 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isCreateTagDialogOpen, setIsCreateTagDialogOpen] = useState(false);
   const [activityToFinish, setActivityToFinish] =
+    useState<ActivitySummary | null>(null);
+  const [activityToUpdate, setActivityToUpdate] =
+    useState<ActivitySummary | null>(null);
+  const [activityToEditTag, setActivityToEditTag] =
     useState<ActivitySummary | null>(null);
   const [nameFilter, setNameFilter] = useState('');
   const [tagFilter, setTagFilter] = useState(ALL_TAGS);
@@ -150,6 +156,30 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
           }
         }}
         onFinished={loadActivities}
+      />
+
+      <UpdateActivityStatusDialog
+        teamId={teamId}
+        activity={activityToUpdate}
+        open={activityToUpdate !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setActivityToUpdate(null);
+          }
+        }}
+        onUpdated={loadActivities}
+      />
+
+      <EditActivityTagDialog
+        teamId={teamId}
+        activity={activityToEditTag}
+        open={activityToEditTag !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setActivityToEditTag(null);
+          }
+        }}
+        onUpdated={loadActivities}
       />
 
       {!isLoading ? (
@@ -331,14 +361,22 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
                   {activity.tag ? (
                     <ActivityTagBadge
                       tag={activity.tag}
-                      className='max-w-28'
+                      className='pointer-events-auto max-w-28'
+                      aria-label={`Alterar tag de ${activity.title}`}
+                      onClick={() => setActivityToEditTag(activity)}
                     />
                   ) : null}
-                  <span
-                    className={CARD_STATUS_BADGE_CLASS[activity.status]}
+                  <button
+                    type='button'
+                    className={cn(
+                      'pointer-events-auto',
+                      CARD_STATUS_BADGE_CLASS[activity.status],
+                    )}
+                    aria-label={`Alterar status de ${activity.title}`}
+                    onClick={() => setActivityToUpdate(activity)}
                   >
                     {STATUS_LABELS[activity.status]}
-                  </span>
+                  </button>
                 </div>
                 {activity.description ? (
                   <p className='pointer-events-none relative z-10 line-clamp-2 text-xs text-muted-foreground'>

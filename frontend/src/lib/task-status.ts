@@ -24,6 +24,14 @@ export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   CANCELED: 'Cancelada',
 }
 
+export const TASK_STATUS_BADGE_HOVER_CLASS: Record<TaskStatus, string> = {
+  TODO: 'transition-colors hover:bg-muted/80 hover:text-foreground',
+  IN_PROGRESS: 'transition-colors hover:bg-sky-500/20',
+  PAUSED: 'transition-colors hover:bg-amber-500/20',
+  DONE: 'transition-colors hover:bg-emerald-500/20',
+  CANCELED: 'transition-colors hover:bg-rose-500/20',
+}
+
 export const TASK_STATUS_BADGE_CLASS: Record<TaskStatus, string> = {
   TODO: 'rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground',
   IN_PROGRESS:
