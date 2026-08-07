@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { ArrowLeft, Pencil } from 'lucide-react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 
+import { DeleteProjectDialog } from '@/components/delete-project-dialog'
 import { EditProjectTitleDialog } from '@/components/edit-project-title-dialog'
+import { FinishProjectDialog } from '@/components/finish-project-dialog'
+import { ItemActionsMenu } from '@/components/item-actions-menu'
 import { ProjectStatusActions } from '@/components/project-status-actions'
 import { ProjectTasksSection } from '@/components/project-tasks-section'
 import { UpdateProjectStatusDialog } from '@/components/update-project-status-dialog'
@@ -10,14 +13,18 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { api } from '@/lib/api-handler'
 import { CardTimeBudget } from '@/components/card-time-budget'
+import { canFinishStatus } from '@/lib/card-status'
 import type { ProjectResponse, ProjectSummary } from '@/types/card'
 
 export function ProjectDetailPage() {
+  const navigate = useNavigate()
   const { projectId } = useParams<{ projectId: string }>()
   const [project, setProject] = useState<ProjectSummary | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
   const [isEditTitleDialogOpen, setIsEditTitleDialogOpen] = useState(false)
+  const [isFinishDialogOpen, setIsFinishDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   useEffect(() => {
     if (!projectId) {
@@ -89,11 +96,19 @@ export function ProjectDetailPage() {
                   <Pencil />
                 </Button>
               </div>
-              <ProjectStatusActions
-                project={project}
-                onStatusClick={() => setIsStatusDialogOpen(true)}
-                statusClassName="px-2.5 py-1 text-sm"
-              />
+              <div className="flex shrink-0 items-center gap-0.5">
+                <ItemActionsMenu
+                  title={project.title}
+                  canFinish={canFinishStatus(project.status)}
+                  onFinish={() => setIsFinishDialogOpen(true)}
+                  onDelete={() => setIsDeleteDialogOpen(true)}
+                />
+                <ProjectStatusActions
+                  project={project}
+                  onStatusClick={() => setIsStatusDialogOpen(true)}
+                  statusClassName="px-2.5 py-1 text-sm"
+                />
+              </div>
             </div>
             {project.teamName ? (
               <p className="text-sm text-muted-foreground">
@@ -139,6 +154,22 @@ export function ProjectDetailPage() {
             open={isStatusDialogOpen}
             onOpenChange={setIsStatusDialogOpen}
             onUpdated={reloadProject}
+          />
+
+          <FinishProjectDialog
+            teamId={project.teamId}
+            project={project}
+            open={isFinishDialogOpen}
+            onOpenChange={setIsFinishDialogOpen}
+            onFinished={reloadProject}
+          />
+
+          <DeleteProjectDialog
+            teamId={project.teamId}
+            project={project}
+            open={isDeleteDialogOpen}
+            onOpenChange={setIsDeleteDialogOpen}
+            onDeleted={() => navigate('/projetos')}
           />
 
           <ProjectTasksSection projectId={project.id} />

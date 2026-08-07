@@ -9,7 +9,15 @@ export class TimeEntryRepository {
 
   findActiveByUserId(userId: string) {
     return this.prisma.timeEntry.findFirst({
-      where: { userId, endedAt: null, type: 'TIMER' },
+      where: {
+        userId,
+        endedAt: null,
+        type: 'TIMER',
+        OR: [
+          { card: { deletedAt: null } },
+          { task: { deletedAt: null, card: { deletedAt: null } } },
+        ],
+      },
       orderBy: { startedAt: 'desc' },
       include: {
         card: {
@@ -33,6 +41,24 @@ export class TimeEntryRepository {
     });
   }
 
+  findActiveManyByCardId(cardId: string) {
+    return this.prisma.timeEntry.findMany({
+      where: { cardId, endedAt: null, type: 'TIMER' },
+      orderBy: { startedAt: 'desc' },
+    });
+  }
+
+  findActiveManyByProjectId(projectId: string) {
+    return this.prisma.timeEntry.findMany({
+      where: {
+        endedAt: null,
+        type: 'TIMER',
+        OR: [{ cardId: projectId }, { task: { cardId: projectId } }],
+      },
+      orderBy: { startedAt: 'desc' },
+    });
+  }
+
   findActiveByTaskId(taskId: string) {
     return this.prisma.timeEntry.findFirst({
       where: { taskId, endedAt: null, type: 'TIMER' },
@@ -40,6 +66,13 @@ export class TimeEntryRepository {
       include: {
         user: { select: { id: true, name: true } },
       },
+    });
+  }
+
+  findActiveManyByTaskId(taskId: string) {
+    return this.prisma.timeEntry.findMany({
+      where: { taskId, endedAt: null, type: 'TIMER' },
+      orderBy: { startedAt: 'desc' },
     });
   }
 
@@ -203,7 +236,13 @@ export class TimeEntryRepository {
 
   findRecentByUserId(userId: string, take = 50) {
     return this.prisma.timeEntry.findMany({
-      where: { userId },
+      where: {
+        userId,
+        OR: [
+          { card: { deletedAt: null } },
+          { task: { deletedAt: null, card: { deletedAt: null } } },
+        ],
+      },
       orderBy: { startedAt: 'desc' },
       take,
       include: this.userEntriesInclude,
@@ -262,7 +301,10 @@ export class TimeEntryRepository {
     date?: string,
   ): Prisma.TimeEntryWhereInput {
     const teamFilter: Prisma.TimeEntryWhereInput = {
-      OR: [{ card: { teamId } }, { task: { card: { teamId } } }],
+      OR: [
+        { card: { teamId, deletedAt: null } },
+        { task: { deletedAt: null, card: { teamId, deletedAt: null } } },
+      ],
     };
 
     if (!date) {
@@ -288,26 +330,52 @@ export class TimeEntryRepository {
     userId: string,
     date?: string,
   ): Prisma.TimeEntryWhereInput {
-    const where: Prisma.TimeEntryWhereInput = { userId };
+    const notDeletedFilter: Prisma.TimeEntryWhereInput = {
+      OR: [
+        { card: { deletedAt: null } },
+        { task: { deletedAt: null, card: { deletedAt: null } } },
+      ],
+    };
 
-    if (date) {
-      const dayStart = new Date(`${date}T00:00:00.000`);
-      const dayEnd = new Date(dayStart);
-      dayEnd.setDate(dayEnd.getDate() + 1);
-
-      where.startedAt = { lt: dayEnd };
-      where.OR = [{ endedAt: { gt: dayStart } }, { endedAt: null }];
+    if (!date) {
+      return {
+        userId,
+        ...notDeletedFilter,
+      };
     }
 
-    return where;
+    const dayStart = new Date(`${date}T00:00:00.000`);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+
+    return {
+      AND: [
+        { userId },
+        notDeletedFilter,
+        {
+          startedAt: { lt: dayEnd },
+          OR: [{ endedAt: { gt: dayStart } }, { endedAt: null }],
+        },
+      ],
+    };
   }
 
   findOverlappingDay(userId: string, dayStart: Date, dayEnd: Date) {
     return this.prisma.timeEntry.findMany({
       where: {
         userId,
-        startedAt: { lt: dayEnd },
-        OR: [{ endedAt: { gt: dayStart } }, { endedAt: null }],
+        AND: [
+          {
+            OR: [
+              { card: { deletedAt: null } },
+              { task: { deletedAt: null, card: { deletedAt: null } } },
+            ],
+          },
+          {
+            startedAt: { lt: dayEnd },
+            OR: [{ endedAt: { gt: dayStart } }, { endedAt: null }],
+          },
+        ],
       },
       orderBy: { startedAt: 'asc' },
       include: {
@@ -341,7 +409,17 @@ export class TimeEntryRepository {
     return this.prisma.timeEntry.findMany({
       where: {
         AND: [
-          { OR: [{ card: { teamId } }, { task: { card: { teamId } } }] },
+          {
+            OR: [
+              { card: { teamId, deletedAt: null } },
+              {
+                task: {
+                  deletedAt: null,
+                  card: { teamId, deletedAt: null },
+                },
+              },
+            ],
+          },
           {
             startedAt: { lt: dayEnd },
             OR: [{ endedAt: { gt: dayStart } }, { endedAt: null }],

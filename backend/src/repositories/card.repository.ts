@@ -19,15 +19,15 @@ export class CardRepository {
 
   findActivitiesByTeamId(teamId: string) {
     return this.prisma.card.findMany({
-      where: { teamId, type: 'ACTIVITY' as CardType },
+      where: { teamId, type: 'ACTIVITY' as CardType, deletedAt: null },
       include: activityTagInclude,
       orderBy: { createdAt: 'desc' },
     });
   }
 
   findActivityById(activityId: string) {
-    return this.prisma.card.findUnique({
-      where: { id: activityId },
+    return this.prisma.card.findFirst({
+      where: { id: activityId, deletedAt: null },
       include: activityTagInclude,
     });
   }
@@ -79,9 +79,17 @@ export class CardRepository {
     });
   }
 
+  softDeleteActivity(activityId: string) {
+    return this.prisma.card.update({
+      where: { id: activityId },
+      data: { deletedAt: new Date() },
+      include: activityTagInclude,
+    });
+  }
+
   findProjectsByTeamId(teamId: string) {
     return this.prisma.card.findMany({
-      where: { teamId, type: 'PROJECT' as CardType },
+      where: { teamId, type: 'PROJECT' as CardType, deletedAt: null },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -90,6 +98,7 @@ export class CardRepository {
     return this.prisma.card.findMany({
       where: {
         type: 'PROJECT' as CardType,
+        deletedAt: null,
         team: {
           members: { some: { userId } },
         },
@@ -102,8 +111,8 @@ export class CardRepository {
   }
 
   findProjectById(projectId: string) {
-    return this.prisma.card.findUnique({
-      where: { id: projectId },
+    return this.prisma.card.findFirst({
+      where: { id: projectId, deletedAt: null },
       include: {
         team: { select: { id: true, name: true } },
       },
@@ -146,5 +155,20 @@ export class CardRepository {
         estimatedHours: data.estimatedHours ?? null,
       },
     });
+  }
+
+  softDeleteProject(projectId: string) {
+    const deletedAt = new Date();
+
+    return this.prisma.$transaction([
+      this.prisma.task.updateMany({
+        where: { cardId: projectId, deletedAt: null },
+        data: { deletedAt },
+      }),
+      this.prisma.card.update({
+        where: { id: projectId },
+        data: { deletedAt },
+      }),
+    ]);
   }
 }

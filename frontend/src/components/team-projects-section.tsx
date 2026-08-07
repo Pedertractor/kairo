@@ -1,19 +1,34 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
+import { CardTimeBudget } from '@/components/card-time-budget'
 import { CreateProjectDialog } from '@/components/create-project-dialog'
+import { DeleteProjectDialog } from '@/components/delete-project-dialog'
+import { FinishProjectDialog } from '@/components/finish-project-dialog'
+import { ItemActionsMenu } from '@/components/item-actions-menu'
 import { ProjectStatusActions } from '@/components/project-status-actions'
 import { UpdateProjectStatusDialog } from '@/components/update-project-status-dialog'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { api } from '@/lib/api-handler'
 import {
+  canFinishStatus,
   CARD_STATUS_BADGE_CLASS,
   CARD_STATUS_CARD_CLASS,
+  isFinishedStatus,
 } from '@/lib/card-status'
 import { cn } from '@/lib/utils'
-import { CardTimeBudget } from '@/components/card-time-budget'
 import type { ProjectSummary, ProjectsListResponse } from '@/types/card'
+
+const VISIBILITY_ACTIVE = 'active'
+const VISIBILITY_ALL = 'all'
 
 interface TeamProjectsSectionProps {
   teamId: string
@@ -25,6 +40,11 @@ export function TeamProjectsSection({ teamId }: TeamProjectsSectionProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [projectToUpdate, setProjectToUpdate] =
     useState<ProjectSummary | null>(null)
+  const [projectToFinish, setProjectToFinish] =
+    useState<ProjectSummary | null>(null)
+  const [projectToDelete, setProjectToDelete] =
+    useState<ProjectSummary | null>(null)
+  const [visibilityFilter, setVisibilityFilter] = useState(VISIBILITY_ACTIVE)
 
   const loadProjects = useCallback(async () => {
     setIsLoading(true)
@@ -42,6 +62,18 @@ export function TeamProjectsSection({ teamId }: TeamProjectsSectionProps) {
   useEffect(() => {
     void loadProjects()
   }, [loadProjects])
+
+  const filteredProjects = useMemo(() => {
+    const showFinished = visibilityFilter === VISIBILITY_ALL
+
+    return projects.filter(
+      (project) => showFinished || !isFinishedStatus(project.status),
+    )
+  }, [projects, visibilityFilter])
+
+  const hasFinishedHidden =
+    visibilityFilter === VISIBILITY_ACTIVE &&
+    projects.some((project) => isFinishedStatus(project.status))
 
   return (
     <div className="flex flex-col gap-4">
@@ -76,6 +108,53 @@ export function TeamProjectsSection({ teamId }: TeamProjectsSectionProps) {
         onUpdated={loadProjects}
       />
 
+      <FinishProjectDialog
+        teamId={teamId}
+        project={projectToFinish}
+        open={projectToFinish !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setProjectToFinish(null)
+          }
+        }}
+        onFinished={loadProjects}
+      />
+
+      <DeleteProjectDialog
+        teamId={teamId}
+        project={projectToDelete}
+        open={projectToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setProjectToDelete(null)
+          }
+        }}
+        onDeleted={loadProjects}
+      />
+
+      {!isLoading && projects.length > 0 ? (
+        <div className="w-full sm:w-1/4">
+          <Select
+            value={visibilityFilter}
+            onValueChange={(value) =>
+              setVisibilityFilter(value ?? VISIBILITY_ACTIVE)
+            }
+          >
+            <SelectTrigger className="w-full" aria-label="Filtrar concluídos">
+              <SelectValue>
+                {(selectedValue) =>
+                  selectedValue === VISIBILITY_ALL ? 'Todos' : 'Ativos'
+                }
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={VISIBILITY_ACTIVE}>Ativos</SelectItem>
+              <SelectItem value={VISIBILITY_ALL}>Todos</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
+
       {isLoading ? (
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, index) => (
@@ -89,9 +168,18 @@ export function TeamProjectsSection({ teamId }: TeamProjectsSectionProps) {
             Os projetos desta equipe aparecerão aqui.
           </p>
         </div>
+      ) : filteredProjects.length === 0 ? (
+        <div className="flex min-h-48 flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/30 p-8 text-center">
+          <p className="text-sm font-medium">Nenhum projeto encontrado</p>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            {hasFinishedHidden
+              ? 'Há projetos concluídos ocultos. Selecione "Todos" para exibi-los.'
+              : 'Os projetos desta equipe aparecerão aqui.'}
+          </p>
+        </div>
       ) : (
         <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project) => (
+          {filteredProjects.map((project) => (
             <li
               key={project.id}
               className={cn(
@@ -107,7 +195,13 @@ export function TeamProjectsSection({ teamId }: TeamProjectsSectionProps) {
               <div className="pointer-events-none relative z-10 flex flex-col gap-2">
                 <div className="flex items-start justify-between gap-2">
                   <span className="text-sm font-medium">{project.title}</span>
-                  <div className="pointer-events-auto">
+                  <div className="pointer-events-auto flex shrink-0 items-center gap-0.5">
+                    <ItemActionsMenu
+                      title={project.title}
+                      canFinish={canFinishStatus(project.status)}
+                      onFinish={() => setProjectToFinish(project)}
+                      onDelete={() => setProjectToDelete(project)}
+                    />
                     <ProjectStatusActions
                       project={project}
                       onStatusClick={() => setProjectToUpdate(project)}

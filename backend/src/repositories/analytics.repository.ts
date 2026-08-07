@@ -32,6 +32,7 @@ export class AnalyticsRepository {
       where: {
         teamId: { in: teamIds },
         type: 'PROJECT',
+        deletedAt: null,
       },
       orderBy: [{ team: { name: 'asc' } }, { title: 'asc' }],
       select: {
@@ -52,12 +53,26 @@ export class AnalyticsRepository {
   ) {
     const workItemFilter = projectId
       ? {
-          OR: [{ cardId: projectId }, { task: { cardId: projectId } }],
+          OR: [
+            { cardId: projectId, card: { deletedAt: null } },
+            {
+              task: {
+                cardId: projectId,
+                deletedAt: null,
+                card: { deletedAt: null },
+              },
+            },
+          ],
         }
       : {
           OR: [
-            { card: { teamId: { in: teamIds } } },
-            { task: { card: { teamId: { in: teamIds } } } },
+            { card: { teamId: { in: teamIds }, deletedAt: null } },
+            {
+              task: {
+                deletedAt: null,
+                card: { teamId: { in: teamIds }, deletedAt: null },
+              },
+            },
           ],
         };
 
@@ -82,7 +97,16 @@ export class AnalyticsRepository {
   findEntriesForProject(projectId: string) {
     return this.prisma.timeEntry.findMany({
       where: {
-        OR: [{ cardId: projectId }, { task: { cardId: projectId } }],
+        OR: [
+          { cardId: projectId, card: { deletedAt: null } },
+          {
+            task: {
+              cardId: projectId,
+              deletedAt: null,
+              card: { deletedAt: null },
+            },
+          },
+        ],
       },
       select: {
         userId: true,

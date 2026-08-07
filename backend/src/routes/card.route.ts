@@ -38,6 +38,11 @@ export async function cardRoutes(app: FastifyInstance) {
     { preHandler: [app.authenticate] },
     controller.updateActivity,
   );
+  app.delete(
+    '/teams/:teamId/activities/:activityId',
+    { preHandler: [app.authenticate] },
+    controller.deleteActivity,
+  );
 
   app.get(
     '/projects',
@@ -68,5 +73,10 @@ export async function cardRoutes(app: FastifyInstance) {
     '/teams/:teamId/projects/:projectId',
     { preHandler: [app.authenticate] },
     controller.updateProject,
+  );
+  app.delete(
+    '/teams/:teamId/projects/:projectId',
+    { preHandler: [app.authenticate] },
+    controller.deleteProject,
   );
 }

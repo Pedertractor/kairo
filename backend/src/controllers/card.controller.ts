@@ -233,4 +233,54 @@ export class CardController {
       return handleControllerError(error, reply);
     }
   };
+
+  deleteActivity = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const parsed = activityParamSchema.safeParse(request.params);
+
+      if (!parsed.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const activity = await this.service.deleteActivity(
+        parsed.data.teamId,
+        parsed.data.activityId,
+        request.user.sub,
+      );
+
+      return sendSuccess(
+        reply,
+        { activity },
+        200,
+        MENSAGENS.ATIVIDADE_REMOVIDA_SUCESSO,
+      );
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  deleteProject = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const parsed = projectParamSchema.safeParse(request.params);
+
+      if (!parsed.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const project = await this.service.deleteProject(
+        parsed.data.teamId,
+        parsed.data.projectId,
+        request.user.sub,
+      );
+
+      return sendSuccess(
+        reply,
+        { project },
+        200,
+        MENSAGENS.PROJETO_REMOVIDO_SUCESSO,
+      );
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
 }

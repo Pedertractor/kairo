@@ -5,8 +5,13 @@ import { Link } from 'react-router-dom';
 import { ActivityTagBadge } from '@/components/activity-tag-badge';
 import { CreateActivityDialog } from '@/components/create-activity-dialog';
 import { CreateTagDialog } from '@/components/create-tag-dialog';
+import { DeleteActivityDialog } from '@/components/delete-activity-dialog';
+import { EditActivityTagDialog } from '@/components/edit-activity-tag-dialog';
 import { FavoriteButton } from '@/components/favorite-button';
+import { FinishActivityDialog } from '@/components/finish-activity-dialog';
+import { ItemActionsMenu } from '@/components/item-actions-menu';
 import { StartActivityTimerButton } from '@/components/start-activity-timer-button';
+import { UpdateActivityStatusDialog } from '@/components/update-activity-status-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -20,11 +25,20 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useActiveTimer } from '@/hooks/use-active-timer';
 import { api } from '@/lib/api-handler';
 import { CardTimeBudget } from '@/components/card-time-budget';
+import {
+  canFinishStatus,
+  CARD_STATUS_BADGE_CLASS,
+  CARD_STATUS_CARD_CLASS,
+  isFinishedStatus,
+  STATUS_LABELS,
+} from '@/lib/card-status';
 import { cn } from '@/lib/utils';
 import type { ActivitiesListResponse, ActivitySummary } from '@/types/card';
 import type { TagSummary, TagsListResponse } from '@/types/tag';
 
 const ALL_TAGS = '__all__';
+const VISIBILITY_ACTIVE = 'active';
+const VISIBILITY_ALL = 'all';
 
 interface TeamActivitiesSectionProps {
   teamId: string;
@@ -37,8 +51,17 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isCreateTagDialogOpen, setIsCreateTagDialogOpen] = useState(false);
+  const [activityToFinish, setActivityToFinish] =
+    useState<ActivitySummary | null>(null);
+  const [activityToDelete, setActivityToDelete] =
+    useState<ActivitySummary | null>(null);
+  const [activityToUpdate, setActivityToUpdate] =
+    useState<ActivitySummary | null>(null);
+  const [activityToEditTag, setActivityToEditTag] =
+    useState<ActivitySummary | null>(null);
   const [nameFilter, setNameFilter] = useState('');
   const [tagFilter, setTagFilter] = useState(ALL_TAGS);
+  const [visibilityFilter, setVisibilityFilter] = useState(VISIBILITY_ACTIVE);
 
   const loadActivities = useCallback(async () => {
     setIsLoading(true);
@@ -61,8 +84,13 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
 
   const filteredActivities = useMemo(() => {
     const query = nameFilter.trim().toLowerCase();
+    const showFinished = visibilityFilter === VISIBILITY_ALL;
 
     return activities.filter((activity) => {
+      if (!showFinished && isFinishedStatus(activity.status)) {
+        return false;
+      }
+
       const matchesName =
         query === '' || activity.title.toLowerCase().includes(query);
       const matchesTag =
@@ -70,9 +98,15 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
 
       return matchesName && matchesTag;
     });
-  }, [activities, nameFilter, tagFilter]);
+  }, [activities, nameFilter, tagFilter, visibilityFilter]);
 
-  const hasActiveFilter = nameFilter.trim() !== '' || tagFilter !== ALL_TAGS;
+  const hasActiveFilter =
+    nameFilter.trim() !== '' ||
+    tagFilter !== ALL_TAGS ||
+    visibilityFilter !== VISIBILITY_ACTIVE;
+  const hasFinishedHidden =
+    visibilityFilter === VISIBILITY_ACTIVE &&
+    activities.some((activity) => isFinishedStatus(activity.status));
 
   function getTagFilterLabel(value: string) {
     if (value === ALL_TAGS) {
@@ -113,6 +147,54 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
             [...current, tag].sort((a, b) => a.name.localeCompare(b.name)),
           );
         }}
+      />
+
+      <FinishActivityDialog
+        teamId={teamId}
+        activity={activityToFinish}
+        open={activityToFinish !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setActivityToFinish(null);
+          }
+        }}
+        onFinished={loadActivities}
+      />
+
+      <DeleteActivityDialog
+        teamId={teamId}
+        activity={activityToDelete}
+        open={activityToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setActivityToDelete(null);
+          }
+        }}
+        onDeleted={loadActivities}
+      />
+
+      <UpdateActivityStatusDialog
+        teamId={teamId}
+        activity={activityToUpdate}
+        open={activityToUpdate !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setActivityToUpdate(null);
+          }
+        }}
+        onUpdated={loadActivities}
+      />
+
+      <EditActivityTagDialog
+        teamId={teamId}
+        activity={activityToEditTag}
+        open={activityToEditTag !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setActivityToEditTag(null);
+          }
+        }}
+        onUpdated={loadActivities}
       />
 
       {!isLoading ? (
@@ -178,6 +260,29 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
                   </SelectContent>
                 </Select>
               </div>
+              <div className='w-full sm:w-1/4'>
+                <Select
+                  value={visibilityFilter}
+                  onValueChange={(value) =>
+                    setVisibilityFilter(value ?? VISIBILITY_ACTIVE)
+                  }
+                >
+                  <SelectTrigger
+                    className='w-full'
+                    aria-label='Filtrar concluídas'
+                  >
+                    <SelectValue>
+                      {(selectedValue) =>
+                        selectedValue === VISIBILITY_ALL ? 'Todos' : 'Ativos'
+                      }
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={VISIBILITY_ACTIVE}>Ativos</SelectItem>
+                    <SelectItem value={VISIBILITY_ALL}>Todos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </>
           ) : null}
           <Button
@@ -208,9 +313,11 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
         <div className='flex min-h-48 flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/30 p-8 text-center'>
           <p className='text-sm font-medium'>Nenhuma atividade encontrada</p>
           <p className='max-w-sm text-sm text-muted-foreground'>
-            {hasActiveFilter
-              ? 'Tente ajustar os filtros de busca.'
-              : 'As atividades desta equipe aparecerão aqui.'}
+            {hasFinishedHidden && !hasActiveFilter
+              ? 'Há atividades concluídas ocultas. Selecione "Todos" para exibi-las.'
+              : hasActiveFilter
+                ? 'Tente ajustar os filtros de busca.'
+                : 'As atividades desta equipe aparecerão aqui.'}
           </p>
         </div>
       ) : (
@@ -222,7 +329,8 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
               <li
                 key={activity.id}
                 className={cn(
-                  'relative flex flex-col gap-2 rounded-lg border border-border bg-card p-3 transition-all hover:bg-muted/50',
+                  'relative flex flex-col gap-2 rounded-lg border p-3 transition-all hover:bg-muted/50',
+                  CARD_STATUS_CARD_CLASS[activity.status],
                   isTimerActive &&
                     'border-sidebar-primary shadow-md shadow-sidebar-primary/15 ring-2 ring-sidebar-primary/35',
                 )}
@@ -257,14 +365,35 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
                       activityId={activity.id}
                       className='text-muted-foreground hover:text-sidebar-primary'
                     />
+                    <ItemActionsMenu
+                      title={activity.title}
+                      canFinish={canFinishStatus(activity.status)}
+                      onFinish={() => setActivityToFinish(activity)}
+                      onDelete={() => setActivityToDelete(activity)}
+                    />
                   </div>
                 </div>
-                {activity.tag ? (
-                  <ActivityTagBadge
-                    tag={activity.tag}
-                    className='pointer-events-none relative z-10 max-w-28 self-start'
-                  />
-                ) : null}
+                <div className='pointer-events-none relative z-10 flex items-center gap-2 self-start'>
+                  {activity.tag ? (
+                    <ActivityTagBadge
+                      tag={activity.tag}
+                      className='pointer-events-auto max-w-28'
+                      aria-label={`Alterar tag de ${activity.title}`}
+                      onClick={() => setActivityToEditTag(activity)}
+                    />
+                  ) : null}
+                  <button
+                    type='button'
+                    className={cn(
+                      'pointer-events-auto',
+                      CARD_STATUS_BADGE_CLASS[activity.status],
+                    )}
+                    aria-label={`Alterar status de ${activity.title}`}
+                    onClick={() => setActivityToUpdate(activity)}
+                  >
+                    {STATUS_LABELS[activity.status]}
+                  </button>
+                </div>
                 {activity.description ? (
                   <p className='pointer-events-none relative z-10 line-clamp-2 text-xs text-muted-foreground'>
                     {activity.description}

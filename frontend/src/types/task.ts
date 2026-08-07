@@ -44,5 +44,6 @@ export interface CreateTaskInput {
 }
 
 export interface UpdateTaskInput {
-  title: string
+  title?: string
+  status?: TaskStatus
 }

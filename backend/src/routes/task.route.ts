@@ -38,4 +38,9 @@ export async function taskRoutes(app: FastifyInstance) {
     { preHandler: [app.authenticate] },
     controller.updateTask,
   );
+  app.delete(
+    '/projects/:projectId/tasks/:taskId',
+    { preHandler: [app.authenticate] },
+    controller.deleteTask,
+  );
 }

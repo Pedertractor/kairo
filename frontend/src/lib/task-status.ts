@@ -8,12 +8,28 @@ export const TASK_STATUSES: TaskStatus[] = [
   'CANCELED',
 ]
 
+export function isFinishedTaskStatus(status: TaskStatus) {
+  return status === 'DONE'
+}
+
+export function canFinishTaskStatus(status: TaskStatus) {
+  return status !== 'DONE' && status !== 'CANCELED'
+}
+
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   TODO: 'A fazer',
   IN_PROGRESS: 'Em andamento',
   PAUSED: 'Pausada',
   DONE: 'Concluída',
   CANCELED: 'Cancelada',
+}
+
+export const TASK_STATUS_BADGE_HOVER_CLASS: Record<TaskStatus, string> = {
+  TODO: 'transition-colors hover:bg-muted/80 hover:text-foreground',
+  IN_PROGRESS: 'transition-colors hover:bg-sky-500/20',
+  PAUSED: 'transition-colors hover:bg-amber-500/20',
+  DONE: 'transition-colors hover:bg-emerald-500/20',
+  CANCELED: 'transition-colors hover:bg-rose-500/20',
 }
 
 export const TASK_STATUS_BADGE_CLASS: Record<TaskStatus, string> = {
