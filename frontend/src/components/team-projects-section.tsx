@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom'
 
 import { CardTimeBudget } from '@/components/card-time-budget'
 import { CreateProjectDialog } from '@/components/create-project-dialog'
-import { FinishItemButton } from '@/components/finish-item-button'
+import { DeleteProjectDialog } from '@/components/delete-project-dialog'
 import { FinishProjectDialog } from '@/components/finish-project-dialog'
+import { ItemActionsMenu } from '@/components/item-actions-menu'
 import { ProjectStatusActions } from '@/components/project-status-actions'
 import { UpdateProjectStatusDialog } from '@/components/update-project-status-dialog'
 import { Button } from '@/components/ui/button'
@@ -40,6 +41,8 @@ export function TeamProjectsSection({ teamId }: TeamProjectsSectionProps) {
   const [projectToUpdate, setProjectToUpdate] =
     useState<ProjectSummary | null>(null)
   const [projectToFinish, setProjectToFinish] =
+    useState<ProjectSummary | null>(null)
+  const [projectToDelete, setProjectToDelete] =
     useState<ProjectSummary | null>(null)
   const [visibilityFilter, setVisibilityFilter] = useState(VISIBILITY_ACTIVE)
 
@@ -117,6 +120,18 @@ export function TeamProjectsSection({ teamId }: TeamProjectsSectionProps) {
         onFinished={loadProjects}
       />
 
+      <DeleteProjectDialog
+        teamId={teamId}
+        project={projectToDelete}
+        open={projectToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setProjectToDelete(null)
+          }
+        }}
+        onDeleted={loadProjects}
+      />
+
       {!isLoading && projects.length > 0 ? (
         <div className="w-full sm:w-1/4">
           <Select
@@ -181,11 +196,12 @@ export function TeamProjectsSection({ teamId }: TeamProjectsSectionProps) {
                 <div className="flex items-start justify-between gap-2">
                   <span className="text-sm font-medium">{project.title}</span>
                   <div className="pointer-events-auto flex shrink-0 items-center gap-0.5">
-                    {canFinishStatus(project.status) ? (
-                      <FinishItemButton
-                        onClick={() => setProjectToFinish(project)}
-                      />
-                    ) : null}
+                    <ItemActionsMenu
+                      title={project.title}
+                      canFinish={canFinishStatus(project.status)}
+                      onFinish={() => setProjectToFinish(project)}
+                      onDelete={() => setProjectToDelete(project)}
+                    />
                     <ProjectStatusActions
                       project={project}
                       onStatusClick={() => setProjectToUpdate(project)}

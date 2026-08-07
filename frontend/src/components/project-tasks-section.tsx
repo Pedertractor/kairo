@@ -2,9 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { CreateTaskDialog } from '@/components/create-task-dialog';
+import { DeleteTaskDialog } from '@/components/delete-task-dialog';
 import { FavoriteButton } from '@/components/favorite-button';
-import { FinishItemButton } from '@/components/finish-item-button';
 import { FinishTaskDialog } from '@/components/finish-task-dialog';
+import { ItemActionsMenu } from '@/components/item-actions-menu';
 import { StartTaskTimerButton } from '@/components/start-task-timer-button';
 import { UpdateTaskStatusDialog } from '@/components/update-task-status-dialog';
 import { Button } from '@/components/ui/button';
@@ -53,6 +54,7 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [taskToFinish, setTaskToFinish] = useState<TaskSummary | null>(null);
+  const [taskToDelete, setTaskToDelete] = useState<TaskSummary | null>(null);
   const [taskToUpdate, setTaskToUpdate] = useState<TaskSummary | null>(null);
   const [visibilityFilter, setVisibilityFilter] = useState(VISIBILITY_ACTIVE);
 
@@ -123,6 +125,18 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
           }
         }}
         onFinished={() => void loadTasks()}
+      />
+
+      <DeleteTaskDialog
+        projectId={projectId}
+        task={taskToDelete}
+        open={taskToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setTaskToDelete(null);
+          }
+        }}
+        onDeleted={() => void loadTasks()}
       />
 
       <UpdateTaskStatusDialog
@@ -252,11 +266,12 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
                       taskId={task.id}
                       className='text-muted-foreground hover:text-sidebar-primary'
                     />
-                    {canFinishTaskStatus(task.status) ? (
-                      <FinishItemButton
-                        onClick={() => setTaskToFinish(task)}
-                      />
-                    ) : null}
+                    <ItemActionsMenu
+                      title={task.title}
+                      canFinish={canFinishTaskStatus(task.status)}
+                      onFinish={() => setTaskToFinish(task)}
+                      onDelete={() => setTaskToDelete(task)}
+                    />
                     <button
                       type='button'
                       className={cn(

@@ -208,6 +208,8 @@ model Card {
 
   estimatedHours Decimal? @db.Decimal(10, 2)
 
+  deletedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -218,6 +220,7 @@ model Card {
   @@index([teamId])
   @@index([createdById])
   @@index([tagId])
+  @@index([deletedAt])
   @@map("cards")
 }
 
@@ -244,6 +247,8 @@ model Task {
 
   completedAt DateTime?
 
+  deletedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -252,6 +257,7 @@ model Task {
 
   @@index([cardId])
   @@index([assignedToId])
+  @@index([deletedAt])
   @@map("tasks")
 }
 

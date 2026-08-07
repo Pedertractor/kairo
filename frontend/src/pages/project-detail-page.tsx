@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { ArrowLeft, Pencil } from 'lucide-react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 
+import { DeleteProjectDialog } from '@/components/delete-project-dialog'
 import { EditProjectTitleDialog } from '@/components/edit-project-title-dialog'
-import { FinishItemButton } from '@/components/finish-item-button'
 import { FinishProjectDialog } from '@/components/finish-project-dialog'
+import { ItemActionsMenu } from '@/components/item-actions-menu'
 import { ProjectStatusActions } from '@/components/project-status-actions'
 import { ProjectTasksSection } from '@/components/project-tasks-section'
 import { UpdateProjectStatusDialog } from '@/components/update-project-status-dialog'
@@ -16,12 +17,14 @@ import { canFinishStatus } from '@/lib/card-status'
 import type { ProjectResponse, ProjectSummary } from '@/types/card'
 
 export function ProjectDetailPage() {
+  const navigate = useNavigate()
   const { projectId } = useParams<{ projectId: string }>()
   const [project, setProject] = useState<ProjectSummary | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
   const [isEditTitleDialogOpen, setIsEditTitleDialogOpen] = useState(false)
   const [isFinishDialogOpen, setIsFinishDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   useEffect(() => {
     if (!projectId) {
@@ -94,11 +97,12 @@ export function ProjectDetailPage() {
                 </Button>
               </div>
               <div className="flex shrink-0 items-center gap-0.5">
-                {canFinishStatus(project.status) ? (
-                  <FinishItemButton
-                    onClick={() => setIsFinishDialogOpen(true)}
-                  />
-                ) : null}
+                <ItemActionsMenu
+                  title={project.title}
+                  canFinish={canFinishStatus(project.status)}
+                  onFinish={() => setIsFinishDialogOpen(true)}
+                  onDelete={() => setIsDeleteDialogOpen(true)}
+                />
                 <ProjectStatusActions
                   project={project}
                   onStatusClick={() => setIsStatusDialogOpen(true)}
@@ -158,6 +162,14 @@ export function ProjectDetailPage() {
             open={isFinishDialogOpen}
             onOpenChange={setIsFinishDialogOpen}
             onFinished={reloadProject}
+          />
+
+          <DeleteProjectDialog
+            teamId={project.teamId}
+            project={project}
+            open={isDeleteDialogOpen}
+            onOpenChange={setIsDeleteDialogOpen}
+            onDeleted={() => navigate('/projetos')}
           />
 
           <ProjectTasksSection projectId={project.id} />

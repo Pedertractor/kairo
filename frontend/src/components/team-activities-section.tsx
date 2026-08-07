@@ -5,10 +5,11 @@ import { Link } from 'react-router-dom';
 import { ActivityTagBadge } from '@/components/activity-tag-badge';
 import { CreateActivityDialog } from '@/components/create-activity-dialog';
 import { CreateTagDialog } from '@/components/create-tag-dialog';
+import { DeleteActivityDialog } from '@/components/delete-activity-dialog';
 import { EditActivityTagDialog } from '@/components/edit-activity-tag-dialog';
 import { FavoriteButton } from '@/components/favorite-button';
 import { FinishActivityDialog } from '@/components/finish-activity-dialog';
-import { FinishItemButton } from '@/components/finish-item-button';
+import { ItemActionsMenu } from '@/components/item-actions-menu';
 import { StartActivityTimerButton } from '@/components/start-activity-timer-button';
 import { UpdateActivityStatusDialog } from '@/components/update-activity-status-dialog';
 import { Button } from '@/components/ui/button';
@@ -51,6 +52,8 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isCreateTagDialogOpen, setIsCreateTagDialogOpen] = useState(false);
   const [activityToFinish, setActivityToFinish] =
+    useState<ActivitySummary | null>(null);
+  const [activityToDelete, setActivityToDelete] =
     useState<ActivitySummary | null>(null);
   const [activityToUpdate, setActivityToUpdate] =
     useState<ActivitySummary | null>(null);
@@ -156,6 +159,18 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
           }
         }}
         onFinished={loadActivities}
+      />
+
+      <DeleteActivityDialog
+        teamId={teamId}
+        activity={activityToDelete}
+        open={activityToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setActivityToDelete(null);
+          }
+        }}
+        onDeleted={loadActivities}
       />
 
       <UpdateActivityStatusDialog
@@ -350,11 +365,12 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
                       activityId={activity.id}
                       className='text-muted-foreground hover:text-sidebar-primary'
                     />
-                    {canFinishStatus(activity.status) ? (
-                      <FinishItemButton
-                        onClick={() => setActivityToFinish(activity)}
-                      />
-                    ) : null}
+                    <ItemActionsMenu
+                      title={activity.title}
+                      canFinish={canFinishStatus(activity.status)}
+                      onFinish={() => setActivityToFinish(activity)}
+                      onDelete={() => setActivityToDelete(activity)}
+                    />
                   </div>
                 </div>
                 <div className='pointer-events-none relative z-10 flex items-center gap-2 self-start'>

@@ -193,4 +193,30 @@ export class TaskService {
       loggedSeconds,
     };
   }
+
+  async deleteTask(
+    projectId: string,
+    taskId: string,
+    userId: string,
+  ): Promise<TaskSummary> {
+    await this.assertProjectAccess(projectId, userId);
+
+    const task = await this.taskRepository.findById(taskId);
+
+    if (!task || task.cardId !== projectId) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    const activeEntries =
+      await this.timeEntryRepository.findActiveManyByTaskId(taskId);
+    const endedAt = new Date();
+
+    for (const entry of activeEntries) {
+      await this.timeEntryRepository.stopEntry(entry, endedAt);
+    }
+
+    const deleted = await this.taskRepository.softDelete(taskId);
+
+    return toTaskSummary(deleted);
+  }
 }

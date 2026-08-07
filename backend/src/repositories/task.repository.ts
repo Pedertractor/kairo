@@ -4,8 +4,8 @@ export class TaskRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
   findById(taskId: string) {
-    return this.prisma.task.findUnique({
-      where: { id: taskId },
+    return this.prisma.task.findFirst({
+      where: { id: taskId, deletedAt: null },
       include: {
         assignedTo: { select: { id: true, name: true } },
         card: {
@@ -55,6 +55,7 @@ export class TaskRepository {
     return this.prisma.task.updateMany({
       where: {
         id: taskId,
+        deletedAt: null,
         status: { notIn: ['DONE', 'CANCELED'] },
       },
       data: { status },
@@ -63,7 +64,7 @@ export class TaskRepository {
 
   findByProjectId(projectId: string) {
     return this.prisma.task.findMany({
-      where: { cardId: projectId },
+      where: { cardId: projectId, deletedAt: null },
       include: {
         assignedTo: { select: { id: true, name: true } },
       },
@@ -73,7 +74,7 @@ export class TaskRepository {
 
   getMaxSortOrder(projectId: string) {
     return this.prisma.task.aggregate({
-      where: { cardId: projectId },
+      where: { cardId: projectId, deletedAt: null },
       _max: { sortOrder: true },
     });
   }
@@ -98,6 +99,23 @@ export class TaskRepository {
       include: {
         assignedTo: { select: { id: true, name: true } },
       },
+    });
+  }
+
+  softDelete(taskId: string) {
+    return this.prisma.task.update({
+      where: { id: taskId },
+      data: { deletedAt: new Date() },
+      include: {
+        assignedTo: { select: { id: true, name: true } },
+      },
+    });
+  }
+
+  softDeleteByProjectId(projectId: string) {
+    return this.prisma.task.updateMany({
+      where: { cardId: projectId, deletedAt: null },
+      data: { deletedAt: new Date() },
     });
   }
 }

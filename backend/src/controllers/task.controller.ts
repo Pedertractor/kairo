@@ -108,4 +108,29 @@ export class TaskController {
       return handleControllerError(error, reply);
     }
   };
+
+  deleteTask = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const parsed = taskParamSchema.safeParse(request.params);
+
+      if (!parsed.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const task = await this.service.deleteTask(
+        parsed.data.projectId,
+        parsed.data.taskId,
+        request.user.sub,
+      );
+
+      return sendSuccess(
+        reply,
+        { task },
+        200,
+        MENSAGENS.TAREFA_REMOVIDA_SUCESSO,
+      );
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
 }

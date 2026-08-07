@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { ArrowLeft, Pencil } from 'lucide-react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { ActivityTagBadge } from '@/components/activity-tag-badge'
 import { ActivityStatusActions } from '@/components/activity-status-actions'
+import { DeleteActivityDialog } from '@/components/delete-activity-dialog'
 import { EditActivityTagDialog } from '@/components/edit-activity-tag-dialog'
 import { EditActivityTitleDialog } from '@/components/edit-activity-title-dialog'
 import { FinishActivityDialog } from '@/components/finish-activity-dialog'
-import { FinishItemButton } from '@/components/finish-item-button'
+import { ItemActionsMenu } from '@/components/item-actions-menu'
 import { UpdateActivityStatusDialog } from '@/components/update-activity-status-dialog'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -17,6 +18,7 @@ import { canFinishStatus } from '@/lib/card-status'
 import type { ActivityResponse, ActivitySummary } from '@/types/card'
 
 export function ActivityDetailPage() {
+  const navigate = useNavigate()
   const { teamId, activityId } = useParams<{
     teamId: string
     activityId: string
@@ -27,6 +29,7 @@ export function ActivityDetailPage() {
   const [isEditTitleDialogOpen, setIsEditTitleDialogOpen] = useState(false)
   const [isEditTagDialogOpen, setIsEditTagDialogOpen] = useState(false)
   const [isFinishDialogOpen, setIsFinishDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   useEffect(() => {
     if (!teamId || !activityId) {
@@ -108,11 +111,12 @@ export function ActivityDetailPage() {
               </div>
               {teamId ? (
                 <div className="flex shrink-0 items-center gap-0.5">
-                  {canFinishStatus(activity.status) ? (
-                    <FinishItemButton
-                      onClick={() => setIsFinishDialogOpen(true)}
-                    />
-                  ) : null}
+                  <ItemActionsMenu
+                    title={activity.title}
+                    canFinish={canFinishStatus(activity.status)}
+                    onFinish={() => setIsFinishDialogOpen(true)}
+                    onDelete={() => setIsDeleteDialogOpen(true)}
+                  />
                   <ActivityStatusActions
                     teamId={teamId}
                     activity={activity}
@@ -187,6 +191,13 @@ export function ActivityDetailPage() {
                 open={isFinishDialogOpen}
                 onOpenChange={setIsFinishDialogOpen}
                 onFinished={reloadActivity}
+              />
+              <DeleteActivityDialog
+                teamId={teamId}
+                activity={activity}
+                open={isDeleteDialogOpen}
+                onOpenChange={setIsDeleteDialogOpen}
+                onDeleted={() => navigate(`/equipes/${teamId}`)}
               />
             </>
           ) : null}

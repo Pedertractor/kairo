@@ -358,4 +358,56 @@ export class CardService {
       card.team.name,
     );
   }
+
+  async deleteActivity(
+    teamId: string,
+    activityId: string,
+    userId: string,
+  ): Promise<ActivitySummary> {
+    await this.assertTeamMember(teamId, userId);
+
+    const card = await this.cardRepository.findActivityById(activityId);
+
+    if (!card || card.teamId !== teamId || card.type !== 'ACTIVITY') {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    const activeEntries =
+      await this.timeEntryRepository.findActiveManyByCardId(activityId);
+    const endedAt = new Date();
+
+    for (const entry of activeEntries) {
+      await this.timeEntryRepository.stopEntry(entry, endedAt);
+    }
+
+    const deleted = await this.cardRepository.softDeleteActivity(activityId);
+
+    return toActivitySummary(deleted);
+  }
+
+  async deleteProject(
+    teamId: string,
+    projectId: string,
+    userId: string,
+  ): Promise<ProjectSummary> {
+    await this.assertTeamMember(teamId, userId);
+
+    const card = await this.cardRepository.findProjectById(projectId);
+
+    if (!card || card.teamId !== teamId || card.type !== 'PROJECT') {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    const activeEntries =
+      await this.timeEntryRepository.findActiveManyByProjectId(projectId);
+    const endedAt = new Date();
+
+    for (const entry of activeEntries) {
+      await this.timeEntryRepository.stopEntry(entry, endedAt);
+    }
+
+    await this.cardRepository.softDeleteProject(projectId);
+
+    return toProjectSummary(card, 0, card.team.name);
+  }
 }

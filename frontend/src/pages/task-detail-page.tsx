@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ArrowLeft, Pencil } from 'lucide-react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 
+import { DeleteTaskDialog } from '@/components/delete-task-dialog'
 import { EditTaskTitleDialog } from '@/components/edit-task-title-dialog'
 import { FavoriteButton } from '@/components/favorite-button'
-import { FinishItemButton } from '@/components/finish-item-button'
 import { FinishTaskDialog } from '@/components/finish-task-dialog'
+import { ItemActionsMenu } from '@/components/item-actions-menu'
 import { StartTaskTimerButton } from '@/components/start-task-timer-button'
 import { TaskTimeEntriesSection } from '@/components/task-time-entries-section'
 import { Button } from '@/components/ui/button'
@@ -22,6 +23,7 @@ import { cn } from '@/lib/utils'
 import type { TaskDetail, TaskDetailResponse } from '@/types/task'
 
 export function TaskDetailPage() {
+  const navigate = useNavigate()
   const { projectId, taskId } = useParams<{
     projectId: string
     taskId: string
@@ -30,6 +32,7 @@ export function TaskDetailPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isEditTitleDialogOpen, setIsEditTitleDialogOpen] = useState(false)
   const [isFinishDialogOpen, setIsFinishDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   const loadTask = useCallback(async () => {
     if (!projectId || !taskId) {
@@ -142,11 +145,12 @@ export function TaskDetailPage() {
                       taskId={task.id}
                       size="icon-sm"
                     />
-                    {canFinishTaskStatus(task.status) ? (
-                      <FinishItemButton
-                        onClick={() => setIsFinishDialogOpen(true)}
-                      />
-                    ) : null}
+                    <ItemActionsMenu
+                      title={task.title}
+                      canFinish={canFinishTaskStatus(task.status)}
+                      onFinish={() => setIsFinishDialogOpen(true)}
+                      onDelete={() => setIsDeleteDialogOpen(true)}
+                    />
                   </>
                 ) : null}
                 <span
@@ -192,6 +196,13 @@ export function TaskDetailPage() {
                 open={isFinishDialogOpen}
                 onOpenChange={setIsFinishDialogOpen}
                 onFinished={() => void loadTask()}
+              />
+              <DeleteTaskDialog
+                projectId={projectId}
+                task={task}
+                open={isDeleteDialogOpen}
+                onOpenChange={setIsDeleteDialogOpen}
+                onDeleted={() => navigate(`/projetos/${projectId}`)}
               />
             </>
           ) : null}

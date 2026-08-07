@@ -4,8 +4,9 @@ import { Link } from 'react-router-dom'
 
 import { CardTimeBudget } from '@/components/card-time-budget'
 import { CreateProjectDialog } from '@/components/create-project-dialog'
-import { FinishItemButton } from '@/components/finish-item-button'
+import { DeleteProjectDialog } from '@/components/delete-project-dialog'
 import { FinishProjectDialog } from '@/components/finish-project-dialog'
+import { ItemActionsMenu } from '@/components/item-actions-menu'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -47,6 +48,8 @@ export function ProjetosPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [projectToFinish, setProjectToFinish] =
+    useState<ProjectSummary | null>(null)
+  const [projectToDelete, setProjectToDelete] =
     useState<ProjectSummary | null>(null)
   const [nameFilter, setNameFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(ALL_STATUSES)
@@ -124,6 +127,18 @@ export function ProjetosPage() {
           }
         }}
         onFinished={loadProjects}
+      />
+
+      <DeleteProjectDialog
+        teamId={projectToDelete?.teamId ?? ''}
+        project={projectToDelete}
+        open={projectToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setProjectToDelete(null)
+          }
+        }}
+        onDeleted={loadProjects}
       />
 
       {!isLoading && projects.length > 0 ? (
@@ -226,11 +241,12 @@ export function ProjetosPage() {
               <div className="pointer-events-none relative z-10 flex items-start justify-between gap-2">
                 <span className="text-sm font-medium">{project.title}</span>
                 <div className="pointer-events-auto flex shrink-0 items-center gap-0.5">
-                  {canFinishStatus(project.status) ? (
-                    <FinishItemButton
-                      onClick={() => setProjectToFinish(project)}
-                    />
-                  ) : null}
+                  <ItemActionsMenu
+                    title={project.title}
+                    canFinish={canFinishStatus(project.status)}
+                    onFinish={() => setProjectToFinish(project)}
+                    onDelete={() => setProjectToDelete(project)}
+                  />
                   <span
                     className={cn(
                       'shrink-0',

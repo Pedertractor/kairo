@@ -5,7 +5,13 @@ export class FavoriteRepository {
 
   findByUserId(userId: string) {
     return this.prisma.userFavorite.findMany({
-      where: { userId },
+      where: {
+        userId,
+        OR: [
+          { card: { deletedAt: null } },
+          { task: { deletedAt: null, card: { deletedAt: null } } },
+        ],
+      },
       include: {
         card: {
           select: {
