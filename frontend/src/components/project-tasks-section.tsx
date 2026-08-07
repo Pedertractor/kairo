@@ -1,21 +1,38 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { CreateTaskDialog } from '@/components/create-task-dialog';
 import { FavoriteButton } from '@/components/favorite-button';
+import { FinishItemButton } from '@/components/finish-item-button';
+import { FinishTaskDialog } from '@/components/finish-task-dialog';
 import { StartTaskTimerButton } from '@/components/start-task-timer-button';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useActiveTimer } from '@/hooks/use-active-timer';
 import { api } from '@/lib/api-handler';
 import { subscribeTaskDataInvalidation } from '@/lib/task-data-invalidation';
-import { TASK_STATUS_BADGE_CLASS, TASK_STATUS_LABELS } from '@/lib/task-status';
+import {
+  canFinishTaskStatus,
+  isFinishedTaskStatus,
+  TASK_STATUS_BADGE_CLASS,
+  TASK_STATUS_LABELS,
+} from '@/lib/task-status';
 import { cn } from '@/lib/utils';
 import type { TaskStatus, TaskSummary, TasksListResponse } from '@/types/task';
 
 interface ProjectTasksSectionProps {
   projectId: string;
 }
+
+const VISIBILITY_ACTIVE = 'active';
+const VISIBILITY_ALL = 'all';
 
 const TASK_CARD_STATUS_CLASS: Record<TaskStatus, string> = {
   TODO: 'border-border bg-card',
@@ -33,6 +50,8 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
   const [tasks, setTasks] = useState<TaskSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [taskToFinish, setTaskToFinish] = useState<TaskSummary | null>(null);
+  const [visibilityFilter, setVisibilityFilter] = useState(VISIBILITY_ACTIVE);
 
   const loadTasks = useCallback(async (options?: { silent?: boolean }) => {
     if (!options?.silent) {
@@ -58,6 +77,18 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
     [loadTasks],
   );
 
+  const filteredTasks = useMemo(() => {
+    const showFinished = visibilityFilter === VISIBILITY_ALL;
+
+    return tasks.filter(
+      (task) => showFinished || !isFinishedTaskStatus(task.status),
+    );
+  }, [tasks, visibilityFilter]);
+
+  const hasFinishedHidden =
+    visibilityFilter === VISIBILITY_ACTIVE &&
+    tasks.some((task) => isFinishedTaskStatus(task.status));
+
   return (
     <div className='flex flex-col gap-4'>
       <div className='flex items-center justify-between gap-4'>
@@ -79,6 +110,41 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
         onCreated={loadTasks}
       />
 
+      <FinishTaskDialog
+        projectId={projectId}
+        task={taskToFinish}
+        open={taskToFinish !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setTaskToFinish(null);
+          }
+        }}
+        onFinished={() => void loadTasks()}
+      />
+
+      {!isLoading && tasks.length > 0 ? (
+        <div className='w-full sm:w-1/4'>
+          <Select
+            value={visibilityFilter}
+            onValueChange={(value) =>
+              setVisibilityFilter(value ?? VISIBILITY_ACTIVE)
+            }
+          >
+            <SelectTrigger className='w-full' aria-label='Filtrar concluídas'>
+              <SelectValue>
+                {(selectedValue) =>
+                  selectedValue === VISIBILITY_ALL ? 'Todos' : 'Ativos'
+                }
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={VISIBILITY_ACTIVE}>Ativos</SelectItem>
+              <SelectItem value={VISIBILITY_ALL}>Todos</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
+
       {isLoading ? (
         <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-3'>
           {Array.from({ length: 3 }).map((_, index) => (
@@ -92,9 +158,18 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
             As tarefas deste projeto aparecerão aqui.
           </p>
         </div>
+      ) : filteredTasks.length === 0 ? (
+        <div className='flex min-h-32 flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/30 p-8 text-center'>
+          <p className='text-sm font-medium'>Nenhuma tarefa encontrada</p>
+          <p className='max-w-sm text-sm text-muted-foreground'>
+            {hasFinishedHidden
+              ? 'Há tarefas concluídas ocultas. Selecione "Todos" para exibi-las.'
+              : 'As tarefas deste projeto aparecerão aqui.'}
+          </p>
+        </div>
       ) : (
         <ul className='grid gap-3 sm:grid-cols-2 lg:grid-cols-3'>
-          {tasks.map((task) => {
+          {filteredTasks.map((task) => {
             const isTimerActive = isTaskCurrent(task.id);
 
             return (
@@ -162,6 +237,11 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
                       taskId={task.id}
                       className='text-muted-foreground hover:text-sidebar-primary'
                     />
+                    {canFinishTaskStatus(task.status) ? (
+                      <FinishItemButton
+                        onClick={() => setTaskToFinish(task)}
+                      />
+                    ) : null}
                     <span className={TASK_STATUS_BADGE_CLASS[task.status]}>
                       {TASK_STATUS_LABELS[task.status]}
                     </span>

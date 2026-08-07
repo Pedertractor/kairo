@@ -92,7 +92,10 @@ export class TaskController {
         params.data.projectId,
         params.data.taskId,
         request.user.sub,
-        body.data.title,
+        {
+          title: body.data.title,
+          status: body.data.status,
+        },
       );
 
       return sendSuccess(

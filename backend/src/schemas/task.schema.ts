@@ -18,6 +18,20 @@ export const createTaskSchema = z.object({
     .optional(),
 });
 
-export const updateTaskSchema = z.object({
-  title: z.string().trim().min(1, 'Título é obrigatório'),
-});
+export const taskStatusSchema = z.enum([
+  'TODO',
+  'IN_PROGRESS',
+  'PAUSED',
+  'DONE',
+  'CANCELED',
+]);
+
+export const updateTaskSchema = z
+  .object({
+    title: z.string().trim().min(1, 'Título é obrigatório').optional(),
+    status: taskStatusSchema.optional(),
+  })
+  .refine(
+    (data) => data.title !== undefined || data.status !== undefined,
+    { message: 'Informe ao menos um campo para atualizar' },
+  );

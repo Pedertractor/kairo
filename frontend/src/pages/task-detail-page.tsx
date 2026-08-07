@@ -4,6 +4,8 @@ import { Link, useParams } from 'react-router-dom'
 
 import { EditTaskTitleDialog } from '@/components/edit-task-title-dialog'
 import { FavoriteButton } from '@/components/favorite-button'
+import { FinishItemButton } from '@/components/finish-item-button'
+import { FinishTaskDialog } from '@/components/finish-task-dialog'
 import { StartTaskTimerButton } from '@/components/start-task-timer-button'
 import { TaskTimeEntriesSection } from '@/components/task-time-entries-section'
 import { Button } from '@/components/ui/button'
@@ -11,7 +13,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { CardTimeBudget } from '@/components/card-time-budget'
 import { api } from '@/lib/api-handler'
 import { subscribeTaskDataInvalidation } from '@/lib/task-data-invalidation'
-import { TASK_STATUS_BADGE_CLASS, TASK_STATUS_LABELS } from '@/lib/task-status'
+import {
+  canFinishTaskStatus,
+  TASK_STATUS_BADGE_CLASS,
+  TASK_STATUS_LABELS,
+} from '@/lib/task-status'
 import { cn } from '@/lib/utils'
 import type { TaskDetail, TaskDetailResponse } from '@/types/task'
 
@@ -23,6 +29,7 @@ export function TaskDetailPage() {
   const [task, setTask] = useState<TaskDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isEditTitleDialogOpen, setIsEditTitleDialogOpen] = useState(false)
+  const [isFinishDialogOpen, setIsFinishDialogOpen] = useState(false)
 
   const loadTask = useCallback(async () => {
     if (!projectId || !taskId) {
@@ -135,6 +142,11 @@ export function TaskDetailPage() {
                       taskId={task.id}
                       size="icon-sm"
                     />
+                    {canFinishTaskStatus(task.status) ? (
+                      <FinishItemButton
+                        onClick={() => setIsFinishDialogOpen(true)}
+                      />
+                    ) : null}
                   </>
                 ) : null}
                 <span
@@ -166,13 +178,22 @@ export function TaskDetailPage() {
           </div>
 
           {projectId ? (
-            <EditTaskTitleDialog
-              projectId={projectId}
-              task={task}
-              open={isEditTitleDialogOpen}
-              onOpenChange={setIsEditTitleDialogOpen}
-              onUpdated={setTask}
-            />
+            <>
+              <EditTaskTitleDialog
+                projectId={projectId}
+                task={task}
+                open={isEditTitleDialogOpen}
+                onOpenChange={setIsEditTitleDialogOpen}
+                onUpdated={setTask}
+              />
+              <FinishTaskDialog
+                projectId={projectId}
+                task={task}
+                open={isFinishDialogOpen}
+                onOpenChange={setIsFinishDialogOpen}
+                onFinished={() => void loadTask()}
+              />
+            </>
           ) : null}
 
           {projectId && taskId ? (

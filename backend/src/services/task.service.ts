@@ -1,4 +1,4 @@
-import type { Task } from '../generated/client.js';
+import type { Task, TaskStatus } from '../generated/client.js';
 import { CardRepository } from '../repositories/card.repository.js';
 import { FavoriteRepository } from '../repositories/favorite.repository.js';
 import { TaskRepository } from '../repositories/task.repository.js';
@@ -141,7 +141,7 @@ export class TaskService {
     projectId: string,
     taskId: string,
     userId: string,
-    title: string,
+    data: { title?: string; status?: TaskStatus },
   ): Promise<TaskDetail> {
     await this.assertProjectAccess(projectId, userId);
 
@@ -151,7 +151,37 @@ export class TaskService {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
     }
 
-    const updated = await this.taskRepository.update(taskId, { title });
+    if (data.status === 'DONE' && task.status !== 'DONE') {
+      const activeEntries =
+        await this.timeEntryRepository.findActiveManyByTaskId(taskId);
+      const endedAt = new Date();
+
+      for (const entry of activeEntries) {
+        await this.timeEntryRepository.stopEntry(entry, endedAt);
+      }
+    }
+
+    const updateData: {
+      title?: string;
+      status?: TaskStatus;
+      completedAt?: Date | null;
+    } = {};
+
+    if (data.title !== undefined) {
+      updateData.title = data.title;
+    }
+
+    if (data.status !== undefined) {
+      updateData.status = data.status;
+
+      if (data.status === 'DONE') {
+        updateData.completedAt = task.completedAt ?? new Date();
+      } else if (task.status === 'DONE') {
+        updateData.completedAt = null;
+      }
+    }
+
+    const updated = await this.taskRepository.update(taskId, updateData);
 
     const [loggedSeconds, favorite] = await Promise.all([
       this.timeEntryRepository.getLoggedSecondsByTaskId(taskId),

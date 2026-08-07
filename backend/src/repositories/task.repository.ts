@@ -27,10 +27,23 @@ export class TaskRepository {
     });
   }
 
-  update(taskId: string, data: { title: string }) {
+  update(
+    taskId: string,
+    data: {
+      title?: string;
+      status?: TaskStatus;
+      completedAt?: Date | null;
+    },
+  ) {
     return this.prisma.task.update({
       where: { id: taskId },
-      data: { title: data.title },
+      data: {
+        ...(data.title !== undefined ? { title: data.title } : {}),
+        ...(data.status !== undefined ? { status: data.status } : {}),
+        ...(data.completedAt !== undefined
+          ? { completedAt: data.completedAt }
+          : {}),
+      },
       include: {
         assignedTo: { select: { id: true, name: true } },
       },

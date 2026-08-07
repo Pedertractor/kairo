@@ -8,6 +8,14 @@ export const CARD_STATUSES: CardStatus[] = [
   'CANCELED',
 ]
 
+export function isFinishedStatus(status: CardStatus) {
+  return status === 'DONE'
+}
+
+export function canFinishStatus(status: CardStatus) {
+  return status !== 'DONE' && status !== 'CANCELED'
+}
+
 export const STATUS_LABELS: Record<CardStatus, string> = {
   TODO: 'A fazer',
   IN_PROGRESS: 'Em andamento',

@@ -3,14 +3,17 @@ import { ArrowLeft, Pencil } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 
 import { ActivityTagBadge } from '@/components/activity-tag-badge'
+import { ActivityStatusActions } from '@/components/activity-status-actions'
 import { EditActivityTagDialog } from '@/components/edit-activity-tag-dialog'
 import { EditActivityTitleDialog } from '@/components/edit-activity-title-dialog'
+import { FinishActivityDialog } from '@/components/finish-activity-dialog'
+import { FinishItemButton } from '@/components/finish-item-button'
 import { UpdateActivityStatusDialog } from '@/components/update-activity-status-dialog'
-import { ActivityStatusActions } from '@/components/activity-status-actions'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { api } from '@/lib/api-handler'
 import { CardTimeBudget } from '@/components/card-time-budget'
+import { canFinishStatus } from '@/lib/card-status'
 import type { ActivityResponse, ActivitySummary } from '@/types/card'
 
 export function ActivityDetailPage() {
@@ -23,6 +26,7 @@ export function ActivityDetailPage() {
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
   const [isEditTitleDialogOpen, setIsEditTitleDialogOpen] = useState(false)
   const [isEditTagDialogOpen, setIsEditTagDialogOpen] = useState(false)
+  const [isFinishDialogOpen, setIsFinishDialogOpen] = useState(false)
 
   useEffect(() => {
     if (!teamId || !activityId) {
@@ -103,17 +107,24 @@ export function ActivityDetailPage() {
                 </Button>
               </div>
               {teamId ? (
-                <ActivityStatusActions
-                  teamId={teamId}
-                  activity={activity}
-                  onStatusClick={() => setIsStatusDialogOpen(true)}
-                  onFavoriteToggle={(isFavorite) => {
-                    setActivity((current) =>
-                      current ? { ...current, isFavorite } : current,
-                    )
-                  }}
-                  statusClassName="px-2.5 py-1 text-sm"
-                />
+                <div className="flex shrink-0 items-center gap-0.5">
+                  {canFinishStatus(activity.status) ? (
+                    <FinishItemButton
+                      onClick={() => setIsFinishDialogOpen(true)}
+                    />
+                  ) : null}
+                  <ActivityStatusActions
+                    teamId={teamId}
+                    activity={activity}
+                    onStatusClick={() => setIsStatusDialogOpen(true)}
+                    onFavoriteToggle={(isFavorite) => {
+                      setActivity((current) =>
+                        current ? { ...current, isFavorite } : current,
+                      )
+                    }}
+                    statusClassName="px-2.5 py-1 text-sm"
+                  />
+                </div>
               ) : null}
             </div>
             <div className="flex items-center gap-2">
@@ -164,6 +175,13 @@ export function ActivityDetailPage() {
                 open={isStatusDialogOpen}
                 onOpenChange={setIsStatusDialogOpen}
                 onUpdated={reloadActivity}
+              />
+              <FinishActivityDialog
+                teamId={teamId}
+                activity={activity}
+                open={isFinishDialogOpen}
+                onOpenChange={setIsFinishDialogOpen}
+                onFinished={reloadActivity}
               />
             </>
           ) : null}

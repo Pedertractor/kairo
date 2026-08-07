@@ -43,6 +43,13 @@ export class TimeEntryRepository {
     });
   }
 
+  findActiveManyByTaskId(taskId: string) {
+    return this.prisma.timeEntry.findMany({
+      where: { taskId, endedAt: null, type: 'TIMER' },
+      orderBy: { startedAt: 'desc' },
+    });
+  }
+
   countActiveByTaskId(taskId: string) {
     return this.prisma.timeEntry.count({
       where: { taskId, endedAt: null, type: 'TIMER' },

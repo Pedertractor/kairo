@@ -8,6 +8,14 @@ export const TASK_STATUSES: TaskStatus[] = [
   'CANCELED',
 ]
 
+export function isFinishedTaskStatus(status: TaskStatus) {
+  return status === 'DONE'
+}
+
+export function canFinishTaskStatus(status: TaskStatus) {
+  return status !== 'DONE' && status !== 'CANCELED'
+}
+
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   TODO: 'A fazer',
   IN_PROGRESS: 'Em andamento',
