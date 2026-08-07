@@ -211,7 +211,6 @@ export function TaskDetailPage() {
             <TaskTimeEntriesSection
               projectId={projectId}
               taskId={taskId}
-              onUpdated={() => void loadTask()}
             />
           ) : null}
         </>

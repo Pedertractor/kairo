@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Pencil, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 
 import { DatePicker } from '@/components/date-picker';
-import { EditTaskTimeEntryDialog } from '@/components/edit-task-time-entry-dialog';
 import { StartRecentWorkDialog } from '@/components/start-recent-work-dialog';
 import { TimeEntryDuration } from '@/components/time-entry-duration';
 import { Button } from '@/components/ui/button';
@@ -53,9 +52,6 @@ export function ApontamentosPage() {
   const [total, setTotal] = useState(0);
   const [selectedDate, setSelectedDate] = useState(toDateKey(new Date()));
   const [isLoading, setIsLoading] = useState(true);
-  const [entryToEdit, setEntryToEdit] = useState<UserTimeEntrySummary | null>(
-    null,
-  );
   const [startDialogOpen, setStartDialogOpen] = useState(false);
   const { hasTimerBar } = useActiveTimer();
 
@@ -118,19 +114,6 @@ export function ApontamentosPage() {
         </div>
       </div>
 
-      <EditTaskTimeEntryDialog
-        entry={entryToEdit}
-        open={entryToEdit !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setEntryToEdit(null);
-          }
-        }}
-        onUpdated={() => {
-          handleEntryUpdated();
-        }}
-      />
-
       <StartRecentWorkDialog
         open={startDialogOpen}
         onOpenChange={setStartDialogOpen}
@@ -180,7 +163,6 @@ export function ApontamentosPage() {
                     <th className='px-4 py-3 font-medium'>Início</th>
                     <th className='px-4 py-3 font-medium'>Fim</th>
                     <th className='px-4 py-3 font-medium'>Duração</th>
-                    <th className='px-4 py-3 text-right font-medium'>Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -229,17 +211,6 @@ export function ApontamentosPage() {
                             endedAt={entry.endedAt}
                             durationSeconds={entry.durationSeconds}
                           />
-                        </td>
-                        <td className='px-4 py-3 text-right'>
-                          <Button
-                            type='button'
-                            variant='ghost'
-                            size='icon-sm'
-                            aria-label='Editar apontamento'
-                            onClick={() => setEntryToEdit(entry)}
-                          >
-                            <Pencil />
-                          </Button>
                         </td>
                       </tr>
                     );
