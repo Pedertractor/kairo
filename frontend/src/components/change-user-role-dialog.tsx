@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { FieldGroup } from '@/components/ui/field'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -44,7 +44,6 @@ export function ChangeUserRoleDialog({
 }: ChangeUserRoleDialogProps) {
   const { user: currentUser } = useAuth()
   const [role, setRole] = useState<UserRole>('USER')
-  const [printerOperator, setPrinterOperator] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const availableRoles = useMemo(() => {
@@ -58,13 +57,10 @@ export function ChangeUserRoleDialog({
   useEffect(() => {
     if (user) {
       setRole(user.role)
-      setPrinterOperator(user.printerOperator)
     }
   }, [user])
 
-  const hasChanges =
-    user !== null &&
-    (role !== user.role || printerOperator !== user.printerOperator)
+  const hasChanges = user !== null && role !== user.role
 
   async function handleConfirm() {
     if (!user || !hasChanges) {
@@ -77,7 +73,6 @@ export function ChangeUserRoleDialog({
     try {
       const payload: UpdateUserRoleInput = {
         role,
-        printerOperator,
       }
 
       const data = await api<UserResponse>(`/users/${user.id}/role`, {
@@ -127,20 +122,6 @@ export function ChangeUserRoleDialog({
               </SelectContent>
             </Select>
           </div>
-
-          <Field orientation="horizontal">
-            <input
-              id="user-printer-operator"
-              type="checkbox"
-              checked={printerOperator}
-              onChange={(event) => setPrinterOperator(event.target.checked)}
-              disabled={isSubmitting}
-              className="size-4 accent-primary"
-            />
-            <FieldLabel htmlFor="user-printer-operator">
-              Operador de impressora
-            </FieldLabel>
-          </Field>
         </FieldGroup>
 
         <DialogFooter>

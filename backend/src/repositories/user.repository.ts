@@ -104,7 +104,6 @@ export class UserRepository {
       cardNumber: string;
       passwordHash: string;
       role: UserRole;
-      printerOperator?: boolean;
     },
     teamId: string,
   ) {
@@ -127,7 +126,6 @@ export class UserRepository {
     id: string,
     data: {
       role: UserRole;
-      printerOperator: boolean;
     },
   ) {
     return this.prisma.user.update({
@@ -174,7 +172,6 @@ export class UserRepository {
     cardNumber: string;
     passwordHash: string;
     role: UserRole;
-    printerOperator?: boolean;
   }) {
     return this.prisma.user.create({ data });
   }

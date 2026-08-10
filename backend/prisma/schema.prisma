@@ -64,11 +64,10 @@ model User {
   unit         UnitType
   cardNumber   String
   passwordHash String
-  role            UserRole
-  active          Boolean  @default(true)
-  firstLogin      Boolean  @default(true)
-  printerOperator Boolean  @default(false)
-  absent          Boolean  @default(false)
+  role       UserRole
+  active     Boolean  @default(true)
+  firstLogin Boolean  @default(true)
+  absent     Boolean  @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -311,30 +310,4 @@ model UserFavorite {
   @@unique([userId, taskId])
   @@index([userId])
   @@map("user_favorites")
-}
-
-model PrintingMachine {
-  id           String     @id @default(cuid())
-  name         String
-  busy         Boolean    @default(false)
-  paused       Boolean    @default(false)
-  threeDPartId String?
-  threeDPart   ThreeDPart? @relation(fields: [threeDPartId], references: [id], onDelete: SetNull)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-
-  @@index([threeDPartId])
-  @@map("printing_machines")
-}
-
-model ThreeDPart {
-  id               String             @id @default(cuid())
-  name             String
-  code             String             @unique
-  timeToPrint      Int
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  printingMachines PrintingMachine[]
-
-  @@map("three_d_parts")
 }

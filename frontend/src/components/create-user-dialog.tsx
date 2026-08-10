@@ -48,7 +48,6 @@ export function CreateUserDialog({
   const defaultUnit = currentUser?.unit ?? 'PEDERTRACTOR'
   const [cardNumber, setCardNumber] = useState('')
   const [unit, setUnit] = useState<UnitType>(defaultUnit)
-  const [printerOperator, setPrinterOperator] = useState(false)
   const [teamId, setTeamId] = useState('')
   const [ownedTeams, setOwnedTeams] = useState<TeamSummary[]>([])
   const [isLoadingTeams, setIsLoadingTeams] = useState(false)
@@ -60,7 +59,6 @@ export function CreateUserDialog({
   function resetForm() {
     setCardNumber('')
     setUnit(defaultUnit)
-    setPrinterOperator(false)
     setTeamId('')
     setEmployeeName(null)
     setLookupError(null)
@@ -187,7 +185,6 @@ export function CreateUserDialog({
       const payload: CreateUserInput = {
         cardNumber: cardNumber.trim(),
         unit,
-        printerOperator,
         ...(isLeader ? { teamId } : {}),
       }
 
@@ -291,20 +288,6 @@ export function CreateUserDialog({
                 )}
               </Field>
             ) : null}
-
-            <Field orientation="horizontal">
-              <input
-                id="user-printer-operator"
-                type="checkbox"
-                checked={printerOperator}
-                onChange={(event) => setPrinterOperator(event.target.checked)}
-                disabled={isSubmitting}
-                className="size-4 accent-primary"
-              />
-              <FieldLabel htmlFor="user-printer-operator">
-                Operador de impressora
-              </FieldLabel>
-            </Field>
 
             {isLookingUp ? (
               <div className="flex items-center gap-2 rounded-lg border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">

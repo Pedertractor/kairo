@@ -212,7 +212,6 @@ export function UsuariosPage() {
                   <th className="px-4 py-3 font-medium">Cartão</th>
                   <th className="px-4 py-3 font-medium">Unidade</th>
                   <th className="px-4 py-3 font-medium">Função</th>
-                  <th className="px-4 py-3 font-medium">Operador</th>
                   <th className="px-4 py-3 font-medium">Estado</th>
                   <th className="px-4 py-3 text-right font-medium">Ações</th>
                 </tr>
@@ -265,18 +264,6 @@ export function UsuariosPage() {
                     <td className="px-4 py-3">{user.cardNumber}</td>
                     <td className="px-4 py-3">{UNIT_LABELS[user.unit]}</td>
                     <td className="px-4 py-3">{ROLE_LABELS[user.role]}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={cn(
-                          'inline-flex rounded-md px-2 py-0.5 text-xs',
-                          user.printerOperator
-                            ? 'bg-sidebar-primary/10 text-sidebar-primary'
-                            : 'bg-muted text-muted-foreground',
-                        )}
-                      >
-                        {user.printerOperator ? 'Sim' : 'Não'}
-                      </span>
-                    </td>
                     <td className="px-4 py-3">
                       <span
                         className={cn(

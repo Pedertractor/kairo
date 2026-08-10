@@ -96,7 +96,6 @@ export class UserService {
     actorUserId: string,
     cardNumber: string,
     unit: EmployeeLookupResult['unit'],
-    printerOperator = false,
     teamId?: string,
   ): Promise<SafeUser> {
     const actor = await this.getActorOrThrow(actorUserId);
@@ -139,7 +138,6 @@ export class UserService {
       cardNumber: employee.cardNumber,
       passwordHash,
       role: UserRole.USER,
-      printerOperator,
     };
 
     if (actor.role === UserRole.LEADER && teamId) {
@@ -174,7 +172,6 @@ export class UserService {
     actorUserId: string,
     targetUserId: string,
     role: UserRole,
-    printerOperator: boolean,
   ): Promise<SafeUser> {
     const actor = await this.getActorOrThrow(actorUserId);
     const targetUser = await this.userRepository.findById(targetUserId);
@@ -209,7 +206,6 @@ export class UserService {
 
     const updated = await this.userRepository.updateRole(targetUserId, {
       role,
-      printerOperator,
     });
     return toSafeUser(updated);
   }

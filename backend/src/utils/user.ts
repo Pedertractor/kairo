@@ -18,7 +18,6 @@ export function toSafeUser(
     role: user.role,
     active: user.active,
     firstLogin: user.firstLogin,
-    printerOperator: user.printerOperator,
     absent: user.absent,
     hasOwnedTeams,
   };

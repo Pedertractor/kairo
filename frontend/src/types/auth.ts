@@ -10,7 +10,6 @@ export interface User {
   role: UserRole
   active: boolean
   firstLogin: boolean
-  printerOperator: boolean
   absent: boolean
   hasOwnedTeams: boolean
 }

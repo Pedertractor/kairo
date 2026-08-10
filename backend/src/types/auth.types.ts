@@ -9,7 +9,6 @@ export interface SafeUser {
   role: UserRole;
   active: boolean;
   firstLogin: boolean;
-  printerOperator: boolean;
   absent: boolean;
   hasOwnedTeams: boolean;
 }

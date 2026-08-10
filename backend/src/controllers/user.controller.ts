@@ -52,7 +52,6 @@ export class UserController {
         request.user.sub,
         parsed.data.cardNumber,
         parsed.data.unit,
-        parsed.data.printerOperator,
         parsed.data.teamId,
       );
 
@@ -75,7 +74,6 @@ export class UserController {
         request.user.sub,
         params.data.id,
         body.data.role,
-        body.data.printerOperator,
       );
 
       return sendSuccess(
