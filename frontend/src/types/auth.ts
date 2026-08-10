@@ -1,5 +1,5 @@
 export type UnitType = 'PEDERTRACTOR' | 'TRACTOR'
-export type UserRole = 'ADMIN' | 'USER'
+export type UserRole = 'ADMIN' | 'LEADER' | 'USER'
 
 export interface User {
   id: string

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -18,12 +18,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useAuth } from '@/hooks/use-auth'
 import { api } from '@/lib/api-handler'
 import type { User, UserRole } from '@/types/auth'
 import type { UpdateUserRoleInput, UserResponse } from '@/types/user'
 
 const ROLE_LABELS: Record<UserRole, string> = {
   ADMIN: 'Administrador',
+  LEADER: 'Líder',
   USER: 'Usuário',
 }
 
@@ -40,9 +42,18 @@ export function ChangeUserRoleDialog({
   onOpenChange,
   onUpdated,
 }: ChangeUserRoleDialogProps) {
+  const { user: currentUser } = useAuth()
   const [role, setRole] = useState<UserRole>('USER')
   const [printerOperator, setPrinterOperator] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const availableRoles = useMemo(() => {
+    if (currentUser?.role === 'ADMIN') {
+      return (Object.keys(ROLE_LABELS) as UserRole[])
+    }
+
+    return (['LEADER', 'USER'] as UserRole[])
+  }, [currentUser?.role])
 
   useEffect(() => {
     if (user) {
@@ -108,7 +119,7 @@ export function ChangeUserRoleDialog({
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {(Object.keys(ROLE_LABELS) as UserRole[]).map((option) => (
+                {availableRoles.map((option) => (
                   <SelectItem key={option} value={option}>
                     {ROLE_LABELS[option]}
                   </SelectItem>

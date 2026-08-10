@@ -17,6 +17,7 @@ export interface CreateUserInput {
   cardNumber: string
   unit: UnitType
   printerOperator: boolean
+  teamId?: string
 }
 
 export interface EmployeeLookupResult {

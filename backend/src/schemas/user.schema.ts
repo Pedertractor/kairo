@@ -13,9 +13,10 @@ export const createUserSchema = z.object({
   cardNumber: z.string().min(1),
   unit: z.enum(['PEDERTRACTOR', 'TRACTOR']),
   printerOperator: z.boolean().optional().default(false),
+  teamId: z.string().min(1).optional(),
 });
 
 export const updateUserRoleSchema = z.object({
-  role: z.enum(['ADMIN', 'USER']),
+  role: z.enum(['ADMIN', 'LEADER', 'USER']),
   printerOperator: z.boolean(),
 });

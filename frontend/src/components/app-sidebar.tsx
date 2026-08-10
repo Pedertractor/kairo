@@ -83,7 +83,9 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
     ...baseNavItems,
     ...(user?.hasOwnedTeams ? teamOwnerNavItems : []),
     ...(user?.printerOperator ? printerOperatorNavItems : []),
-    ...(user?.role === 'ADMIN' ? adminNavItems : []),
+    ...(user?.role === 'ADMIN' || user?.role === 'LEADER'
+      ? adminNavItems
+      : []),
   ];
 
   const navMain = navItems.map((item) => ({

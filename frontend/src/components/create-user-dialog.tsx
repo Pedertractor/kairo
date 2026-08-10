@@ -12,9 +12,17 @@ import {
 } from '@/components/ui/dialog'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { useAuth } from '@/hooks/use-auth'
 import { api } from '@/lib/api-handler'
 import type { UnitType } from '@/types/auth'
+import type { TeamSummary, TeamsListResponse } from '@/types/team'
 import type {
   CreateUserInput,
   EmployeeLookupResponse,
@@ -36,10 +44,14 @@ export function CreateUserDialog({
   onCreated,
 }: CreateUserDialogProps) {
   const { user: currentUser } = useAuth()
+  const isLeader = currentUser?.role === 'LEADER'
   const defaultUnit = currentUser?.unit ?? 'PEDERTRACTOR'
   const [cardNumber, setCardNumber] = useState('')
   const [unit, setUnit] = useState<UnitType>(defaultUnit)
   const [printerOperator, setPrinterOperator] = useState(false)
+  const [teamId, setTeamId] = useState('')
+  const [ownedTeams, setOwnedTeams] = useState<TeamSummary[]>([])
+  const [isLoadingTeams, setIsLoadingTeams] = useState(false)
   const [employeeName, setEmployeeName] = useState<string | null>(null)
   const [lookupError, setLookupError] = useState<string | null>(null)
   const [isLookingUp, setIsLookingUp] = useState(false)
@@ -49,6 +61,7 @@ export function CreateUserDialog({
     setCardNumber('')
     setUnit(defaultUnit)
     setPrinterOperator(false)
+    setTeamId('')
     setEmployeeName(null)
     setLookupError(null)
     setIsLookingUp(false)
@@ -59,6 +72,43 @@ export function CreateUserDialog({
       setUnit(defaultUnit)
     }
   }, [open, defaultUnit])
+
+  useEffect(() => {
+    if (!open || !isLeader) {
+      return
+    }
+
+    let cancelled = false
+
+    async function loadOwnedTeams() {
+      setIsLoadingTeams(true)
+
+      try {
+        const data = await api<TeamsListResponse>('/teams')
+        if (cancelled) {
+          return
+        }
+
+        const adminTeams = data.teams.filter((team) => team.role === 'ADMIN')
+        setOwnedTeams(adminTeams)
+        setTeamId((current) =>
+          current && adminTeams.some((team) => team.id === current)
+            ? current
+            : (adminTeams[0]?.id ?? ''),
+        )
+      } finally {
+        if (!cancelled) {
+          setIsLoadingTeams(false)
+        }
+      }
+    }
+
+    void loadOwnedTeams()
+
+    return () => {
+      cancelled = true
+    }
+  }, [open, isLeader])
 
   useEffect(() => {
     if (!open) {
@@ -127,6 +177,10 @@ export function CreateUserDialog({
       return
     }
 
+    if (isLeader && !teamId) {
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
@@ -134,6 +188,7 @@ export function CreateUserDialog({
         cardNumber: cardNumber.trim(),
         unit,
         printerOperator,
+        ...(isLeader ? { teamId } : {}),
       }
 
       const data = await api<UserResponse>('/users', {
@@ -149,7 +204,10 @@ export function CreateUserDialog({
     }
   }
 
-  const canCreate = Boolean(employeeName) && !isLookingUp
+  const canCreate =
+    Boolean(employeeName) &&
+    !isLookingUp &&
+    (!isLeader || Boolean(teamId))
 
   return (
     <Dialog
@@ -200,6 +258,39 @@ export function CreateUserDialog({
                 ))}
               </div>
             </Field>
+
+            {isLeader ? (
+              <Field>
+                <FieldLabel htmlFor="user-team">Equipe</FieldLabel>
+                {isLoadingTeams ? (
+                  <div className="flex items-center gap-2 rounded-lg border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+                    <Loader2 className="size-4 animate-spin" />
+                    Carregando equipes...
+                  </div>
+                ) : ownedTeams.length === 0 ? (
+                  <p className="text-sm text-destructive">
+                    Você precisa ser administrador de uma equipe para criar
+                    usuários.
+                  </p>
+                ) : (
+                  <Select
+                    value={teamId}
+                    onValueChange={(value) => setTeamId(value ?? '')}
+                  >
+                    <SelectTrigger id="user-team" className="w-full">
+                      <SelectValue placeholder="Selecione a equipe" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ownedTeams.map((team) => (
+                        <SelectItem key={team.id} value={team.id}>
+                          {team.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </Field>
+            ) : null}
 
             <Field orientation="horizontal">
               <input

@@ -22,6 +22,7 @@ function ProtectedRoute({
   hideHeader = false,
   mainClassName,
   requireAdmin = false,
+  requireAdminOrLeader = false,
   requirePrinterOperator = false,
   requireTeamOwner = false,
 }: {
@@ -30,6 +31,7 @@ function ProtectedRoute({
   hideHeader?: boolean
   mainClassName?: string
   requireAdmin?: boolean
+  requireAdminOrLeader?: boolean
   requirePrinterOperator?: boolean
   requireTeamOwner?: boolean
 }) {
@@ -40,6 +42,14 @@ function ProtectedRoute({
   }
 
   if (requireAdmin && user?.role !== 'ADMIN') {
+    return <Navigate to="/" replace />
+  }
+
+  if (
+    requireAdminOrLeader &&
+    user?.role !== 'ADMIN' &&
+    user?.role !== 'LEADER'
+  ) {
     return <Navigate to="/" replace />
   }
 
@@ -148,7 +158,11 @@ function App() {
       <Route
         path="/usuarios"
         element={
-          <ProtectedRoute key="usuarios" title="Usuários" requireAdmin>
+          <ProtectedRoute
+            key="usuarios"
+            title="Usuários"
+            requireAdminOrLeader
+          >
             <UsuariosPage />
           </ProtectedRoute>
         }

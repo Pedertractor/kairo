@@ -14,6 +14,7 @@ enum UnitType {
 
 enum UserRole {
   ADMIN
+  LEADER
   USER
 }
 

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { TeamController } from '../controllers/team.controller.js';
-import { createRequireAdmin } from '../middleware/require-admin.js';
+import { createRequireAdminOrLeader } from '../middleware/require-admin-or-leader.js';
 import { TaskRepository } from '../repositories/task.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
@@ -10,7 +10,7 @@ import { TeamService } from '../services/team.service.js';
 
 export async function teamRoutes(app: FastifyInstance) {
   const userRepository = new UserRepository(app.prisma);
-  const requireAdmin = createRequireAdmin(userRepository);
+  const requireAdminOrLeader = createRequireAdminOrLeader(userRepository);
   const absenceService = new AbsenceService(
     userRepository,
     new TimeEntryRepository(app.prisma),
@@ -58,7 +58,7 @@ export async function teamRoutes(app: FastifyInstance) {
   );
   app.post(
     '/teams',
-    { preHandler: [app.authenticate, requireAdmin] },
+    { preHandler: [app.authenticate, requireAdminOrLeader] },
     controller.create,
   );
 }

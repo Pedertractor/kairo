@@ -39,6 +39,7 @@ const UNIT_LABELS: Record<UnitType, string> = {
 
 const ROLE_LABELS: Record<UserRole, string> = {
   ADMIN: 'Administrador',
+  LEADER: 'Líder',
   USER: 'Usuário',
 }
 
@@ -109,6 +110,9 @@ export function UsuariosPage() {
   }
 
   const isCurrentUser = (user: User) => user.id === currentUser?.id
+  const isLeader = currentUser?.role === 'LEADER'
+  const canManageUser = (user: User) =>
+    !isLeader || user.role !== 'ADMIN'
 
   return (
     <div className="flex flex-1 flex-col gap-6">
@@ -240,6 +244,12 @@ export function UsuariosPage() {
                                 aria-label="Administrador"
                               />
                             ) : null}
+                            {user.role === 'LEADER' ? (
+                              <Shield
+                                className="size-3.5 shrink-0 text-sidebar-primary"
+                                aria-label="Líder"
+                              />
+                            ) : null}
                             {isCurrentUser(user) ? (
                               <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
                                 Você
@@ -280,56 +290,58 @@ export function UsuariosPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon-sm"
-                              aria-label={`Ações para ${user.name}`}
-                            />
-                          }
-                        >
-                          <EllipsisIcon />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {user.active ? (
-                            <>
+                      {canManageUser(user) ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label={`Ações para ${user.name}`}
+                              />
+                            }
+                          >
+                            <EllipsisIcon />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {user.active ? (
+                              <>
+                                <DropdownMenuItem
+                                  onClick={() => openAction(user, 'role')}
+                                >
+                                  <Shield />
+                                  Alterar função
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    openAction(user, 'reset-password')
+                                  }
+                                >
+                                  <KeyRound />
+                                  Repor senha
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  variant="destructive"
+                                  disabled={isCurrentUser(user)}
+                                  onClick={() => openAction(user, 'deactivate')}
+                                >
+                                  <UserX />
+                                  Remover da aplicação
+                                </DropdownMenuItem>
+                              </>
+                            ) : (
                               <DropdownMenuItem
-                                onClick={() => openAction(user, 'role')}
+                                onClick={() => void handleReactivate(user)}
                               >
-                                <Shield />
-                                Alterar função
+                                <UserCheck />
+                                Reativar usuário
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  openAction(user, 'reset-password')
-                                }
-                              >
-                                <KeyRound />
-                                Repor senha
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                variant="destructive"
-                                disabled={isCurrentUser(user)}
-                                onClick={() => openAction(user, 'deactivate')}
-                              >
-                                <UserX />
-                                Remover da aplicação
-                              </DropdownMenuItem>
-                            </>
-                          ) : (
-                            <DropdownMenuItem
-                              onClick={() => void handleReactivate(user)}
-                            >
-                              <UserCheck />
-                              Reativar usuário
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : null}
                     </td>
                   </tr>
                 ))}
