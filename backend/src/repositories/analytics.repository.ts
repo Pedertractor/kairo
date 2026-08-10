@@ -117,4 +117,34 @@ export class AnalyticsRepository {
       },
     });
   }
+
+  findActivityEntriesForTeams(
+    teamIds: string[],
+    dayStart: Date,
+    dayEnd: Date,
+  ) {
+    return this.prisma.timeEntry.findMany({
+      where: {
+        card: {
+          teamId: { in: teamIds },
+          type: 'ACTIVITY',
+          deletedAt: null,
+        },
+        startedAt: { lt: dayEnd },
+        OR: [{ endedAt: { gt: dayStart } }, { endedAt: null }],
+      },
+      select: {
+        userId: true,
+        startedAt: true,
+        endedAt: true,
+        cardId: true,
+        card: {
+          select: {
+            tagId: true,
+            tag: { select: { name: true, color: true } },
+          },
+        },
+      },
+    });
+  }
 }

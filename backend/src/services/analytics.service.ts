@@ -1,5 +1,6 @@
 import { AnalyticsRepository } from '../repositories/analytics.repository.js';
 import type {
+  ActivityTypeAnalytics,
   AnalyticsDashboard,
   AnalyticsEmployeeOption,
   EmployeeDayAnalytics,
@@ -131,7 +132,7 @@ export class AnalyticsService {
     const { periodStart, periodEnd } = getPeriodBounds(startDate, endDate);
     const dayCount = getInclusiveDayCount(startDate, endDate);
     const availabilitySeconds = DAILY_AVAILABILITY_SECONDS * dayCount;
-    const [entries, projectEntries] = await Promise.all([
+    const [entries, projectEntries, activityEntries] = await Promise.all([
       this.repository.findEntriesForTeams(
         scopedTeams.map((team) => team.id),
         periodStart,
@@ -141,6 +142,11 @@ export class AnalyticsService {
       selectedProject
         ? this.repository.findEntriesForProject(selectedProject.id)
         : Promise.resolve([]),
+      this.repository.findActivityEntriesForTeams(
+        scopedTeams.map((team) => team.id),
+        periodStart,
+        periodEnd,
+      ),
     ]);
     const now = new Date();
     const totalsByEmployee = new Map<
@@ -167,6 +173,100 @@ export class AnalyticsService {
       current.timeEntryCount += 1;
       totalsByEmployee.set(entry.userId, current);
     }
+
+    const NONE_TAG_KEY = '__none__';
+    const activityBuckets = new Map<
+      string,
+      {
+        tagId: string | null;
+        tagName: string;
+        tagColor: string | null;
+        entryCount: number;
+        loggedSeconds: number;
+        cardIds: Set<string>;
+        members: Map<
+          string,
+          { employeeName: string; entryCount: number; loggedSeconds: number }
+        >;
+      }
+    >();
+
+    for (const entry of activityEntries) {
+      if (!employeesById.has(entry.userId)) {
+        continue;
+      }
+
+      if (options.employeeId && entry.userId !== options.employeeId) {
+        continue;
+      }
+
+      if (!entry.card) {
+        continue;
+      }
+
+      const tagId = entry.card.tagId;
+      const bucketKey = tagId ?? NONE_TAG_KEY;
+      const employee = employeesById.get(entry.userId)!;
+      const overlapSeconds = getOverlapSeconds(
+        entry.startedAt,
+        entry.endedAt,
+        periodStart,
+        periodEnd,
+        now,
+      );
+
+      const bucket = activityBuckets.get(bucketKey) ?? {
+        tagId,
+        tagName: entry.card.tag?.name ?? 'Sem etiqueta',
+        tagColor: entry.card.tag?.color ?? null,
+        entryCount: 0,
+        loggedSeconds: 0,
+        cardIds: new Set<string>(),
+        members: new Map(),
+      };
+
+      bucket.entryCount += 1;
+      bucket.loggedSeconds += overlapSeconds;
+      if (entry.cardId) {
+        bucket.cardIds.add(entry.cardId);
+      }
+
+      const member = bucket.members.get(entry.userId) ?? {
+        employeeName: employee.name,
+        entryCount: 0,
+        loggedSeconds: 0,
+      };
+      member.entryCount += 1;
+      member.loggedSeconds += overlapSeconds;
+      bucket.members.set(entry.userId, member);
+      activityBuckets.set(bucketKey, bucket);
+    }
+
+    const activityTypes: ActivityTypeAnalytics[] = [...activityBuckets.entries()]
+      .map(([key, bucket]) => ({
+        tagId: bucket.tagId,
+        tagName: bucket.tagName,
+        tagColor: bucket.tagColor,
+        entryCount: bucket.entryCount,
+        activityCount: bucket.cardIds.size,
+        loggedSeconds: bucket.loggedSeconds,
+        members: [...bucket.members.entries()]
+          .map(([employeeId, member]) => ({
+            employeeId,
+            employeeName: member.employeeName,
+            entryCount: member.entryCount,
+            loggedSeconds: member.loggedSeconds,
+          }))
+          .sort((a, b) => b.loggedSeconds - a.loggedSeconds),
+        _isNone: key === NONE_TAG_KEY,
+      }))
+      .sort((a, b) => {
+        if (a._isNone !== b._isNone) {
+          return a._isNone ? 1 : -1;
+        }
+        return b.loggedSeconds - a.loggedSeconds;
+      })
+      .map(({ _isNone: _, ...row }) => row);
 
     const rows: EmployeeDayAnalytics[] = [...employeesById.values()]
       .filter(
@@ -293,6 +393,7 @@ export class AnalyticsService {
         : null,
       summary,
       rows,
+      activityTypes,
     };
   }
 }

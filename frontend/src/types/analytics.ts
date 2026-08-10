@@ -45,6 +45,23 @@ export interface EmployeeDayAnalytics {
   utilizationPercent: number
 }
 
+export interface ActivityTypeMemberAnalytics {
+  employeeId: string
+  employeeName: string
+  entryCount: number
+  loggedSeconds: number
+}
+
+export interface ActivityTypeAnalytics {
+  tagId: string | null
+  tagName: string
+  tagColor: string | null
+  entryCount: number
+  activityCount: number
+  loggedSeconds: number
+  members: ActivityTypeMemberAnalytics[]
+}
+
 export interface AnalyticsDashboard {
   startDate: string
   endDate: string
@@ -60,4 +77,5 @@ export interface AnalyticsDashboard {
     utilizationPercent: number
   }
   rows: EmployeeDayAnalytics[]
+  activityTypes: ActivityTypeAnalytics[]
 }

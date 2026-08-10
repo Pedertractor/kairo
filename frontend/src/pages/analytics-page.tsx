@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   BarChart3,
+  ChevronDown,
   Clock3,
   FolderKanban,
   Gauge,
   Sparkles,
+  Tags,
   TimerReset,
   Users,
   X,
@@ -14,6 +16,11 @@ import { DatePicker } from '@/components/date-picker';
 import { DateRangePicker } from '@/components/date-range-picker';
 import { TeamDayTimeline } from '@/components/team-day-timeline';
 import { Button } from '@/components/ui/button';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -84,6 +91,7 @@ export function AnalyticsPage() {
       setDashboard({
         ...data,
         projects: data.projects ?? [],
+        activityTypes: data.activityTypes ?? [],
         selectedProject: data.selectedProject
           ? {
               ...data.selectedProject,
@@ -464,6 +472,144 @@ export function AnalyticsPage() {
           </div>
         </section>
       ) : null}
+
+      <section className='rounded-2xl border bg-card p-5 shadow-sm'>
+        <div className='mb-5 flex items-center gap-3'>
+          <div className='flex size-10 items-center justify-center rounded-xl bg-linear-to-br from-emerald-400 to-teal-600 text-white'>
+            <Tags className='size-5' />
+          </div>
+          <div>
+            <h2 className='font-semibold'>Atividades por etiqueta</h2>
+            <p className='text-sm text-muted-foreground'>
+              Quantidade de apontamentos e tempo por tipo de atividade no
+              período.
+            </p>
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className='space-y-3'>
+            {Array.from({ length: 3 }).map((_, index) => (
+              <Skeleton key={index} className='h-16 rounded-2xl' />
+            ))}
+          </div>
+        ) : (dashboard?.activityTypes ?? []).length === 0 ? (
+          <div className='rounded-2xl border border-dashed p-10 text-center text-sm text-muted-foreground'>
+            Nenhum apontamento em atividades neste período.
+          </div>
+        ) : (
+          <div className='space-y-3'>
+            {(dashboard?.activityTypes ?? []).map((activityType) => {
+              const rowKey = activityType.tagId ?? 'none';
+              const memberCount = activityType.members.length;
+
+              return (
+                <Collapsible key={rowKey} className='rounded-2xl border'>
+                  <CollapsibleTrigger className='flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-muted/40'>
+                    <span
+                      className='size-3 shrink-0 rounded-full border border-black/10 bg-muted'
+                      style={
+                        activityType.tagColor
+                          ? { backgroundColor: activityType.tagColor }
+                          : undefined
+                      }
+                    />
+                    <div className='min-w-0 flex-1'>
+                      <p className='truncate font-semibold'>
+                        {activityType.tagName}
+                      </p>
+                      <p className='text-xs text-muted-foreground'>
+                        {memberCount}{' '}
+                        {memberCount === 1 ? 'membro' : 'membros'} ·{' '}
+                        {activityType.activityCount}{' '}
+                        {activityType.activityCount === 1
+                          ? 'atividade'
+                          : 'atividades'}
+                      </p>
+                    </div>
+                    <span className='rounded-full bg-orange-500/10 px-2.5 py-1 text-xs font-bold text-orange-600 dark:text-orange-300'>
+                      {activityType.entryCount}{' '}
+                      {activityType.entryCount === 1
+                        ? 'apontamento'
+                        : 'apontamentos'}
+                    </span>
+                    <span className='min-w-20 text-right text-sm font-bold'>
+                      {formatDuration(activityType.loggedSeconds)}
+                    </span>
+                    <ChevronDown className='size-4 shrink-0 text-muted-foreground transition-transform in-data-panel-open:rotate-180' />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className='border-t px-4 pb-4'>
+                    <div className='mt-3 space-y-3'>
+                      {activityType.members.map((member) => {
+                        const sharePercent =
+                          activityType.loggedSeconds > 0
+                            ? Math.round(
+                                (member.loggedSeconds /
+                                  activityType.loggedSeconds) *
+                                  100,
+                              )
+                            : 0;
+                        const memberTeamId =
+                          dashboard?.rows.find(
+                            (row) => row.employeeId === member.employeeId,
+                          )?.teamId ?? '';
+
+                        return (
+                          <div
+                            key={member.employeeId}
+                            className='rounded-xl bg-muted/30 p-3'
+                          >
+                            <div className='flex items-center justify-between gap-3'>
+                              {memberTeamId ? (
+                                <button
+                                  type='button'
+                                  className='truncate text-sm font-semibold hover:underline'
+                                  onClick={() =>
+                                    openEmployeeTimeline(
+                                      member.employeeId,
+                                      member.employeeName,
+                                      memberTeamId,
+                                    )
+                                  }
+                                >
+                                  {member.employeeName}
+                                </button>
+                              ) : (
+                                <p className='truncate text-sm font-semibold'>
+                                  {member.employeeName}
+                                </p>
+                              )}
+                              <div className='flex shrink-0 items-center gap-3 text-xs text-muted-foreground'>
+                                <span>
+                                  {member.entryCount}{' '}
+                                  {member.entryCount === 1
+                                    ? 'registro'
+                                    : 'registros'}
+                                </span>
+                                <span className='font-bold text-foreground'>
+                                  {formatDuration(member.loggedSeconds)}
+                                </span>
+                              </div>
+                            </div>
+                            <div className='mt-2 h-1.5 overflow-hidden rounded-full bg-muted'>
+                              <div
+                                className={`h-full rounded-full bg-linear-to-r ${utilizationColor(sharePercent)}`}
+                                style={{
+                                  width: `${Math.min(100, sharePercent)}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       <section className='rounded-2xl border bg-card p-5 shadow-sm'>
         <div className='mb-5 flex items-center gap-3'>
