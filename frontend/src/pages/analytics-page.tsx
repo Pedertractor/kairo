@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BarChart3,
   ChevronDown,
@@ -21,6 +21,14 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from '@/components/ui/combobox';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -47,6 +55,11 @@ interface SelectedEmployeeTimeline {
   teamId: string;
 }
 
+type TagFilterOption = {
+  value: string;
+  label: string;
+};
+
 function utilizationColor(percent: number) {
   if (percent >= 100) return 'from-fuchsia-500 to-pink-500';
   if (percent >= 75) return 'from-emerald-400 to-cyan-500';
@@ -68,6 +81,7 @@ export function AnalyticsPage() {
   const [teamId, setTeamId] = useState(ALL);
   const [employeeId, setEmployeeId] = useState(ALL);
   const [projectId, setProjectId] = useState(ALL);
+  const [selectedTag, setSelectedTag] = useState<TagFilterOption | null>(null);
   const [dashboard, setDashboard] = useState<AnalyticsDashboard | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTimeline, setSelectedTimeline] =
@@ -116,6 +130,19 @@ export function AnalyticsPage() {
   useEffect(() => {
     void loadDashboard();
   }, [loadDashboard]);
+
+  useEffect(() => {
+    if (!selectedTag || !dashboard) return;
+
+    const stillExists = (dashboard.activityTypes ?? []).some(
+      (activityType) =>
+        (activityType.tagId ?? 'none') === selectedTag.value,
+    );
+
+    if (!stillExists) {
+      setSelectedTag(null);
+    }
+  }, [dashboard, selectedTag]);
 
   const loadEmployeeTimeline = useCallback(async () => {
     if (!selectedTimeline) {
@@ -186,6 +213,21 @@ export function AnalyticsPage() {
   const selectedProject = dashboard?.selectedProject;
   const selectedProjectTeamId = selectedProject?.teamId ?? '';
   const periodDayCount = getInclusiveDayCount(startDate, endDate);
+  const activityTypes = dashboard?.activityTypes ?? [];
+  const tagOptions = useMemo<TagFilterOption[]>(
+    () =>
+      activityTypes.map((activityType) => ({
+        value: activityType.tagId ?? 'none',
+        label: activityType.tagName,
+      })),
+    [activityTypes],
+  );
+  const filteredActivityTypes = selectedTag
+    ? activityTypes.filter(
+        (activityType) =>
+          (activityType.tagId ?? 'none') === selectedTag.value,
+      )
+    : activityTypes;
 
   return (
     <div className='flex flex-1 flex-col gap-6 pb-4'>
@@ -218,6 +260,7 @@ export function AnalyticsPage() {
                   if (!nextRange?.from || !nextRange.to) return;
                   setStartDate(toDateKey(nextRange.from));
                   setEndDate(toDateKey(nextRange.to));
+                  setSelectedTag(null);
                 }}
               />
             </div>
@@ -229,6 +272,7 @@ export function AnalyticsPage() {
                   setTeamId(value ?? ALL);
                   setEmployeeId(ALL);
                   setProjectId(ALL);
+                  setSelectedTag(null);
                   setSelectedTimeline(null);
                 }}
               >
@@ -283,7 +327,10 @@ export function AnalyticsPage() {
               <Label className='text-white/80'>Funcionário</Label>
               <Select
                 value={employeeId}
-                onValueChange={(value) => setEmployeeId(value ?? ALL)}
+                onValueChange={(value) => {
+                  setEmployeeId(value ?? ALL);
+                  setSelectedTag(null);
+                }}
               >
                 <SelectTrigger className='mt-1 w-full min-w-0 border-white/30 bg-white/95 text-foreground'>
                   <SelectValue>
@@ -474,16 +521,46 @@ export function AnalyticsPage() {
       ) : null}
 
       <section className='rounded-2xl border bg-card p-5 shadow-sm'>
-        <div className='mb-5 flex items-center gap-3'>
-          <div className='flex size-10 items-center justify-center rounded-xl bg-linear-to-br from-emerald-400 to-teal-600 text-white'>
-            <Tags className='size-5' />
+        <div className='mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between'>
+          <div className='flex items-center gap-3'>
+            <div className='flex size-10 items-center justify-center rounded-xl bg-linear-to-br from-emerald-400 to-teal-600 text-white'>
+              <Tags className='size-5' />
+            </div>
+            <div>
+              <h2 className='font-semibold'>Atividades por etiqueta</h2>
+              <p className='text-sm text-muted-foreground'>
+                Quantidade de apontamentos e tempo por tipo de atividade no
+                período.
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className='font-semibold'>Atividades por etiqueta</h2>
-            <p className='text-sm text-muted-foreground'>
-              Quantidade de apontamentos e tempo por tipo de atividade no
-              período.
-            </p>
+
+          <div className='w-full min-w-0 sm:w-64'>
+            <Label htmlFor='activity-tag-filter'>Etiqueta</Label>
+            <Combobox
+              items={tagOptions}
+              value={selectedTag}
+              onValueChange={setSelectedTag}
+              itemToStringLabel={(item) => item.label}
+              isItemEqualToValue={(a, b) => a.value === b.value}
+            >
+              <ComboboxInput
+                id='activity-tag-filter'
+                className='mt-1 w-full'
+                placeholder='Buscar etiqueta...'
+                showClear
+              />
+              <ComboboxContent>
+                <ComboboxEmpty>Nenhuma etiqueta encontrada.</ComboboxEmpty>
+                <ComboboxList>
+                  {(item) => (
+                    <ComboboxItem key={item.value} value={item}>
+                      {item.label}
+                    </ComboboxItem>
+                  )}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
           </div>
         </div>
 
@@ -493,13 +570,17 @@ export function AnalyticsPage() {
               <Skeleton key={index} className='h-16 rounded-2xl' />
             ))}
           </div>
-        ) : (dashboard?.activityTypes ?? []).length === 0 ? (
+        ) : activityTypes.length === 0 ? (
           <div className='rounded-2xl border border-dashed p-10 text-center text-sm text-muted-foreground'>
             Nenhum apontamento em atividades neste período.
           </div>
+        ) : filteredActivityTypes.length === 0 ? (
+          <div className='rounded-2xl border border-dashed p-10 text-center text-sm text-muted-foreground'>
+            Nenhuma etiqueta correspondente ao filtro selecionado.
+          </div>
         ) : (
           <div className='space-y-3'>
-            {(dashboard?.activityTypes ?? []).map((activityType) => {
+            {filteredActivityTypes.map((activityType) => {
               const rowKey = activityType.tagId ?? 'none';
               const memberCount = activityType.members.length;
 

@@ -52,6 +52,7 @@ export const createActivitySchema = z.object({
     .positive('Horas estimadas deve ser um valor positivo')
     .optional(),
   tagId: z.string().min(1).optional(),
+  clientId: z.string().min(1).optional(),
 });
 
 export const createProjectSchema = createActivitySchema;

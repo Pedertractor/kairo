@@ -188,6 +188,18 @@ model Tag {
   @@map("tags")
 }
 
+model Client {
+  id   String @id @default(cuid())
+  name String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cards Card[]
+
+  @@map("clients")
+}
+
 model Card {
   id String @id @default(cuid())
 
@@ -199,6 +211,9 @@ model Card {
 
   tagId String?
   tag   Tag?    @relation(fields: [tagId], references: [id], onDelete: SetNull)
+
+  clientId String?
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
 
   title       String
   description String?
@@ -220,6 +235,7 @@ model Card {
   @@index([teamId])
   @@index([createdById])
   @@index([tagId])
+  @@index([clientId])
   @@index([deletedAt])
   @@map("cards")
 }

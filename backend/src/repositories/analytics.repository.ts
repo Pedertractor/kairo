@@ -122,9 +122,11 @@ export class AnalyticsRepository {
     teamIds: string[],
     dayStart: Date,
     dayEnd: Date,
+    employeeId?: string,
   ) {
     return this.prisma.timeEntry.findMany({
       where: {
+        ...(employeeId ? { userId: employeeId } : {}),
         card: {
           teamId: { in: teamIds },
           type: 'ACTIVITY',

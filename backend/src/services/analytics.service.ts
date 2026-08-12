@@ -146,6 +146,7 @@ export class AnalyticsService {
         scopedTeams.map((team) => team.id),
         periodStart,
         periodEnd,
+        options.employeeId,
       ),
     ]);
     const now = new Date();

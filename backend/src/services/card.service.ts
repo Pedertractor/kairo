@@ -1,10 +1,12 @@
 import type { Card, CardStatus } from '../generated/client.js';
 import { CardRepository } from '../repositories/card.repository.js';
+import { ClientRepository } from '../repositories/client.repository.js';
 import { FavoriteRepository } from '../repositories/favorite.repository.js';
 import { TagRepository } from '../repositories/tag.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
 import type {
+  ActivityClientSummary,
   ActivitySummary,
   ActivityTagSummary,
   ProjectSummary,
@@ -12,8 +14,9 @@ import type {
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 
-type CardWithTag = Card & {
+type CardWithRelations = Card & {
   tag?: ActivityTagSummary | null;
+  client?: ActivityClientSummary | null;
 };
 
 function toActivityTag(
@@ -30,8 +33,21 @@ function toActivityTag(
   };
 }
 
+function toActivityClient(
+  client: ActivityClientSummary | null | undefined,
+): ActivityClientSummary | null {
+  if (!client) {
+    return null;
+  }
+
+  return {
+    id: client.id,
+    name: client.name,
+  };
+}
+
 function toActivitySummary(
-  card: CardWithTag,
+  card: CardWithRelations,
   loggedSeconds = 0,
   isFavorite = false,
 ): ActivitySummary {
@@ -45,6 +61,7 @@ function toActivitySummary(
     loggedSeconds,
     isFavorite,
     tag: toActivityTag(card.tag),
+    client: toActivityClient(card.client),
     createdById: card.createdById,
     createdAt: card.createdAt.toISOString(),
     updatedAt: card.updatedAt.toISOString(),
@@ -78,6 +95,7 @@ export class CardService {
     private readonly timeEntryRepository: TimeEntryRepository,
     private readonly favoriteRepository: FavoriteRepository,
     private readonly tagRepository: TagRepository,
+    private readonly clientRepository: ClientRepository,
   ) {}
 
   private async assertTeamMember(teamId: string, userId: string) {
@@ -96,6 +114,14 @@ export class CardService {
 
     if (!tag || tag.teamId !== teamId) {
       throw new AppError(404, MENSAGENS.TAG_NAO_ENCONTRADA);
+    }
+  }
+
+  private async assertClient(clientId: string) {
+    const client = await this.clientRepository.findById(clientId);
+
+    if (!client) {
+      throw new AppError(404, MENSAGENS.CLIENTE_NAO_ENCONTRADO);
     }
   }
 
@@ -166,11 +192,16 @@ export class CardService {
     description?: string,
     estimatedHours?: number,
     tagId?: string,
+    clientId?: string,
   ): Promise<ActivitySummary> {
     await this.assertTeamMember(teamId, userId);
 
     if (tagId) {
       await this.assertTeamTag(teamId, tagId);
+    }
+
+    if (clientId) {
+      await this.assertClient(clientId);
     }
 
     const card = await this.cardRepository.createActivity({
@@ -180,6 +211,7 @@ export class CardService {
       description,
       estimatedHours,
       tagId,
+      clientId,
     });
 
     return toActivitySummary(card);

@@ -6,6 +6,11 @@ export interface ActivityTagSummary {
   color: string;
 }
 
+export interface ActivityClientSummary {
+  id: string;
+  name: string;
+}
+
 export interface ActivitySummary {
   id: string;
   teamId: string;
@@ -16,6 +21,7 @@ export interface ActivitySummary {
   loggedSeconds: number;
   isFavorite: boolean;
   tag: ActivityTagSummary | null;
+  client: ActivityClientSummary | null;
   createdById: string;
   createdAt: string;
   updatedAt: string;

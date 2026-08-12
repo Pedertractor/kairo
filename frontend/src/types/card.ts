@@ -1,3 +1,4 @@
+import type { ClientSummary } from '@/types/client'
 import type { ActivityTag } from '@/types/tag'
 
 export type { ActivityTag }
@@ -19,6 +20,7 @@ export interface ActivitySummary {
   loggedSeconds: number
   isFavorite: boolean
   tag: ActivityTag | null
+  client: ClientSummary | null
   createdById: string
   createdAt: string
   updatedAt: string
@@ -37,6 +39,7 @@ export interface CreateActivityInput {
   description?: string
   estimatedHours?: number
   tagId?: string
+  clientId?: string
 }
 
 export interface UpdateActivityStatusInput {

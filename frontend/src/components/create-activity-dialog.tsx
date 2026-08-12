@@ -1,7 +1,16 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { Loader2 } from 'lucide-react'
 
 import { ActivityTagBadge } from '@/components/activity-tag-badge'
 import { Button } from '@/components/ui/button'
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from '@/components/ui/combobox'
 import {
   Dialog,
   DialogContent,
@@ -22,9 +31,15 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/lib/api-handler'
 import type { ActivityResponse, CreateActivityInput } from '@/types/card'
+import type { ClientSummary, ClientsListResponse } from '@/types/client'
 import type { TagSummary } from '@/types/tag'
 
 const NO_TAG = '__none__'
+
+type ClientComboboxOption = {
+  value: string
+  label: string
+}
 
 interface CreateActivityDialogProps {
   teamId: string
@@ -32,6 +47,13 @@ interface CreateActivityDialogProps {
   onOpenChange: (open: boolean) => void
   onCreated: () => void
   tags?: TagSummary[]
+}
+
+function toClientOption(client: ClientSummary): ClientComboboxOption {
+  return {
+    value: client.id,
+    label: client.name,
+  }
 }
 
 export function CreateActivityDialog({
@@ -46,7 +68,13 @@ export function CreateActivityDialog({
   const [estimatedHours, setEstimatedHours] = useState('')
   const [indefiniteTime, setIndefiniteTime] = useState(false)
   const [tagId, setTagId] = useState(NO_TAG)
+  const [clients, setClients] = useState<ClientSummary[]>([])
+  const [selectedClient, setSelectedClient] =
+    useState<ClientComboboxOption | null>(null)
+  const [isLoadingClients, setIsLoadingClients] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const clientOptions = useMemo(() => clients.map(toClientOption), [clients])
 
   function resetForm() {
     setTitle('')
@@ -54,11 +82,48 @@ export function CreateActivityDialog({
     setEstimatedHours('')
     setIndefiniteTime(false)
     setTagId(NO_TAG)
+    setSelectedClient(null)
   }
 
   useEffect(() => {
     if (open) {
       setTagId(NO_TAG)
+      setSelectedClient(null)
+      setIsLoadingClients(true)
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    let cancelled = false
+
+    async function loadClients() {
+      try {
+        const data = await api<ClientsListResponse>('/clients', {
+          toastOnError: false,
+        })
+
+        if (!cancelled) {
+          setClients(data.clients)
+        }
+      } catch {
+        if (!cancelled) {
+          setClients([])
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingClients(false)
+        }
+      }
+    }
+
+    void loadClients()
+
+    return () => {
+      cancelled = true
     }
   }, [open])
 
@@ -84,6 +149,10 @@ export function CreateActivityDialog({
 
       if (tagId !== NO_TAG) {
         payload.tagId = tagId
+      }
+
+      if (selectedClient) {
+        payload.clientId = selectedClient.value
       }
 
       await api<ActivityResponse>(`/teams/${teamId}/activities`, {
@@ -185,6 +254,42 @@ export function CreateActivityDialog({
                   ))}
                 </SelectContent>
               </Select>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="activity-client">Cliente</FieldLabel>
+              {isLoadingClients ? (
+                <div className="flex h-8 items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin" />
+                  Carregando clientes...
+                </div>
+              ) : (
+                <Combobox
+                  items={clientOptions}
+                  value={selectedClient}
+                  onValueChange={setSelectedClient}
+                  itemToStringLabel={(item) => item.label}
+                  isItemEqualToValue={(a, b) => a.value === b.value}
+                  disabled={isSubmitting}
+                >
+                  <ComboboxInput
+                    id="activity-client"
+                    className="w-full"
+                    placeholder="Buscar cliente..."
+                    showClear
+                    disabled={isSubmitting}
+                  />
+                  <ComboboxContent>
+                    <ComboboxEmpty>Nenhum cliente encontrado.</ComboboxEmpty>
+                    <ComboboxList>
+                      {(item) => (
+                        <ComboboxItem key={item.value} value={item}>
+                          {item.label}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              )}
             </Field>
             <Field>
               <FieldLabel htmlFor="activity-estimated-hours">

@@ -12,6 +12,12 @@ const activityTagInclude = {
       color: true,
     },
   },
+  client: {
+    select: {
+      id: true,
+      name: true,
+    },
+  },
 } as const;
 
 export class CardRepository {
@@ -63,6 +69,7 @@ export class CardRepository {
     estimatedHours?: number;
     status?: CardStatus;
     tagId?: string;
+    clientId?: string;
   }) {
     return this.prisma.card.create({
       data: {
@@ -74,6 +81,7 @@ export class CardRepository {
         status: data.status ?? 'TODO',
         estimatedHours: data.estimatedHours ?? null,
         tagId: data.tagId ?? null,
+        clientId: data.clientId ?? null,
       },
       include: activityTagInclude,
     });

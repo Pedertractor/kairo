@@ -47,6 +47,7 @@ export const MENSAGENS = {
   TAG_CRIADA_SUCESSO: 'Tag criada com sucesso',
   TAG_JA_EXISTE: 'Já existe uma tag com este nome nesta equipe',
   TAG_NAO_ENCONTRADA: 'Tag não encontrada',
+  CLIENTE_NAO_ENCONTRADO: 'Cliente não encontrado',
   PROJETO_CRIADO_SUCESSO: 'Projeto criado com sucesso',
   PROJETO_ATUALIZADO_SUCESSO: 'Projeto atualizado com sucesso',
   PROJETO_REMOVIDO_SUCESSO: 'Projeto excluído com sucesso',
