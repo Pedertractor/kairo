@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Pencil } from 'lucide-react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { EditTeamDialog } from '@/components/edit-team-dialog';
 import { TeamActivitiesSection } from '@/components/team-activities-section';
 import { TeamMembersSection } from '@/components/team-members-section';
 import { TeamProjectsSection } from '@/components/team-projects-section';
@@ -43,6 +44,7 @@ export function TeamDetailPage() {
   const userIdFromUrl = searchParams.get('userId') ?? undefined;
   const [team, setTeam] = useState<TeamResponse['team'] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TeamTab>(
     tabFromUrl ?? 'atividades',
   );
@@ -103,11 +105,31 @@ export function TeamDetailPage() {
       ) : team ? (
         <>
           <div className='flex flex-col gap-2'>
-            <h1 className='text-2xl font-bold'>{team.name}</h1>
+            <div className='flex min-w-0 items-center gap-2'>
+              <h1 className='text-2xl font-bold'>{team.name}</h1>
+              {team.role === 'ADMIN' ? (
+                <Button
+                  type='button'
+                  variant='ghost'
+                  size='icon-sm'
+                  aria-label='Editar nome e descrição'
+                  onClick={() => setIsEditDialogOpen(true)}
+                >
+                  <Pencil />
+                </Button>
+              ) : null}
+            </div>
             {team.description ? (
               <p className='text-muted-foreground'>{team.description}</p>
             ) : null}
           </div>
+
+          <EditTeamDialog
+            team={team}
+            open={isEditDialogOpen}
+            onOpenChange={setIsEditDialogOpen}
+            onUpdated={setTeam}
+          />
 
           <Tabs
             value={activeTab}

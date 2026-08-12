@@ -25,6 +25,7 @@ export const MENSAGENS = {
   SENHA_IGUAL_PADRAO: 'A nova senha não pode ser igual à senha padrão',
   SENHAS_NAO_COINCIDEM: 'As senhas não coincidem',
   EQUIPE_CRIADA_SUCESSO: 'Equipe criada com sucesso',
+  EQUIPE_ATUALIZADA_SUCESSO: 'Equipe atualizada com sucesso',
   MEMBRO_REMOVIDO_SUCESSO: 'Membro removido com sucesso',
   ULTIMO_ADMIN_NAO_PODE_SER_REMOVIDO:
     'Não é possível remover o único administrador da equipe',

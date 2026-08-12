@@ -33,6 +33,11 @@ export interface CreateTeamInput {
   description?: string
 }
 
+export interface UpdateTeamInput {
+  name?: string
+  description?: string | null
+}
+
 export interface AddTeamMemberInput {
   userId: string
 }

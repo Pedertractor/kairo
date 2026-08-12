@@ -90,4 +90,5 @@ export interface UpdateProjectStatusInput {
 export interface UpdateProjectInput {
   title?: string
   status?: CardStatus
+  description?: string | null
 }

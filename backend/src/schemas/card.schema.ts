@@ -67,8 +67,9 @@ export const updateProjectSchema = z
   .object({
     title: z.string().trim().min(1, 'Título é obrigatório').optional(),
     status: cardStatusSchema.optional(),
+    description: z.string().trim().nullable().optional(),
   })
   .refine(
-    (data) => data.title !== undefined || data.status !== undefined,
+    (data) => Object.values(data).some((value) => value !== undefined),
     { message: 'Informe ao menos um campo para atualizar' },
   );

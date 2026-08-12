@@ -5,6 +5,7 @@ import {
   teamIdParamSchema,
   teamMemberParamSchema,
   updateMemberAbsentSchema,
+  updateTeamSchema,
 } from '../schemas/team.schema.js';
 import { TeamService } from '../services/team.service.js';
 import { AppError, handleControllerError } from '../utils/errors.js';
@@ -196,6 +197,32 @@ export class TeamController {
       );
 
       return sendSuccess(reply, { team }, 201, MENSAGENS.EQUIPE_CRIADA_SUCESSO);
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  update = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const params = teamIdParamSchema.safeParse(request.params);
+      const body = updateTeamSchema.safeParse(request.body);
+
+      if (!params.success || !body.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const team = await this.service.updateTeam(
+        params.data.id,
+        request.user.sub,
+        body.data,
+      );
+
+      return sendSuccess(
+        reply,
+        { team },
+        200,
+        MENSAGENS.EQUIPE_ATUALIZADA_SUCESSO,
+      );
     } catch (error) {
       return handleControllerError(error, reply);
     }

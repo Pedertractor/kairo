@@ -380,7 +380,11 @@ export class CardService {
     teamId: string,
     projectId: string,
     userId: string,
-    data: { title?: string; status?: CardStatus },
+    data: {
+      title?: string;
+      status?: CardStatus;
+      description?: string | null;
+    },
   ): Promise<ProjectSummary> {
     await this.assertTeamMember(teamId, userId);
 

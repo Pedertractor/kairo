@@ -300,4 +300,30 @@ export class TeamService {
 
     return toTeamSummary(team, TeamRole.ADMIN);
   }
+
+  async updateTeam(
+    teamId: string,
+    actorUserId: string,
+    data: {
+      name?: string;
+      description?: string | null;
+    },
+  ): Promise<TeamSummary> {
+    const actorMembership = await this.teamRepository.findMembershipByTeamAndUser(
+      teamId,
+      actorUserId,
+    );
+
+    if (!actorMembership) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    if (actorMembership.role !== TeamRole.ADMIN) {
+      throw new AppError(403, MENSAGENS.PROIBIDO);
+    }
+
+    const updated = await this.teamRepository.updateTeam(teamId, data);
+
+    return toTeamSummary(updated, actorMembership.role);
+  }
 }

@@ -86,6 +86,25 @@ export class TeamRepository {
     });
   }
 
+  updateTeam(
+    teamId: string,
+    data: {
+      name?: string;
+      description?: string | null;
+    },
+  ) {
+    return this.prisma.team.update({
+      where: { id: teamId },
+      data: {
+        ...(data.name !== undefined ? { name: data.name } : {}),
+        ...(data.description !== undefined
+          ? { description: data.description }
+          : {}),
+      },
+      include: memberInclude,
+    });
+  }
+
   createTeamWithCreatorMember(
     name: string,
     description: string | undefined,
