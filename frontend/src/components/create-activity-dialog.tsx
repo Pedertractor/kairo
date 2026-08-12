@@ -32,11 +32,17 @@ import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/lib/api-handler'
 import type { ActivityResponse, CreateActivityInput } from '@/types/card'
 import type { ClientSummary, ClientsListResponse } from '@/types/client'
+import type { MachineSummary, MachinesListResponse } from '@/types/machine'
 import type { TagSummary } from '@/types/tag'
 
 const NO_TAG = '__none__'
 
 type ClientComboboxOption = {
+  value: string
+  label: string
+}
+
+type MachineComboboxOption = {
   value: string
   label: string
 }
@@ -56,6 +62,13 @@ function toClientOption(client: ClientSummary): ClientComboboxOption {
   }
 }
 
+function toMachineOption(machine: MachineSummary): MachineComboboxOption {
+  return {
+    value: machine.id,
+    label: `${machine.name} · CC ${machine.costCenter}`,
+  }
+}
+
 export function CreateActivityDialog({
   teamId,
   open,
@@ -71,10 +84,17 @@ export function CreateActivityDialog({
   const [clients, setClients] = useState<ClientSummary[]>([])
   const [selectedClient, setSelectedClient] =
     useState<ClientComboboxOption | null>(null)
-  const [isLoadingClients, setIsLoadingClients] = useState(false)
+  const [machines, setMachines] = useState<MachineSummary[]>([])
+  const [selectedMachine, setSelectedMachine] =
+    useState<MachineComboboxOption | null>(null)
+  const [isLoadingOptions, setIsLoadingOptions] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const clientOptions = useMemo(() => clients.map(toClientOption), [clients])
+  const machineOptions = useMemo(
+    () => machines.map(toMachineOption),
+    [machines],
+  )
 
   function resetForm() {
     setTitle('')
@@ -83,13 +103,15 @@ export function CreateActivityDialog({
     setIndefiniteTime(false)
     setTagId(NO_TAG)
     setSelectedClient(null)
+    setSelectedMachine(null)
   }
 
   useEffect(() => {
     if (open) {
       setTagId(NO_TAG)
       setSelectedClient(null)
-      setIsLoadingClients(true)
+      setSelectedMachine(null)
+      setIsLoadingOptions(true)
     }
   }, [open])
 
@@ -100,27 +122,29 @@ export function CreateActivityDialog({
 
     let cancelled = false
 
-    async function loadClients() {
+    async function loadOptions() {
       try {
-        const data = await api<ClientsListResponse>('/clients', {
-          toastOnError: false,
-        })
+        const [clientsData, machinesData] = await Promise.all([
+          api<ClientsListResponse>('/clients', { toastOnError: false }).catch(
+            () => ({ clients: [] }) as ClientsListResponse,
+          ),
+          api<MachinesListResponse>('/machines', {
+            toastOnError: false,
+          }).catch(() => ({ machines: [] }) as MachinesListResponse),
+        ])
 
         if (!cancelled) {
-          setClients(data.clients)
-        }
-      } catch {
-        if (!cancelled) {
-          setClients([])
+          setClients(clientsData.clients)
+          setMachines(machinesData.machines)
         }
       } finally {
         if (!cancelled) {
-          setIsLoadingClients(false)
+          setIsLoadingOptions(false)
         }
       }
     }
 
-    void loadClients()
+    void loadOptions()
 
     return () => {
       cancelled = true
@@ -153,6 +177,10 @@ export function CreateActivityDialog({
 
       if (selectedClient) {
         payload.clientId = selectedClient.value
+      }
+
+      if (selectedMachine) {
+        payload.machineId = selectedMachine.value
       }
 
       await api<ActivityResponse>(`/teams/${teamId}/activities`, {
@@ -257,7 +285,7 @@ export function CreateActivityDialog({
             </Field>
             <Field>
               <FieldLabel htmlFor="activity-client">Cliente</FieldLabel>
-              {isLoadingClients ? (
+              {isLoadingOptions ? (
                 <div className="flex h-8 items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="size-4 animate-spin" />
                   Carregando clientes...
@@ -280,6 +308,42 @@ export function CreateActivityDialog({
                   />
                   <ComboboxContent>
                     <ComboboxEmpty>Nenhum cliente encontrado.</ComboboxEmpty>
+                    <ComboboxList>
+                      {(item) => (
+                        <ComboboxItem key={item.value} value={item}>
+                          {item.label}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              )}
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="activity-machine">Máquina</FieldLabel>
+              {isLoadingOptions ? (
+                <div className="flex h-8 items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin" />
+                  Carregando máquinas...
+                </div>
+              ) : (
+                <Combobox
+                  items={machineOptions}
+                  value={selectedMachine}
+                  onValueChange={setSelectedMachine}
+                  itemToStringLabel={(item) => item.label}
+                  isItemEqualToValue={(a, b) => a.value === b.value}
+                  disabled={isSubmitting}
+                >
+                  <ComboboxInput
+                    id="activity-machine"
+                    className="w-full"
+                    placeholder="Buscar máquina..."
+                    showClear
+                    disabled={isSubmitting}
+                  />
+                  <ComboboxContent>
+                    <ComboboxEmpty>Nenhuma máquina encontrada.</ComboboxEmpty>
                     <ComboboxList>
                       {(item) => (
                         <ComboboxItem key={item.value} value={item}>

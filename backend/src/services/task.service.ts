@@ -1,19 +1,39 @@
 import type { Task, TaskStatus } from '../generated/client.js';
 import { CardRepository } from '../repositories/card.repository.js';
 import { FavoriteRepository } from '../repositories/favorite.repository.js';
+import { MachineRepository } from '../repositories/machine.repository.js';
 import { TaskRepository } from '../repositories/task.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
-import type { TaskDetail, TaskSummary } from '../types/task.types.js';
+import type {
+  TaskDetail,
+  TaskMachineSummary,
+  TaskSummary,
+} from '../types/task.types.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 
-type TaskWithAssignee = Task & {
+type TaskWithRelations = Task & {
   assignedTo: { id: string; name: string } | null;
+  machine?: TaskMachineSummary | null;
 };
 
+function toTaskMachine(
+  machine: TaskMachineSummary | null | undefined,
+): TaskMachineSummary | null {
+  if (!machine) {
+    return null;
+  }
+
+  return {
+    id: machine.id,
+    name: machine.name,
+    costCenter: machine.costCenter,
+  };
+}
+
 function toTaskSummary(
-  task: TaskWithAssignee,
+  task: TaskWithRelations,
   isFavorite = false,
 ): TaskSummary {
   return {
@@ -25,6 +45,7 @@ function toTaskSummary(
     estimatedHours: task.estimatedHours?.toString() ?? null,
     assignedToId: task.assignedToId,
     assignedToName: task.assignedTo?.name ?? null,
+    machine: toTaskMachine(task.machine),
     sortOrder: task.sortOrder,
     isFavorite,
     createdById: task.createdById,
@@ -40,7 +61,16 @@ export class TaskService {
     private readonly teamRepository: TeamRepository,
     private readonly timeEntryRepository: TimeEntryRepository,
     private readonly favoriteRepository: FavoriteRepository,
+    private readonly machineRepository: MachineRepository,
   ) {}
+
+  private async assertMachine(machineId: string) {
+    const machine = await this.machineRepository.findById(machineId);
+
+    if (!machine) {
+      throw new AppError(404, MENSAGENS.MAQUINA_NAO_ENCONTRADA);
+    }
+  }
 
   private async assertProjectAccess(projectId: string, userId: string) {
     const card = await this.cardRepository.findProjectById(projectId);
@@ -94,8 +124,13 @@ export class TaskService {
     title: string,
     description?: string,
     estimatedHours?: number,
+    machineId?: string,
   ): Promise<TaskSummary> {
     await this.assertProjectAccess(projectId, userId);
+
+    if (machineId) {
+      await this.assertMachine(machineId);
+    }
 
     const maxSortOrder =
       (await this.taskRepository.getMaxSortOrder(projectId))._max.sortOrder ??
@@ -107,6 +142,7 @@ export class TaskService {
       title,
       description,
       estimatedHours,
+      machineId,
       sortOrder: maxSortOrder + 1,
     });
 
@@ -141,7 +177,11 @@ export class TaskService {
     projectId: string,
     taskId: string,
     userId: string,
-    data: { title?: string; status?: TaskStatus },
+    data: {
+      title?: string;
+      status?: TaskStatus;
+      machineId?: string | null;
+    },
   ): Promise<TaskDetail> {
     await this.assertProjectAccess(projectId, userId);
 
@@ -149,6 +189,10 @@ export class TaskService {
 
     if (!task || task.cardId !== projectId) {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    if (data.machineId) {
+      await this.assertMachine(data.machineId);
     }
 
     if (data.status === 'DONE' && task.status !== 'DONE') {
@@ -165,10 +209,15 @@ export class TaskService {
       title?: string;
       status?: TaskStatus;
       completedAt?: Date | null;
+      machineId?: string | null;
     } = {};
 
     if (data.title !== undefined) {
       updateData.title = data.title;
+    }
+
+    if (data.machineId !== undefined) {
+      updateData.machineId = data.machineId;
     }
 
     if (data.status !== undefined) {

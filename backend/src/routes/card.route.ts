@@ -3,6 +3,7 @@ import { CardController } from '../controllers/card.controller.js';
 import { CardRepository } from '../repositories/card.repository.js';
 import { ClientRepository } from '../repositories/client.repository.js';
 import { FavoriteRepository } from '../repositories/favorite.repository.js';
+import { MachineRepository } from '../repositories/machine.repository.js';
 import { TagRepository } from '../repositories/tag.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
@@ -17,6 +18,7 @@ export async function cardRoutes(app: FastifyInstance) {
       new FavoriteRepository(app.prisma),
       new TagRepository(app.prisma),
       new ClientRepository(app.prisma),
+      new MachineRepository(app.prisma),
     ),
   );
 

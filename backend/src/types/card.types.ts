@@ -11,6 +11,12 @@ export interface ActivityClientSummary {
   name: string;
 }
 
+export interface ActivityMachineSummary {
+  id: string;
+  name: string;
+  costCenter: string;
+}
+
 export interface ActivitySummary {
   id: string;
   teamId: string;
@@ -22,6 +28,7 @@ export interface ActivitySummary {
   isFavorite: boolean;
   tag: ActivityTagSummary | null;
   client: ActivityClientSummary | null;
+  machine: ActivityMachineSummary | null;
   createdById: string;
   createdAt: string;
   updatedAt: string;

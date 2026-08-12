@@ -1,4 +1,5 @@
 import type { ClientSummary } from '@/types/client'
+import type { MachineSummary } from '@/types/machine'
 import type { ActivityTag } from '@/types/tag'
 
 export type { ActivityTag }
@@ -21,6 +22,7 @@ export interface ActivitySummary {
   isFavorite: boolean
   tag: ActivityTag | null
   client: ClientSummary | null
+  machine: MachineSummary | null
   createdById: string
   createdAt: string
   updatedAt: string
@@ -40,6 +42,7 @@ export interface CreateActivityInput {
   estimatedHours?: number
   tagId?: string
   clientId?: string
+  machineId?: string
 }
 
 export interface UpdateActivityStatusInput {
@@ -53,6 +56,7 @@ export interface UpdateActivityInput {
   description?: string | null
   estimatedHours?: number | null
   clientId?: string | null
+  machineId?: string | null
 }
 
 export interface ProjectSummary {

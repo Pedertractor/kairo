@@ -18,6 +18,13 @@ const activityTagInclude = {
       name: true,
     },
   },
+  machine: {
+    select: {
+      id: true,
+      name: true,
+      costCenter: true,
+    },
+  },
 } as const;
 
 export class CardRepository {
@@ -55,6 +62,7 @@ export class CardRepository {
       description?: string | null;
       estimatedHours?: number | null;
       clientId?: string | null;
+      machineId?: string | null;
     },
   ) {
     return this.prisma.card.update({
@@ -70,6 +78,7 @@ export class CardRepository {
           ? { estimatedHours: data.estimatedHours }
           : {}),
         ...(data.clientId !== undefined ? { clientId: data.clientId } : {}),
+        ...(data.machineId !== undefined ? { machineId: data.machineId } : {}),
       },
       include: activityTagInclude,
     });
@@ -84,6 +93,7 @@ export class CardRepository {
     status?: CardStatus;
     tagId?: string;
     clientId?: string;
+    machineId?: string;
   }) {
     return this.prisma.card.create({
       data: {
@@ -96,6 +106,7 @@ export class CardRepository {
         estimatedHours: data.estimatedHours ?? null,
         tagId: data.tagId ?? null,
         clientId: data.clientId ?? null,
+        machineId: data.machineId ?? null,
       },
       include: activityTagInclude,
     });

@@ -42,6 +42,7 @@ export const updateActivitySchema = z
       .nullable()
       .optional(),
     clientId: z.string().min(1).nullable().optional(),
+    machineId: z.string().min(1).nullable().optional(),
   })
   .refine(
     (data) => Object.values(data).some((value) => value !== undefined),
@@ -57,9 +58,17 @@ export const createActivitySchema = z.object({
     .optional(),
   tagId: z.string().min(1).optional(),
   clientId: z.string().min(1).optional(),
+  machineId: z.string().min(1).optional(),
 });
 
-export const createProjectSchema = createActivitySchema;
+export const createProjectSchema = z.object({
+  title: z.string().trim().min(1, 'Título é obrigatório'),
+  description: z.string().trim().optional(),
+  estimatedHours: z.coerce
+    .number()
+    .positive('Horas estimadas deve ser um valor positivo')
+    .optional(),
+});
 
 export const updateProjectStatusSchema = updateActivityStatusSchema;
 

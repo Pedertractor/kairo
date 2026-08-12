@@ -1,6 +1,15 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { Loader2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from '@/components/ui/combobox'
 import {
   Dialog,
   DialogContent,
@@ -13,13 +22,26 @@ import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/lib/api-handler'
+import type { MachineSummary, MachinesListResponse } from '@/types/machine'
 import type { CreateTaskInput, TaskResponse } from '@/types/task'
+
+type MachineComboboxOption = {
+  value: string
+  label: string
+}
 
 interface CreateTaskDialogProps {
   projectId: string
   open: boolean
   onOpenChange: (open: boolean) => void
   onCreated: () => void
+}
+
+function toMachineOption(machine: MachineSummary): MachineComboboxOption {
+  return {
+    value: machine.id,
+    label: `${machine.name} · CC ${machine.costCenter}`,
+  }
 }
 
 export function CreateTaskDialog({
@@ -32,14 +54,65 @@ export function CreateTaskDialog({
   const [description, setDescription] = useState('')
   const [estimatedHours, setEstimatedHours] = useState('')
   const [indefiniteTime, setIndefiniteTime] = useState(false)
+  const [machines, setMachines] = useState<MachineSummary[]>([])
+  const [selectedMachine, setSelectedMachine] =
+    useState<MachineComboboxOption | null>(null)
+  const [isLoadingMachines, setIsLoadingMachines] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const machineOptions = useMemo(
+    () => machines.map(toMachineOption),
+    [machines],
+  )
 
   function resetForm() {
     setTitle('')
     setDescription('')
     setEstimatedHours('')
     setIndefiniteTime(false)
+    setSelectedMachine(null)
   }
+
+  useEffect(() => {
+    if (open) {
+      setSelectedMachine(null)
+      setIsLoadingMachines(true)
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    let cancelled = false
+
+    async function loadMachines() {
+      try {
+        const data = await api<MachinesListResponse>('/machines', {
+          toastOnError: false,
+        })
+
+        if (!cancelled) {
+          setMachines(data.machines)
+        }
+      } catch {
+        if (!cancelled) {
+          setMachines([])
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingMachines(false)
+        }
+      }
+    }
+
+    void loadMachines()
+
+    return () => {
+      cancelled = true
+    }
+  }, [open])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -59,6 +132,10 @@ export function CreateTaskDialog({
 
       if (parsedHours !== undefined && !Number.isNaN(parsedHours)) {
         payload.estimatedHours = parsedHours
+      }
+
+      if (selectedMachine) {
+        payload.machineId = selectedMachine.value
       }
 
       await api<TaskResponse>(`/projects/${projectId}/tasks`, {
@@ -115,6 +192,42 @@ export function CreateTaskDialog({
                 disabled={isSubmitting}
                 rows={3}
               />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="task-machine">Máquina</FieldLabel>
+              {isLoadingMachines ? (
+                <div className="flex h-8 items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin" />
+                  Carregando máquinas...
+                </div>
+              ) : (
+                <Combobox
+                  items={machineOptions}
+                  value={selectedMachine}
+                  onValueChange={setSelectedMachine}
+                  itemToStringLabel={(item) => item.label}
+                  isItemEqualToValue={(a, b) => a.value === b.value}
+                  disabled={isSubmitting}
+                >
+                  <ComboboxInput
+                    id="task-machine"
+                    className="w-full"
+                    placeholder="Buscar máquina..."
+                    showClear
+                    disabled={isSubmitting}
+                  />
+                  <ComboboxContent>
+                    <ComboboxEmpty>Nenhuma máquina encontrada.</ComboboxEmpty>
+                    <ComboboxList>
+                      {(item) => (
+                        <ComboboxItem key={item.value} value={item}>
+                          {item.label}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              )}
             </Field>
             <Field>
               <FieldLabel htmlFor="task-estimated-hours">

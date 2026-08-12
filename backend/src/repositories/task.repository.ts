@@ -8,6 +8,9 @@ export class TaskRepository {
       where: { id: taskId, deletedAt: null },
       include: {
         assignedTo: { select: { id: true, name: true } },
+        machine: {
+          select: { id: true, name: true, costCenter: true },
+        },
         card: {
           select: {
             id: true,
@@ -33,6 +36,7 @@ export class TaskRepository {
       title?: string;
       status?: TaskStatus;
       completedAt?: Date | null;
+      machineId?: string | null;
     },
   ) {
     return this.prisma.task.update({
@@ -43,9 +47,13 @@ export class TaskRepository {
         ...(data.completedAt !== undefined
           ? { completedAt: data.completedAt }
           : {}),
+        ...(data.machineId !== undefined ? { machineId: data.machineId } : {}),
       },
       include: {
         assignedTo: { select: { id: true, name: true } },
+        machine: {
+          select: { id: true, name: true, costCenter: true },
+        },
       },
     });
   }
@@ -67,6 +75,9 @@ export class TaskRepository {
       where: { cardId: projectId, deletedAt: null },
       include: {
         assignedTo: { select: { id: true, name: true } },
+        machine: {
+          select: { id: true, name: true, costCenter: true },
+        },
       },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
     });
@@ -85,6 +96,7 @@ export class TaskRepository {
     title: string;
     description?: string;
     estimatedHours?: number;
+    machineId?: string;
     sortOrder: number;
   }) {
     return this.prisma.task.create({
@@ -94,10 +106,14 @@ export class TaskRepository {
         title: data.title,
         description: data.description ?? null,
         estimatedHours: data.estimatedHours ?? null,
+        machineId: data.machineId ?? null,
         sortOrder: data.sortOrder,
       },
       include: {
         assignedTo: { select: { id: true, name: true } },
+        machine: {
+          select: { id: true, name: true, costCenter: true },
+        },
       },
     });
   }
@@ -108,6 +124,9 @@ export class TaskRepository {
       data: { deletedAt: new Date() },
       include: {
         assignedTo: { select: { id: true, name: true } },
+        machine: {
+          select: { id: true, name: true, costCenter: true },
+        },
       },
     });
   }

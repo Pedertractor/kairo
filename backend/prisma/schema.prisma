@@ -200,6 +200,17 @@ model Client {
   @@map("clients")
 }
 
+model Machine {
+  id         String @id @default(cuid())
+  name       String @unique
+  costCenter String
+
+  cards Card[]
+  tasks Task[]
+
+  @@map("machines")
+}
+
 model Card {
   id String @id @default(cuid())
 
@@ -214,6 +225,9 @@ model Card {
 
   clientId String?
   client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  machineId String?
+  machine   Machine? @relation(fields: [machineId], references: [id], onDelete: SetNull)
 
   title       String
   description String?
@@ -236,6 +250,7 @@ model Card {
   @@index([createdById])
   @@index([tagId])
   @@index([clientId])
+  @@index([machineId])
   @@index([deletedAt])
   @@map("cards")
 }
@@ -251,6 +266,9 @@ model Task {
 
   assignedToId String?
   assignedTo   User?   @relation("TaskAssignee", fields: [assignedToId], references: [id])
+
+  machineId String?
+  machine   Machine? @relation(fields: [machineId], references: [id], onDelete: SetNull)
 
   title       String
   description String?
@@ -273,6 +291,7 @@ model Task {
 
   @@index([cardId])
   @@index([assignedToId])
+  @@index([machineId])
   @@index([deletedAt])
   @@map("tasks")
 }

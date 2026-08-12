@@ -2,11 +2,13 @@ import type { Card, CardStatus } from '../generated/client.js';
 import { CardRepository } from '../repositories/card.repository.js';
 import { ClientRepository } from '../repositories/client.repository.js';
 import { FavoriteRepository } from '../repositories/favorite.repository.js';
+import { MachineRepository } from '../repositories/machine.repository.js';
 import { TagRepository } from '../repositories/tag.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
 import type {
   ActivityClientSummary,
+  ActivityMachineSummary,
   ActivitySummary,
   ActivityTagSummary,
   ProjectSummary,
@@ -17,6 +19,7 @@ import { MENSAGENS } from '../utils/response.js';
 type CardWithRelations = Card & {
   tag?: ActivityTagSummary | null;
   client?: ActivityClientSummary | null;
+  machine?: ActivityMachineSummary | null;
 };
 
 function toActivityTag(
@@ -46,6 +49,20 @@ function toActivityClient(
   };
 }
 
+function toActivityMachine(
+  machine: ActivityMachineSummary | null | undefined,
+): ActivityMachineSummary | null {
+  if (!machine) {
+    return null;
+  }
+
+  return {
+    id: machine.id,
+    name: machine.name,
+    costCenter: machine.costCenter,
+  };
+}
+
 function toActivitySummary(
   card: CardWithRelations,
   loggedSeconds = 0,
@@ -62,6 +79,7 @@ function toActivitySummary(
     isFavorite,
     tag: toActivityTag(card.tag),
     client: toActivityClient(card.client),
+    machine: toActivityMachine(card.machine),
     createdById: card.createdById,
     createdAt: card.createdAt.toISOString(),
     updatedAt: card.updatedAt.toISOString(),
@@ -96,6 +114,7 @@ export class CardService {
     private readonly favoriteRepository: FavoriteRepository,
     private readonly tagRepository: TagRepository,
     private readonly clientRepository: ClientRepository,
+    private readonly machineRepository: MachineRepository,
   ) {}
 
   private async assertTeamMember(teamId: string, userId: string) {
@@ -122,6 +141,14 @@ export class CardService {
 
     if (!client) {
       throw new AppError(404, MENSAGENS.CLIENTE_NAO_ENCONTRADO);
+    }
+  }
+
+  private async assertMachine(machineId: string) {
+    const machine = await this.machineRepository.findById(machineId);
+
+    if (!machine) {
+      throw new AppError(404, MENSAGENS.MAQUINA_NAO_ENCONTRADA);
     }
   }
 
@@ -193,6 +220,7 @@ export class CardService {
     estimatedHours?: number,
     tagId?: string,
     clientId?: string,
+    machineId?: string,
   ): Promise<ActivitySummary> {
     await this.assertTeamMember(teamId, userId);
 
@@ -204,6 +232,10 @@ export class CardService {
       await this.assertClient(clientId);
     }
 
+    if (machineId) {
+      await this.assertMachine(machineId);
+    }
+
     const card = await this.cardRepository.createActivity({
       teamId,
       createdById: userId,
@@ -212,6 +244,7 @@ export class CardService {
       estimatedHours,
       tagId,
       clientId,
+      machineId,
     });
 
     return toActivitySummary(card);
@@ -237,6 +270,7 @@ export class CardService {
       description?: string | null;
       estimatedHours?: number | null;
       clientId?: string | null;
+      machineId?: string | null;
     },
   ): Promise<ActivitySummary> {
     await this.assertTeamMember(teamId, userId);
@@ -253,6 +287,10 @@ export class CardService {
 
     if (data.clientId) {
       await this.assertClient(data.clientId);
+    }
+
+    if (data.machineId) {
+      await this.assertMachine(data.machineId);
     }
 
     const updated = await this.cardRepository.updateActivity(activityId, data);

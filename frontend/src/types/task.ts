@@ -1,3 +1,5 @@
+import type { MachineSummary } from '@/types/machine'
+
 export type TaskStatus =
   | 'TODO'
   | 'IN_PROGRESS'
@@ -14,6 +16,7 @@ export interface TaskSummary {
   estimatedHours: string | null
   assignedToId: string | null
   assignedToName: string | null
+  machine: MachineSummary | null
   sortOrder: number
   isFavorite: boolean
   createdById: string
@@ -41,9 +44,11 @@ export interface CreateTaskInput {
   title: string
   description?: string
   estimatedHours?: number
+  machineId?: string
 }
 
 export interface UpdateTaskInput {
   title?: string
   status?: TaskStatus
+  machineId?: string | null
 }

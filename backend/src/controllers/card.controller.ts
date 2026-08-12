@@ -72,6 +72,7 @@ export class CardController {
         body.data.estimatedHours,
         body.data.tagId,
         body.data.clientId,
+        body.data.machineId,
       );
 
       return sendSuccess(

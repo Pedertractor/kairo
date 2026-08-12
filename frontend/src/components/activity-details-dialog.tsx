@@ -46,11 +46,17 @@ import type {
   UpdateActivityInput,
 } from '@/types/card'
 import type { ClientSummary, ClientsListResponse } from '@/types/client'
+import type { MachineSummary, MachinesListResponse } from '@/types/machine'
 import type { TagSummary, TagsListResponse } from '@/types/tag'
 
 const NO_TAG = '__none__'
 
 type ClientComboboxOption = {
+  value: string
+  label: string
+}
+
+type MachineComboboxOption = {
   value: string
   label: string
 }
@@ -67,6 +73,13 @@ function toClientOption(client: ClientSummary): ClientComboboxOption {
   return {
     value: client.id,
     label: client.name,
+  }
+}
+
+function toMachineOption(machine: MachineSummary): MachineComboboxOption {
+  return {
+    value: machine.id,
+    label: `${machine.name} · CC ${machine.costCenter}`,
   }
 }
 
@@ -100,12 +113,19 @@ export function ActivityDetailsDialog({
   const [estimatedHours, setEstimatedHours] = useState('')
   const [selectedClient, setSelectedClient] =
     useState<ClientComboboxOption | null>(null)
+  const [selectedMachine, setSelectedMachine] =
+    useState<MachineComboboxOption | null>(null)
   const [tags, setTags] = useState<TagSummary[]>([])
   const [clients, setClients] = useState<ClientSummary[]>([])
+  const [machines, setMachines] = useState<MachineSummary[]>([])
   const [isLoadingOptions, setIsLoadingOptions] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const clientOptions = useMemo(() => clients.map(toClientOption), [clients])
+  const machineOptions = useMemo(
+    () => machines.map(toMachineOption),
+    [machines],
+  )
 
   useEffect(() => {
     if (!open || !activity) {
@@ -118,6 +138,9 @@ export function ActivityDetailsDialog({
     setTagId(activity.tag?.id ?? NO_TAG)
     setEstimatedHours(toHoursInput(activity.estimatedHours))
     setSelectedClient(activity.client ? toClientOption(activity.client) : null)
+    setSelectedMachine(
+      activity.machine ? toMachineOption(activity.machine) : null,
+    )
   }, [open, activity])
 
   useEffect(() => {
@@ -131,16 +154,20 @@ export function ActivityDetailsDialog({
       setIsLoadingOptions(true)
 
       try {
-        const [tagsData, clientsData] = await Promise.all([
+        const [tagsData, clientsData, machinesData] = await Promise.all([
           api<TagsListResponse>(`/teams/${teamId}/tags`),
           api<ClientsListResponse>('/clients', { toastOnError: false }).catch(
             () => ({ clients: [] }) as ClientsListResponse,
           ),
+          api<MachinesListResponse>('/machines', {
+            toastOnError: false,
+          }).catch(() => ({ machines: [] }) as MachinesListResponse),
         ])
 
         if (!cancelled) {
           setTags(tagsData.tags)
           setClients(clientsData.clients)
+          setMachines(machinesData.machines)
         }
       } finally {
         if (!cancelled) {
@@ -187,6 +214,11 @@ export function ActivityDetailsDialog({
     const nextClientId = selectedClient?.value ?? null
     if (nextClientId !== (activity.client?.id ?? null)) {
       payload.clientId = nextClientId
+    }
+
+    const nextMachineId = selectedMachine?.value ?? null
+    if (nextMachineId !== (activity.machine?.id ?? null)) {
+      payload.machineId = nextMachineId
     }
 
     const nextHours = toHoursValue(estimatedHours)
@@ -350,6 +382,43 @@ export function ActivityDetailsDialog({
                   />
                   <ComboboxContent>
                     <ComboboxEmpty>Nenhum cliente encontrado.</ComboboxEmpty>
+                    <ComboboxList>
+                      {(item) => (
+                        <ComboboxItem key={item.value} value={item}>
+                          {item.label}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              )}
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="activity-details-machine">Máquina</FieldLabel>
+              {isLoadingOptions ? (
+                <div className="flex h-8 items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin" />
+                  Carregando máquinas...
+                </div>
+              ) : (
+                <Combobox
+                  items={machineOptions}
+                  value={selectedMachine}
+                  onValueChange={setSelectedMachine}
+                  itemToStringLabel={(item) => item.label}
+                  isItemEqualToValue={(a, b) => a.value === b.value}
+                  disabled={isSubmitting || !activity}
+                >
+                  <ComboboxInput
+                    id="activity-details-machine"
+                    className="w-full"
+                    placeholder="Buscar máquina..."
+                    showClear
+                    disabled={isSubmitting || !activity}
+                  />
+                  <ComboboxContent>
+                    <ComboboxEmpty>Nenhuma máquina encontrada.</ComboboxEmpty>
                     <ComboboxList>
                       {(item) => (
                         <ComboboxItem key={item.value} value={item}>

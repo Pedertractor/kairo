@@ -1,5 +1,11 @@
 import type { TaskStatus } from '../generated/client.js';
 
+export interface TaskMachineSummary {
+  id: string;
+  name: string;
+  costCenter: string;
+}
+
 export interface TaskSummary {
   id: string;
   cardId: string;
@@ -9,6 +15,7 @@ export interface TaskSummary {
   estimatedHours: string | null;
   assignedToId: string | null;
   assignedToName: string | null;
+  machine: TaskMachineSummary | null;
   sortOrder: number;
   isFavorite: boolean;
   createdById: string;
