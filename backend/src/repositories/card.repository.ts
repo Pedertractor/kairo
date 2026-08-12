@@ -48,7 +48,14 @@ export class CardRepository {
 
   updateActivity(
     activityId: string,
-    data: { title?: string; status?: CardStatus; tagId?: string | null },
+    data: {
+      title?: string;
+      status?: CardStatus;
+      tagId?: string | null;
+      description?: string | null;
+      estimatedHours?: number | null;
+      clientId?: string | null;
+    },
   ) {
     return this.prisma.card.update({
       where: { id: activityId },
@@ -56,6 +63,13 @@ export class CardRepository {
         ...(data.title !== undefined ? { title: data.title } : {}),
         ...(data.status !== undefined ? { status: data.status } : {}),
         ...(data.tagId !== undefined ? { tagId: data.tagId } : {}),
+        ...(data.description !== undefined
+          ? { description: data.description }
+          : {}),
+        ...(data.estimatedHours !== undefined
+          ? { estimatedHours: data.estimatedHours }
+          : {}),
+        ...(data.clientId !== undefined ? { clientId: data.clientId } : {}),
       },
       include: activityTagInclude,
     });

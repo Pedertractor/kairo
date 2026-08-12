@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+import { ActivityDetailsDialog } from '@/components/activity-details-dialog';
 import { ActivityTagBadge } from '@/components/activity-tag-badge';
 import { CreateActivityDialog } from '@/components/create-activity-dialog';
 import { CreateTagDialog } from '@/components/create-tag-dialog';
@@ -58,6 +59,8 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
   const [activityToUpdate, setActivityToUpdate] =
     useState<ActivitySummary | null>(null);
   const [activityToEditTag, setActivityToEditTag] =
+    useState<ActivitySummary | null>(null);
+  const [activityToDetail, setActivityToDetail] =
     useState<ActivitySummary | null>(null);
   const [nameFilter, setNameFilter] = useState('');
   const [tagFilter, setTagFilter] = useState(ALL_TAGS);
@@ -192,6 +195,18 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
         onOpenChange={(open) => {
           if (!open) {
             setActivityToEditTag(null);
+          }
+        }}
+        onUpdated={loadActivities}
+      />
+
+      <ActivityDetailsDialog
+        teamId={teamId}
+        activity={activityToDetail}
+        open={activityToDetail !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setActivityToDetail(null);
           }
         }}
         onUpdated={loadActivities}
@@ -368,6 +383,7 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
                     <ItemActionsMenu
                       title={activity.title}
                       canFinish={canFinishStatus(activity.status)}
+                      onDetails={() => setActivityToDetail(activity)}
                       onFinish={() => setActivityToFinish(activity)}
                       onDelete={() => setActivityToDelete(activity)}
                     />

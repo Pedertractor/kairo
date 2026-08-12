@@ -230,7 +230,14 @@ export class CardService {
     teamId: string,
     activityId: string,
     userId: string,
-    data: { title?: string; status?: CardStatus; tagId?: string | null },
+    data: {
+      title?: string;
+      status?: CardStatus;
+      tagId?: string | null;
+      description?: string | null;
+      estimatedHours?: number | null;
+      clientId?: string | null;
+    },
   ): Promise<ActivitySummary> {
     await this.assertTeamMember(teamId, userId);
 
@@ -242,6 +249,10 @@ export class CardService {
 
     if (data.tagId) {
       await this.assertTeamTag(teamId, data.tagId);
+    }
+
+    if (data.clientId) {
+      await this.assertClient(data.clientId);
     }
 
     const updated = await this.cardRepository.updateActivity(activityId, data);

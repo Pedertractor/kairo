@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ArrowLeft, Pencil } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
+import { ActivityDetailsDialog } from '@/components/activity-details-dialog'
 import { ActivityTagBadge } from '@/components/activity-tag-badge'
 import { ActivityStatusActions } from '@/components/activity-status-actions'
 import { ActivityTimeEntriesSection } from '@/components/activity-time-entries-section'
@@ -31,6 +32,7 @@ export function ActivityDetailPage() {
   const [isEditTagDialogOpen, setIsEditTagDialogOpen] = useState(false)
   const [isFinishDialogOpen, setIsFinishDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false)
 
   useEffect(() => {
     if (!teamId || !activityId) {
@@ -115,6 +117,7 @@ export function ActivityDetailPage() {
                   <ItemActionsMenu
                     title={activity.title}
                     canFinish={canFinishStatus(activity.status)}
+                    onDetails={() => setIsDetailsDialogOpen(true)}
                     onFinish={() => setIsFinishDialogOpen(true)}
                     onDelete={() => setIsDeleteDialogOpen(true)}
                   />
@@ -177,6 +180,13 @@ export function ActivityDetailPage() {
                 activity={activity}
                 open={isEditTagDialogOpen}
                 onOpenChange={setIsEditTagDialogOpen}
+                onUpdated={reloadActivity}
+              />
+              <ActivityDetailsDialog
+                teamId={teamId}
+                activity={activity}
+                open={isDetailsDialogOpen}
+                onOpenChange={setIsDetailsDialogOpen}
                 onUpdated={reloadActivity}
               />
               <UpdateActivityStatusDialog

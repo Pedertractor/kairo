@@ -1,4 +1,4 @@
-import { CheckCircle2, EllipsisIcon, Trash2 } from 'lucide-react'
+import { CheckCircle2, EllipsisIcon, Info, Trash2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -15,6 +15,7 @@ interface ItemActionsMenuProps {
   canFinish: boolean
   onFinish: () => void
   onDelete: () => void
+  onDetails?: () => void
   className?: string
 }
 
@@ -23,6 +24,7 @@ export function ItemActionsMenu({
   canFinish,
   onFinish,
   onDelete,
+  onDetails,
   className,
 }: ItemActionsMenuProps) {
   return (
@@ -54,6 +56,21 @@ export function ItemActionsMenu({
           event.stopPropagation()
         }}
       >
+        {onDetails ? (
+          <DropdownMenuItem
+            onClick={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              onDetails()
+            }}
+          >
+            <Info />
+            Detalhes
+          </DropdownMenuItem>
+        ) : null}
+
+        {onDetails ? <DropdownMenuSeparator /> : null}
+
         {canFinish ? (
           <DropdownMenuItem
             onClick={(event) => {

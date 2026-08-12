@@ -50,6 +50,9 @@ export interface UpdateActivityInput {
   title?: string
   status?: CardStatus
   tagId?: string | null
+  description?: string | null
+  estimatedHours?: number | null
+  clientId?: string | null
 }
 
 export interface ProjectSummary {
