@@ -99,6 +99,31 @@ export class TimeEntryController {
     }
   };
 
+  listActivityTimeEntries = async (
+    request: FastifyRequest,
+    reply: FastifyReply,
+  ) => {
+    try {
+      const params = activityParamSchema.safeParse(request.params);
+      const query = listTaskTimeEntriesQuerySchema.safeParse(request.query);
+
+      if (!params.success || !query.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const result = await this.service.listActivityTimeEntries(
+        params.data.teamId,
+        params.data.activityId,
+        request.user.sub,
+        query.data,
+      );
+
+      return sendSuccess(reply, result);
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
   updateTaskTimeEntry = async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const params = taskTimeEntryParamSchema.safeParse(request.params);

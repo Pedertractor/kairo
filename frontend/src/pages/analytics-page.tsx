@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BarChart3,
+  BriefcaseBusiness,
   ChevronDown,
   Clock3,
   FolderKanban,
@@ -60,6 +61,11 @@ type TagFilterOption = {
   label: string;
 };
 
+type ClientFilterOption = {
+  value: string;
+  label: string;
+};
+
 function utilizationColor(percent: number) {
   if (percent >= 100) return 'from-fuchsia-500 to-pink-500';
   if (percent >= 75) return 'from-emerald-400 to-cyan-500';
@@ -82,6 +88,8 @@ export function AnalyticsPage() {
   const [employeeId, setEmployeeId] = useState(ALL);
   const [projectId, setProjectId] = useState(ALL);
   const [selectedTag, setSelectedTag] = useState<TagFilterOption | null>(null);
+  const [selectedClient, setSelectedClient] =
+    useState<ClientFilterOption | null>(null);
   const [dashboard, setDashboard] = useState<AnalyticsDashboard | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTimeline, setSelectedTimeline] =
@@ -106,6 +114,7 @@ export function AnalyticsPage() {
         ...data,
         projects: data.projects ?? [],
         activityTypes: data.activityTypes ?? [],
+        clients: data.clients ?? [],
         selectedProject: data.selectedProject
           ? {
               ...data.selectedProject,
@@ -143,6 +152,18 @@ export function AnalyticsPage() {
       setSelectedTag(null);
     }
   }, [dashboard, selectedTag]);
+
+  useEffect(() => {
+    if (!selectedClient || !dashboard) return;
+
+    const stillExists = (dashboard.clients ?? []).some(
+      (client) => (client.clientId ?? 'none') === selectedClient.value,
+    );
+
+    if (!stillExists) {
+      setSelectedClient(null);
+    }
+  }, [dashboard, selectedClient]);
 
   const loadEmployeeTimeline = useCallback(async () => {
     if (!selectedTimeline) {
@@ -214,6 +235,7 @@ export function AnalyticsPage() {
   const selectedProjectTeamId = selectedProject?.teamId ?? '';
   const periodDayCount = getInclusiveDayCount(startDate, endDate);
   const activityTypes = dashboard?.activityTypes ?? [];
+  const clients = dashboard?.clients ?? [];
   const tagOptions = useMemo<TagFilterOption[]>(
     () =>
       activityTypes.map((activityType) => ({
@@ -222,12 +244,25 @@ export function AnalyticsPage() {
       })),
     [activityTypes],
   );
+  const clientOptions = useMemo<ClientFilterOption[]>(
+    () =>
+      clients.map((client) => ({
+        value: client.clientId ?? 'none',
+        label: client.clientName,
+      })),
+    [clients],
+  );
   const filteredActivityTypes = selectedTag
     ? activityTypes.filter(
         (activityType) =>
           (activityType.tagId ?? 'none') === selectedTag.value,
       )
     : activityTypes;
+  const filteredClients = selectedClient
+    ? clients.filter(
+        (client) => (client.clientId ?? 'none') === selectedClient.value,
+      )
+    : clients;
 
   return (
     <div className='flex flex-1 flex-col gap-6 pb-4'>
@@ -686,6 +721,101 @@ export function AnalyticsPage() {
                     </div>
                   </CollapsibleContent>
                 </Collapsible>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section className='rounded-2xl border bg-card p-5 shadow-sm'>
+        <div className='mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between'>
+          <div className='flex items-center gap-3'>
+            <div className='flex size-10 items-center justify-center rounded-xl bg-linear-to-br from-amber-400 to-orange-600 text-white'>
+              <BriefcaseBusiness className='size-5' />
+            </div>
+            <div>
+              <h2 className='font-semibold'>Atividades por cliente</h2>
+              <p className='text-sm text-muted-foreground'>
+                Quantidade de atividades, tarefas e tempo apontado por cliente
+                no período.
+              </p>
+            </div>
+          </div>
+
+          <div className='w-full min-w-0 sm:w-64'>
+            <Label htmlFor='activity-client-filter'>Cliente</Label>
+            <Combobox
+              items={clientOptions}
+              value={selectedClient}
+              onValueChange={setSelectedClient}
+              itemToStringLabel={(item) => item.label}
+              isItemEqualToValue={(a, b) => a.value === b.value}
+            >
+              <ComboboxInput
+                id='activity-client-filter'
+                className='mt-1 w-full'
+                placeholder='Buscar cliente...'
+                showClear
+              />
+              <ComboboxContent>
+                <ComboboxEmpty>Nenhum cliente encontrado.</ComboboxEmpty>
+                <ComboboxList>
+                  {(item) => (
+                    <ComboboxItem key={item.value} value={item}>
+                      {item.label}
+                    </ComboboxItem>
+                  )}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className='space-y-3'>
+            {Array.from({ length: 3 }).map((_, index) => (
+              <Skeleton key={index} className='h-16 rounded-2xl' />
+            ))}
+          </div>
+        ) : clients.length === 0 ? (
+          <div className='rounded-2xl border border-dashed p-10 text-center text-sm text-muted-foreground'>
+            Nenhuma atividade ou tarefa com cliente neste período.
+          </div>
+        ) : filteredClients.length === 0 ? (
+          <div className='rounded-2xl border border-dashed p-10 text-center text-sm text-muted-foreground'>
+            Nenhum cliente correspondente ao filtro selecionado.
+          </div>
+        ) : (
+          <div className='space-y-3'>
+            {filteredClients.map((client) => {
+              const rowKey = client.clientId ?? 'none';
+
+              return (
+                <div
+                  key={rowKey}
+                  className='flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center'
+                >
+                  <div className='min-w-0 flex-1'>
+                    <p className='truncate font-semibold'>{client.clientName}</p>
+                    <p className='text-xs text-muted-foreground'>
+                      {client.activityCount}{' '}
+                      {client.activityCount === 1 ? 'atividade' : 'atividades'}{' '}
+                      · {client.taskCount}{' '}
+                      {client.taskCount === 1 ? 'tarefa' : 'tarefas'}
+                    </p>
+                  </div>
+                  <div className='flex flex-wrap items-center gap-2 sm:justify-end'>
+                    <span className='rounded-full bg-orange-500/10 px-2.5 py-1 text-xs font-bold text-orange-600 dark:text-orange-300'>
+                      {client.entryCount}{' '}
+                      {client.entryCount === 1
+                        ? 'apontamento'
+                        : 'apontamentos'}
+                    </span>
+                    <span className='min-w-20 text-sm font-bold sm:text-right'>
+                      {formatDuration(client.loggedSeconds)}
+                    </span>
+                  </div>
+                </div>
               );
             })}
           </div>

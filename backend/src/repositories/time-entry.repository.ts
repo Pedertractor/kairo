@@ -188,6 +188,47 @@ export class TimeEntryRepository {
     return this.prisma.timeEntry.count({ where });
   }
 
+  private buildCardEntriesWhere(
+    cardId: string,
+    date?: string,
+  ): Prisma.TimeEntryWhereInput {
+    const where: Prisma.TimeEntryWhereInput = { cardId };
+
+    if (date) {
+      const dayStart = new Date(`${date}T00:00:00.000`);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setDate(dayEnd.getDate() + 1);
+
+      where.startedAt = { lt: dayEnd };
+      where.OR = [{ endedAt: { gt: dayStart } }, { endedAt: null }];
+    }
+
+    return where;
+  }
+
+  findByCardId(
+    cardId: string,
+    options: { date?: string; skip: number; take: number },
+  ) {
+    const where = this.buildCardEntriesWhere(cardId, options.date);
+
+    return this.prisma.timeEntry.findMany({
+      where,
+      orderBy: { startedAt: 'desc' },
+      skip: options.skip,
+      take: options.take,
+      include: {
+        user: { select: { id: true, name: true } },
+      },
+    });
+  }
+
+  countByCardId(cardId: string, date?: string) {
+    const where = this.buildCardEntriesWhere(cardId, date);
+
+    return this.prisma.timeEntry.count({ where });
+  }
+
   updateDates(id: string, startedAt: Date, endedAt: Date | null) {
     const durationSeconds = endedAt
       ? Math.max(

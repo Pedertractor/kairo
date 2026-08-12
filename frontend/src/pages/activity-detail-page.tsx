@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { ActivityTagBadge } from '@/components/activity-tag-badge'
 import { ActivityStatusActions } from '@/components/activity-status-actions'
+import { ActivityTimeEntriesSection } from '@/components/activity-time-entries-section'
 import { DeleteActivityDialog } from '@/components/delete-activity-dialog'
 import { EditActivityTagDialog } from '@/components/edit-activity-tag-dialog'
 import { EditActivityTitleDialog } from '@/components/edit-activity-title-dialog'
@@ -200,6 +201,13 @@ export function ActivityDetailPage() {
                 onDeleted={() => navigate(`/equipes/${teamId}`)}
               />
             </>
+          ) : null}
+
+          {teamId && activityId ? (
+            <ActivityTimeEntriesSection
+              teamId={teamId}
+              activityId={activityId}
+            />
           ) : null}
         </>
       ) : (

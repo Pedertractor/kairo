@@ -144,6 +144,59 @@ export class AnalyticsRepository {
           select: {
             tagId: true,
             tag: { select: { name: true, color: true } },
+            clientId: true,
+            client: { select: { id: true, name: true } },
+          },
+        },
+      },
+    });
+  }
+
+  findActivitiesForClientAnalytics(
+    teamIds: string[],
+    periodStart: Date,
+    periodEnd: Date,
+    employeeId?: string,
+  ) {
+    return this.prisma.card.findMany({
+      where: {
+        teamId: { in: teamIds },
+        type: 'ACTIVITY',
+        deletedAt: null,
+        createdAt: { gte: periodStart, lt: periodEnd },
+        ...(employeeId ? { createdById: employeeId } : {}),
+      },
+      select: {
+        id: true,
+        clientId: true,
+        client: { select: { id: true, name: true } },
+      },
+    });
+  }
+
+  findTasksForClientAnalytics(
+    teamIds: string[],
+    periodStart: Date,
+    periodEnd: Date,
+    employeeId?: string,
+  ) {
+    return this.prisma.task.findMany({
+      where: {
+        deletedAt: null,
+        createdAt: { gte: periodStart, lt: periodEnd },
+        ...(employeeId ? { createdById: employeeId } : {}),
+        card: {
+          teamId: { in: teamIds },
+          type: 'PROJECT',
+          deletedAt: null,
+        },
+      },
+      select: {
+        id: true,
+        card: {
+          select: {
+            clientId: true,
+            client: { select: { id: true, name: true } },
           },
         },
       },

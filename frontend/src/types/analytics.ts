@@ -62,6 +62,15 @@ export interface ActivityTypeAnalytics {
   members: ActivityTypeMemberAnalytics[]
 }
 
+export interface ClientAnalytics {
+  clientId: string | null
+  clientName: string
+  activityCount: number
+  taskCount: number
+  entryCount: number
+  loggedSeconds: number
+}
+
 export interface AnalyticsDashboard {
   startDate: string
   endDate: string
@@ -78,4 +87,5 @@ export interface AnalyticsDashboard {
   }
   rows: EmployeeDayAnalytics[]
   activityTypes: ActivityTypeAnalytics[]
+  clients: ClientAnalytics[]
 }

@@ -3,6 +3,7 @@ import type {
   ActivityTypeAnalytics,
   AnalyticsDashboard,
   AnalyticsEmployeeOption,
+  ClientAnalytics,
   EmployeeDayAnalytics,
 } from '../types/analytics.types.js';
 import { AppError } from '../utils/errors.js';
@@ -132,23 +133,37 @@ export class AnalyticsService {
     const { periodStart, periodEnd } = getPeriodBounds(startDate, endDate);
     const dayCount = getInclusiveDayCount(startDate, endDate);
     const availabilitySeconds = DAILY_AVAILABILITY_SECONDS * dayCount;
-    const [entries, projectEntries, activityEntries] = await Promise.all([
-      this.repository.findEntriesForTeams(
-        scopedTeams.map((team) => team.id),
-        periodStart,
-        periodEnd,
-        selectedProject?.id,
-      ),
-      selectedProject
-        ? this.repository.findEntriesForProject(selectedProject.id)
-        : Promise.resolve([]),
-      this.repository.findActivityEntriesForTeams(
-        scopedTeams.map((team) => team.id),
-        periodStart,
-        periodEnd,
-        options.employeeId,
-      ),
-    ]);
+    const scopedTeamIds = scopedTeams.map((team) => team.id);
+    const [entries, projectEntries, activityEntries, clientActivities, clientTasks] =
+      await Promise.all([
+        this.repository.findEntriesForTeams(
+          scopedTeamIds,
+          periodStart,
+          periodEnd,
+          selectedProject?.id,
+        ),
+        selectedProject
+          ? this.repository.findEntriesForProject(selectedProject.id)
+          : Promise.resolve([]),
+        this.repository.findActivityEntriesForTeams(
+          scopedTeamIds,
+          periodStart,
+          periodEnd,
+          options.employeeId,
+        ),
+        this.repository.findActivitiesForClientAnalytics(
+          scopedTeamIds,
+          periodStart,
+          periodEnd,
+          options.employeeId,
+        ),
+        this.repository.findTasksForClientAnalytics(
+          scopedTeamIds,
+          periodStart,
+          periodEnd,
+          options.employeeId,
+        ),
+      ]);
     const now = new Date();
     const totalsByEmployee = new Map<
       string,
@@ -264,6 +279,109 @@ export class AnalyticsService {
       .sort((a, b) => {
         if (a._isNone !== b._isNone) {
           return a._isNone ? 1 : -1;
+        }
+        return b.loggedSeconds - a.loggedSeconds;
+      })
+      .map(({ _isNone: _, ...row }) => row);
+
+    const NONE_CLIENT_KEY = '__none__';
+    const clientBuckets = new Map<
+      string,
+      {
+        clientId: string | null;
+        clientName: string;
+        activityCount: number;
+        taskCount: number;
+        entryCount: number;
+        loggedSeconds: number;
+      }
+    >();
+
+    function ensureClientBucket(
+      clientId: string | null,
+      clientName: string | null | undefined,
+    ) {
+      const bucketKey = clientId ?? NONE_CLIENT_KEY;
+      const existing = clientBuckets.get(bucketKey);
+      if (existing) {
+        return existing;
+      }
+
+      const bucket = {
+        clientId,
+        clientName: clientName ?? 'Sem cliente',
+        activityCount: 0,
+        taskCount: 0,
+        entryCount: 0,
+        loggedSeconds: 0,
+      };
+      clientBuckets.set(bucketKey, bucket);
+      return bucket;
+    }
+
+    for (const activity of clientActivities) {
+      const bucket = ensureClientBucket(
+        activity.clientId,
+        activity.client?.name,
+      );
+      bucket.activityCount += 1;
+    }
+
+    for (const task of clientTasks) {
+      const bucket = ensureClientBucket(
+        task.card.clientId,
+        task.card.client?.name,
+      );
+      bucket.taskCount += 1;
+    }
+
+    for (const entry of activityEntries) {
+      if (!employeesById.has(entry.userId)) {
+        continue;
+      }
+
+      if (options.employeeId && entry.userId !== options.employeeId) {
+        continue;
+      }
+
+      if (!entry.card) {
+        continue;
+      }
+
+      const overlapSeconds = getOverlapSeconds(
+        entry.startedAt,
+        entry.endedAt,
+        periodStart,
+        periodEnd,
+        now,
+      );
+      const bucket = ensureClientBucket(
+        entry.card.clientId,
+        entry.card.client?.name,
+      );
+      bucket.entryCount += 1;
+      bucket.loggedSeconds += overlapSeconds;
+    }
+
+    const clients: ClientAnalytics[] = [...clientBuckets.entries()]
+      .map(([key, bucket]) => ({
+        clientId: bucket.clientId,
+        clientName: bucket.clientName,
+        activityCount: bucket.activityCount,
+        taskCount: bucket.taskCount,
+        entryCount: bucket.entryCount,
+        loggedSeconds: bucket.loggedSeconds,
+        _isNone: key === NONE_CLIENT_KEY,
+      }))
+      .sort((a, b) => {
+        if (a._isNone !== b._isNone) {
+          return a._isNone ? 1 : -1;
+        }
+        if (b.activityCount !== a.activityCount) {
+          return b.activityCount - a.activityCount;
+        }
+        if (b.taskCount !== a.taskCount) {
+          return b.taskCount - a.taskCount;
         }
         return b.loggedSeconds - a.loggedSeconds;
       })
@@ -395,6 +513,7 @@ export class AnalyticsService {
       summary,
       rows,
       activityTypes,
+      clients,
     };
   }
 }
