@@ -30,6 +30,17 @@ const CLIENT_NAMES = [
 ] as const
 
 async function main() {
+  const existingCount = await prisma.client.count()
+
+  if (existingCount === 0) {
+    console.log('Clients table empty — seeding clients...')
+  } else {
+    console.log(
+      `Clients table has ${existingCount} row(s) — inserting missing only (no updates)`,
+    )
+  }
+
+  // skipDuplicates: never overwrites existing client rows
   const result = await prisma.client.createMany({
     data: CLIENT_NAMES.map((name) => ({ name })),
     skipDuplicates: true,

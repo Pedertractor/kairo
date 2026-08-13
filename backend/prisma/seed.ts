@@ -32,17 +32,25 @@ function toEmployeeId(unit: UnitType, cardNumber: string) {
 }
 
 async function main() {
+  const existingCount = await prisma.user.count();
+
+  if (existingCount === 0) {
+    console.log('Users table empty — seeding admin users...');
+  } else {
+    console.log(
+      `Users table has ${existingCount} row(s) — creating missing admins only (no updates)`,
+    );
+  }
+
   const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 10);
 
   for (const user of ADMIN_USERS) {
-    await prisma.user.upsert({
+    // update: {} keeps passwords, roles, and names already in the DB untouched
+    const result = await prisma.user.upsert({
       where: {
         unit_cardNumber: { unit: user.unit, cardNumber: user.cardNumber },
       },
-      update: {
-        name: user.name,
-        role: UserRole.ADMIN,
-      },
+      update: {},
       create: {
         employeeId: toEmployeeId(user.unit, user.cardNumber),
         name: user.name,
@@ -54,7 +62,9 @@ async function main() {
       },
     });
 
-    console.log(`Seeded admin: ${user.name} (${user.unit} / ${user.cardNumber})`);
+    console.log(
+      `Admin ready: ${result.name} (${user.unit} / ${user.cardNumber})`,
+    );
   }
 }
 

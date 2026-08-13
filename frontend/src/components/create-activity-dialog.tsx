@@ -206,16 +206,19 @@ export function CreateActivityDialog({
         onOpenChange(nextOpen)
       }}
     >
-      <DialogContent>
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
+      <DialogContent className="flex max-h-[70vh] flex-col gap-0 overflow-hidden">
+        <form
+          onSubmit={handleSubmit}
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          <DialogHeader className="shrink-0 pr-8">
             <DialogTitle>Criar nova atividade</DialogTitle>
             <DialogDescription>
               Preencha os dados para criar uma nova atividade nesta equipe.
             </DialogDescription>
           </DialogHeader>
 
-          <FieldGroup className="py-4">
+          <FieldGroup className="-mx-1 min-h-0 w-auto flex-1 overflow-x-hidden overflow-y-auto px-1 py-4">
             <Field>
               <FieldLabel htmlFor="activity-title">Título</FieldLabel>
               <Input
@@ -391,7 +394,7 @@ export function CreateActivityDialog({
             </Field>
           </FieldGroup>
 
-          <DialogFooter>
+          <DialogFooter className="shrink-0">
             <Button
               type="button"
               variant="cancel"

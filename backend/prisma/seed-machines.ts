@@ -47,25 +47,28 @@ const MACHINES = [
 ] as const
 
 async function main() {
-  let upserted = 0
+  const existingCount = await prisma.machine.count()
 
-  for (const machine of MACHINES) {
-    await prisma.machine.upsert({
-      where: { name: machine.name },
-      create: {
-        name: machine.name,
-        costCenter: machine.costCenter,
-      },
-      update: {
-        costCenter: machine.costCenter,
-      },
-    })
-    upserted += 1
+  if (existingCount === 0) {
+    console.log('Machines table empty — seeding machines...')
+  } else {
+    console.log(
+      `Machines table has ${existingCount} row(s) — inserting missing only (no updates)`,
+    )
   }
+
+  // skipDuplicates: never overwrites existing machine rows (name / costCenter)
+  const result = await prisma.machine.createMany({
+    data: MACHINES.map((machine) => ({
+      name: machine.name,
+      costCenter: machine.costCenter,
+    })),
+    skipDuplicates: true,
+  })
 
   const total = await prisma.machine.count()
 
-  console.log(`Machines upserted: ${upserted}`)
+  console.log(`Machines inserted: ${result.count}`)
   console.log(`Machines total: ${total}`)
 }
 
