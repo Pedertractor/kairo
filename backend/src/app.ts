@@ -35,6 +35,15 @@ export async function buildApp() {
       return sendError(reply, error.statusCode, error.message);
     }
 
+    if (
+      error !== null &&
+      typeof error === 'object' &&
+      'code' in error &&
+      error.code === 'FST_REQ_FILE_TOO_LARGE'
+    ) {
+      return sendError(reply, 400, MENSAGENS.DOCUMENTO_TAMANHO_INVALIDO);
+    }
+
     app.log.error(error);
     return sendError(reply, 500, MENSAGENS.ERRO_INTERNO);
   });

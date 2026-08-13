@@ -8,6 +8,7 @@ import {
   extensionForMimeType,
   isAllowedDocumentMimeType,
   MAX_DOCUMENT_BYTES,
+  resolveDocumentMimeType,
 } from '../lib/document-upload.js';
 import { DocumentRepository } from '../repositories/document.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
@@ -75,7 +76,9 @@ export class DocumentService {
   ): Promise<DocumentSummary> {
     await this.assertTeamMember(teamId, userId);
 
-    if (!isAllowedDocumentMimeType(file.mimetype)) {
+    const mimeType = resolveDocumentMimeType(file.mimetype, file.filename);
+
+    if (!isAllowedDocumentMimeType(mimeType)) {
       throw new AppError(400, MENSAGENS.DOCUMENTO_TIPO_INVALIDO);
     }
 
@@ -88,19 +91,18 @@ export class DocumentService {
     }
 
     const originalName = file.filename.trim() || 'documento';
-    const extension = extensionForMimeType(file.mimetype);
     const pendingKey = `pending/${randomUUID()}`;
 
     const created = await this.documentRepository.create({
       teamId,
       uploadedById: userId,
       originalName,
-      mimeType: file.mimetype,
+      mimeType,
       sizeBytes: file.buffer.byteLength,
       storageKey: pendingKey,
     });
 
-    const storageKey = `teams/${teamId}/${created.id}${extension}`;
+    const storageKey = `teams/${teamId}/${created.id}${extensionForMimeType(mimeType)}`;
 
     try {
       await writeStoredFile(storageKey, file.buffer);

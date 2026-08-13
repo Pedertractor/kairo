@@ -23,3 +23,28 @@ export function extensionForMimeType(mimeType: string): string {
 export function isAllowedDocumentMimeType(mimeType: string): boolean {
   return ALLOWED_DOCUMENT_MIME_TYPES.has(mimeType);
 }
+
+const EXTENSION_TO_MIME: Record<string, string> = {
+  '.pdf': 'application/pdf',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
+};
+
+export function resolveDocumentMimeType(
+  mimeType: string,
+  filename: string,
+): string {
+  if (isAllowedDocumentMimeType(mimeType)) {
+    return mimeType;
+  }
+
+  const lower = filename.toLowerCase();
+  const extension = Object.keys(EXTENSION_TO_MIME).find((item) =>
+    lower.endsWith(item),
+  );
+
+  return extension ? EXTENSION_TO_MIME[extension] : mimeType;
+}

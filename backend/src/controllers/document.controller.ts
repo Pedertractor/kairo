@@ -1,4 +1,5 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import '@fastify/multipart';
 import { createStoredFileStream } from '../lib/local-file-storage.js';
 import {
   documentIdParamSchema,
@@ -10,10 +11,10 @@ import { MENSAGENS, sendSuccess } from '../utils/response.js';
 
 function isFileTooLargeError(error: unknown): boolean {
   return (
-    Boolean(error) &&
+    error !== null &&
     typeof error === 'object' &&
     'code' in error &&
-    (error as { code: string }).code === 'FST_REQ_FILE_TOO_LARGE'
+    error.code === 'FST_REQ_FILE_TOO_LARGE'
   );
 }
 
