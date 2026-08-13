@@ -7,6 +7,14 @@ const memberInclude = {
     },
     orderBy: { joinedAt: 'asc' as const },
   },
+  costCenters: {
+    include: {
+      costCenter: {
+        select: { id: true, costCenter: true, description: true },
+      },
+    },
+    orderBy: { costCenter: { costCenter: 'asc' as const } },
+  },
   _count: { select: { members: true } },
 };
 

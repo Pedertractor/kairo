@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { TeamController } from '../controllers/team.controller.js';
 import { createRequireAdminOrLeader } from '../middleware/require-admin-or-leader.js';
+import { CostCenterRepository } from '../repositories/cost-center.repository.js';
 import { TaskRepository } from '../repositories/task.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
@@ -21,12 +22,23 @@ export async function teamRoutes(app: FastifyInstance) {
       new TeamRepository(app.prisma),
       userRepository,
       absenceService,
+      new CostCenterRepository(app.prisma),
     ),
   );
 
   app.get('/teams', { preHandler: [app.authenticate] }, controller.list);
   app.get('/teams/:id', { preHandler: [app.authenticate] }, controller.getById);
   app.patch('/teams/:id', { preHandler: [app.authenticate] }, controller.update);
+  app.get(
+    '/teams/:id/cost-centers',
+    { preHandler: [app.authenticate] },
+    controller.listCostCenters,
+  );
+  app.put(
+    '/teams/:id/cost-centers',
+    { preHandler: [app.authenticate] },
+    controller.setCostCenters,
+  );
   app.get(
     '/teams/:id/available-members',
     { preHandler: [app.authenticate] },

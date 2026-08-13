@@ -26,6 +26,11 @@ export const MENSAGENS = {
   SENHAS_NAO_COINCIDEM: 'As senhas não coincidem',
   EQUIPE_CRIADA_SUCESSO: 'Equipe criada com sucesso',
   EQUIPE_ATUALIZADA_SUCESSO: 'Equipe atualizada com sucesso',
+  CENTROS_CUSTO_SINCRONIZADOS_SUCESSO:
+    'Centros de custo sincronizados com sucesso',
+  CENTROS_CUSTO_ATUALIZADOS_SUCESSO:
+    'Centros de custo da equipe atualizados com sucesso',
+  CENTRO_CUSTO_NAO_ENCONTRADO: 'Centro de custo não encontrado',
   MEMBRO_REMOVIDO_SUCESSO: 'Membro removido com sucesso',
   ULTIMO_ADMIN_NAO_PODE_SER_REMOVIDO:
     'Não é possível remover o único administrador da equipe',

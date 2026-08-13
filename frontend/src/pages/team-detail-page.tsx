@@ -122,6 +122,20 @@ export function TeamDetailPage() {
             {team.description ? (
               <p className='text-muted-foreground'>{team.description}</p>
             ) : null}
+            {(team.costCenters ?? []).length > 0 ? (
+              <ul className='flex flex-wrap gap-1.5'>
+                {team.costCenters.map((item) => (
+                  <li
+                    key={item.id}
+                    className='rounded-sm bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground'
+                  >
+                    {item.description.trim()
+                      ? `${item.costCenter} · ${item.description}`
+                      : item.costCenter}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </div>
 
           <EditTeamDialog

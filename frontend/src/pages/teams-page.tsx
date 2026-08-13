@@ -33,6 +33,14 @@ export function TeamsPage() {
     await Promise.all([loadTeams(), refreshUser()])
   }, [loadTeams, refreshUser])
 
+  const handleTeamUpdated = useCallback((updated: TeamSummary) => {
+    setTeams((current) =>
+      current.map((team) =>
+        team.id === updated.id ? { ...team, ...updated } : team,
+      ),
+    )
+  }, [])
+
   const canCreateTeam = user?.role === 'ADMIN' || user?.role === 'LEADER'
 
   return (
@@ -63,6 +71,7 @@ export function TeamsPage() {
               key={team.id}
               team={team}
               isAdmin={team.role === 'ADMIN'}
+              onUpdated={handleTeamUpdated}
             />
           ))}
         </div>

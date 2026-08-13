@@ -16,6 +16,7 @@
     "db:seed:users": "tsx prisma/seed.ts",
     "db:seed:clients": "tsx prisma/seed-clients.ts",
     "db:seed:machines": "tsx prisma/seed-machines.ts",
+    "db:sync:cost-centers": "tsx prisma/sync-cost-centers.ts",
     "db:seed:all": "tsx prisma/seed.ts && tsx prisma/seed-clients.ts && tsx prisma/seed-machines.ts"
   },
   "keywords": [],

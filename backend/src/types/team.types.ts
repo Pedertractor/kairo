@@ -1,4 +1,5 @@
 import type { TeamRole, UnitType } from '../generated/client.js';
+import type { CostCenterSummary } from './cost-center.types.js';
 
 export interface TeamMemberSummary {
   id: string;
@@ -21,6 +22,7 @@ export interface TeamSummary {
   createdById: string;
   memberCount: number;
   members: TeamMemberSummary[];
+  costCenters: CostCenterSummary[];
   role: TeamRole;
   createdAt: string;
 }

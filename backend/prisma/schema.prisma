@@ -120,12 +120,42 @@ model Team {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members TeamMember[]
-  invites TeamInvite[]
-  cards   Card[]
-  tags    Tag[]
+  members     TeamMember[]
+  invites     TeamInvite[]
+  cards       Card[]
+  tags        Tag[]
+  costCenters TeamCostCenter[]
 
   @@map("teams")
+}
+
+model CostCenter {
+  id          String @id @default(cuid())
+  costCenter  String @unique
+  description String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teams TeamCostCenter[]
+
+  @@map("cost_centers")
+}
+
+model TeamCostCenter {
+  id           String @id @default(cuid())
+  teamId       String
+  costCenterId String
+
+  team       Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  costCenter CostCenter @relation(fields: [costCenterId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([teamId, costCenterId])
+  @@index([teamId])
+  @@index([costCenterId])
+  @@map("team_cost_centers")
 }
 
 model TeamMember {
