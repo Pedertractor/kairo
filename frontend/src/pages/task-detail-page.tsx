@@ -9,6 +9,7 @@ import { FinishTaskDialog } from '@/components/finish-task-dialog'
 import { ItemActionsMenu } from '@/components/item-actions-menu'
 import { StartTaskTimerButton } from '@/components/start-task-timer-button'
 import { TaskTimeEntriesSection } from '@/components/task-time-entries-section'
+import { ComplexityLevelMeter } from '@/components/complexity-level-meter'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CardTimeBudget } from '@/components/card-time-budget'
@@ -174,6 +175,13 @@ export function TaskDetailPage() {
                 </span>
               </p>
             ) : null}
+            {task.complexityLevel ? (
+              <ComplexityLevelMeter
+                level={task.complexityLevel}
+                size="lg"
+                className="text-sm text-muted-foreground"
+              />
+            ) : null}
             <CardTimeBudget
               loggedSeconds={task.loggedSeconds}
               estimatedHours={task.estimatedHours}
@@ -211,7 +219,6 @@ export function TaskDetailPage() {
             <TaskTimeEntriesSection
               projectId={projectId}
               taskId={taskId}
-              onUpdated={() => void loadTask()}
             />
           ) : null}
         </>

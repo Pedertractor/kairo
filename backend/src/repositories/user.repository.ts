@@ -57,11 +57,75 @@ export class UserRepository {
     });
   }
 
+  findManagedByTeamAdmin(leaderUserId: string) {
+    return this.prisma.user.findMany({
+      where: {
+        memberships: {
+          some: {
+            team: {
+              members: {
+                some: {
+                  userId: leaderUserId,
+                  role: 'ADMIN',
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: [{ active: 'desc' }, { name: 'asc' }],
+    });
+  }
+
+  async canLeaderManageUser(leaderUserId: string, targetUserId: string) {
+    const shared = await this.prisma.teamMember.findFirst({
+      where: {
+        userId: targetUserId,
+        team: {
+          members: {
+            some: {
+              userId: leaderUserId,
+              role: 'ADMIN',
+            },
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    return shared !== null;
+  }
+
+  createWithTeamMembership(
+    data: {
+      employeeId: string;
+      name: string;
+      unit: UnitType;
+      cardNumber: string;
+      passwordHash: string;
+      role: UserRole;
+    },
+    teamId: string,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({ data });
+
+      await tx.teamMember.create({
+        data: {
+          teamId,
+          userId: user.id,
+          role: 'MEMBER',
+        },
+      });
+
+      return user;
+    });
+  }
+
   updateRole(
     id: string,
     data: {
       role: UserRole;
-      printerOperator: boolean;
     },
   ) {
     return this.prisma.user.update({
@@ -108,7 +172,6 @@ export class UserRepository {
     cardNumber: string;
     passwordHash: string;
     role: UserRole;
-    printerOperator?: boolean;
   }) {
     return this.prisma.user.create({ data });
   }

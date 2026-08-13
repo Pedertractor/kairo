@@ -1,3 +1,4 @@
+import type { CostCenterSummary } from '@/types/cost-center'
 import type { UnitType } from '@/types/auth'
 
 export type TeamRole = 'ADMIN' | 'MEMBER'
@@ -16,6 +17,7 @@ export interface TeamSummary {
   createdById: string
   memberCount: number
   members: TeamMemberSummary[]
+  costCenters: CostCenterSummary[]
   role: TeamRole
   createdAt: string
 }
@@ -31,6 +33,11 @@ export interface TeamResponse {
 export interface CreateTeamInput {
   name: string
   description?: string
+}
+
+export interface UpdateTeamInput {
+  name?: string
+  description?: string | null
 }
 
 export interface AddTeamMemberInput {

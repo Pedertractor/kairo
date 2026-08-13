@@ -1,10 +1,14 @@
-import type { Card, CardStatus } from '../generated/client.js';
+import type { Card, CardStatus, ComplexityLevel } from '../generated/client.js';
 import { CardRepository } from '../repositories/card.repository.js';
+import { ClientRepository } from '../repositories/client.repository.js';
 import { FavoriteRepository } from '../repositories/favorite.repository.js';
+import { MachineRepository } from '../repositories/machine.repository.js';
 import { TagRepository } from '../repositories/tag.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
 import type {
+  ActivityClientSummary,
+  ActivityMachineSummary,
   ActivitySummary,
   ActivityTagSummary,
   ProjectSummary,
@@ -12,8 +16,10 @@ import type {
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 
-type CardWithTag = Card & {
+type CardWithRelations = Card & {
   tag?: ActivityTagSummary | null;
+  client?: ActivityClientSummary | null;
+  machine?: ActivityMachineSummary | null;
 };
 
 function toActivityTag(
@@ -30,8 +36,35 @@ function toActivityTag(
   };
 }
 
+function toActivityClient(
+  client: ActivityClientSummary | null | undefined,
+): ActivityClientSummary | null {
+  if (!client) {
+    return null;
+  }
+
+  return {
+    id: client.id,
+    name: client.name,
+  };
+}
+
+function toActivityMachine(
+  machine: ActivityMachineSummary | null | undefined,
+): ActivityMachineSummary | null {
+  if (!machine) {
+    return null;
+  }
+
+  return {
+    id: machine.id,
+    name: machine.name,
+    costCenter: machine.costCenter,
+  };
+}
+
 function toActivitySummary(
-  card: CardWithTag,
+  card: CardWithRelations,
   loggedSeconds = 0,
   isFavorite = false,
 ): ActivitySummary {
@@ -41,10 +74,13 @@ function toActivitySummary(
     title: card.title,
     description: card.description,
     status: card.status,
+    complexityLevel: card.complexityLevel,
     estimatedHours: card.estimatedHours?.toString() ?? null,
     loggedSeconds,
     isFavorite,
     tag: toActivityTag(card.tag),
+    client: toActivityClient(card.client),
+    machine: toActivityMachine(card.machine),
     createdById: card.createdById,
     createdAt: card.createdAt.toISOString(),
     updatedAt: card.updatedAt.toISOString(),
@@ -78,6 +114,8 @@ export class CardService {
     private readonly timeEntryRepository: TimeEntryRepository,
     private readonly favoriteRepository: FavoriteRepository,
     private readonly tagRepository: TagRepository,
+    private readonly clientRepository: ClientRepository,
+    private readonly machineRepository: MachineRepository,
   ) {}
 
   private async assertTeamMember(teamId: string, userId: string) {
@@ -96,6 +134,22 @@ export class CardService {
 
     if (!tag || tag.teamId !== teamId) {
       throw new AppError(404, MENSAGENS.TAG_NAO_ENCONTRADA);
+    }
+  }
+
+  private async assertClient(clientId: string) {
+    const client = await this.clientRepository.findById(clientId);
+
+    if (!client) {
+      throw new AppError(404, MENSAGENS.CLIENTE_NAO_ENCONTRADO);
+    }
+  }
+
+  private async assertMachine(machineId: string) {
+    const machine = await this.machineRepository.findById(machineId);
+
+    if (!machine) {
+      throw new AppError(404, MENSAGENS.MAQUINA_NAO_ENCONTRADA);
     }
   }
 
@@ -166,11 +220,22 @@ export class CardService {
     description?: string,
     estimatedHours?: number,
     tagId?: string,
+    clientId?: string,
+    machineId?: string,
+    complexityLevel?: ComplexityLevel,
   ): Promise<ActivitySummary> {
     await this.assertTeamMember(teamId, userId);
 
     if (tagId) {
       await this.assertTeamTag(teamId, tagId);
+    }
+
+    if (clientId) {
+      await this.assertClient(clientId);
+    }
+
+    if (machineId) {
+      await this.assertMachine(machineId);
     }
 
     const card = await this.cardRepository.createActivity({
@@ -180,6 +245,9 @@ export class CardService {
       description,
       estimatedHours,
       tagId,
+      clientId,
+      machineId,
+      complexityLevel,
     });
 
     return toActivitySummary(card);
@@ -198,7 +266,16 @@ export class CardService {
     teamId: string,
     activityId: string,
     userId: string,
-    data: { title?: string; status?: CardStatus; tagId?: string | null },
+    data: {
+      title?: string;
+      status?: CardStatus;
+      tagId?: string | null;
+      description?: string | null;
+      estimatedHours?: number | null;
+      clientId?: string | null;
+      machineId?: string | null;
+      complexityLevel?: ComplexityLevel | null;
+    },
   ): Promise<ActivitySummary> {
     await this.assertTeamMember(teamId, userId);
 
@@ -210,6 +287,14 @@ export class CardService {
 
     if (data.tagId) {
       await this.assertTeamTag(teamId, data.tagId);
+    }
+
+    if (data.clientId) {
+      await this.assertClient(data.clientId);
+    }
+
+    if (data.machineId) {
+      await this.assertMachine(data.machineId);
     }
 
     const updated = await this.cardRepository.updateActivity(activityId, data);
@@ -337,7 +422,11 @@ export class CardService {
     teamId: string,
     projectId: string,
     userId: string,
-    data: { title?: string; status?: CardStatus },
+    data: {
+      title?: string;
+      status?: CardStatus;
+      description?: string | null;
+    },
   ): Promise<ProjectSummary> {
     await this.assertTeamMember(teamId, userId);
 

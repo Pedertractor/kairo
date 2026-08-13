@@ -115,11 +115,17 @@ type TaskEntryWithUser = Awaited<
   ReturnType<TimeEntryRepository['findByTaskId']>
 >[number];
 
+type CardEntryWithUser = Awaited<
+  ReturnType<TimeEntryRepository['findByCardId']>
+>[number];
+
 type TeamEntry = Awaited<
   ReturnType<TimeEntryRepository['findByTeamId']>
 >[number];
 
-function toTaskTimeEntrySummary(entry: TaskEntryWithUser): TaskTimeEntrySummary {
+function toTaskTimeEntrySummary(
+  entry: TaskEntryWithUser | CardEntryWithUser,
+): TaskTimeEntrySummary {
   return {
     id: entry.id,
     userId: entry.userId,
@@ -587,6 +593,51 @@ export class TimeEntryService {
         take: options.pageSize,
       }),
       this.timeEntryRepository.countByTaskId(taskId, options.date),
+    ]);
+
+    const totalPages = total === 0 ? 0 : Math.ceil(total / options.pageSize);
+
+    return {
+      timeEntries: entries.map(toTaskTimeEntrySummary),
+      pagination: {
+        page: options.page,
+        pageSize: options.pageSize,
+        total,
+        totalPages,
+      },
+    };
+  }
+
+  async listActivityTimeEntries(
+    teamId: string,
+    activityId: string,
+    userId: string,
+    options: { date?: string; page: number; pageSize: number },
+  ): Promise<PaginatedTaskTimeEntries> {
+    const membership = await this.teamRepository.findMembershipByTeamAndUser(
+      teamId,
+      userId,
+    );
+
+    if (!membership) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    const card = await this.cardRepository.findActivityById(activityId);
+
+    if (!card || card.teamId !== teamId || card.type !== 'ACTIVITY') {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    const skip = (options.page - 1) * options.pageSize;
+
+    const [entries, total] = await Promise.all([
+      this.timeEntryRepository.findByCardId(activityId, {
+        date: options.date,
+        skip,
+        take: options.pageSize,
+      }),
+      this.timeEntryRepository.countByCardId(activityId, options.date),
     ]);
 
     const totalPages = total === 0 ? 0 : Math.ceil(total / options.pageSize);

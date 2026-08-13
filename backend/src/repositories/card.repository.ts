@@ -1,6 +1,7 @@
 import type {
   CardStatus,
   CardType,
+  ComplexityLevel,
   PrismaClient,
 } from '../generated/client.js';
 
@@ -10,6 +11,19 @@ const activityTagInclude = {
       id: true,
       name: true,
       color: true,
+    },
+  },
+  client: {
+    select: {
+      id: true,
+      name: true,
+    },
+  },
+  machine: {
+    select: {
+      id: true,
+      name: true,
+      costCenter: true,
     },
   },
 } as const;
@@ -42,7 +56,16 @@ export class CardRepository {
 
   updateActivity(
     activityId: string,
-    data: { title?: string; status?: CardStatus; tagId?: string | null },
+    data: {
+      title?: string;
+      status?: CardStatus;
+      tagId?: string | null;
+      description?: string | null;
+      estimatedHours?: number | null;
+      clientId?: string | null;
+      machineId?: string | null;
+      complexityLevel?: ComplexityLevel | null;
+    },
   ) {
     return this.prisma.card.update({
       where: { id: activityId },
@@ -50,6 +73,17 @@ export class CardRepository {
         ...(data.title !== undefined ? { title: data.title } : {}),
         ...(data.status !== undefined ? { status: data.status } : {}),
         ...(data.tagId !== undefined ? { tagId: data.tagId } : {}),
+        ...(data.description !== undefined
+          ? { description: data.description }
+          : {}),
+        ...(data.estimatedHours !== undefined
+          ? { estimatedHours: data.estimatedHours }
+          : {}),
+        ...(data.clientId !== undefined ? { clientId: data.clientId } : {}),
+        ...(data.machineId !== undefined ? { machineId: data.machineId } : {}),
+        ...(data.complexityLevel !== undefined
+          ? { complexityLevel: data.complexityLevel }
+          : {}),
       },
       include: activityTagInclude,
     });
@@ -63,6 +97,9 @@ export class CardRepository {
     estimatedHours?: number;
     status?: CardStatus;
     tagId?: string;
+    clientId?: string;
+    machineId?: string;
+    complexityLevel?: ComplexityLevel;
   }) {
     return this.prisma.card.create({
       data: {
@@ -74,6 +111,9 @@ export class CardRepository {
         status: data.status ?? 'TODO',
         estimatedHours: data.estimatedHours ?? null,
         tagId: data.tagId ?? null,
+        clientId: data.clientId ?? null,
+        machineId: data.machineId ?? null,
+        complexityLevel: data.complexityLevel ?? null,
       },
       include: activityTagInclude,
     });
@@ -125,13 +165,20 @@ export class CardRepository {
 
   updateProject(
     projectId: string,
-    data: { title?: string; status?: CardStatus },
+    data: {
+      title?: string;
+      status?: CardStatus;
+      description?: string | null;
+    },
   ) {
     return this.prisma.card.update({
       where: { id: projectId },
       data: {
         ...(data.title !== undefined ? { title: data.title } : {}),
         ...(data.status !== undefined ? { status: data.status } : {}),
+        ...(data.description !== undefined
+          ? { description: data.description }
+          : {}),
       },
     });
   }

@@ -1,3 +1,8 @@
+import type { ComplexityLevel } from '@/lib/complexity-level'
+import type { MachineSummary } from '@/types/machine'
+
+export type { ComplexityLevel }
+
 export type TaskStatus =
   | 'TODO'
   | 'IN_PROGRESS'
@@ -11,9 +16,11 @@ export interface TaskSummary {
   title: string
   description: string | null
   status: TaskStatus
+  complexityLevel: ComplexityLevel | null
   estimatedHours: string | null
   assignedToId: string | null
   assignedToName: string | null
+  machine: MachineSummary | null
   sortOrder: number
   isFavorite: boolean
   createdById: string
@@ -41,9 +48,13 @@ export interface CreateTaskInput {
   title: string
   description?: string
   estimatedHours?: number
+  machineId?: string
+  complexityLevel?: ComplexityLevel
 }
 
 export interface UpdateTaskInput {
   title?: string
   status?: TaskStatus
+  machineId?: string | null
+  complexityLevel?: ComplexityLevel | null
 }

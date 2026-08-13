@@ -26,6 +26,13 @@ export const cardStatusSchema = z.enum([
   'CANCELED',
 ]);
 
+export const complexityLevelSchema = z.enum([
+  'BAIXA',
+  'MEDIA',
+  'ALTA',
+  'MUITO_ALTA',
+]);
+
 export const updateActivityStatusSchema = z.object({
   status: cardStatusSchema,
 });
@@ -35,12 +42,18 @@ export const updateActivitySchema = z
     title: z.string().trim().min(1, 'Título é obrigatório').optional(),
     status: cardStatusSchema.optional(),
     tagId: z.string().min(1).nullable().optional(),
+    description: z.string().trim().nullable().optional(),
+    estimatedHours: z.coerce
+      .number()
+      .positive('Horas estimadas deve ser um valor positivo')
+      .nullable()
+      .optional(),
+    clientId: z.string().min(1).nullable().optional(),
+    machineId: z.string().min(1).nullable().optional(),
+    complexityLevel: complexityLevelSchema.nullable().optional(),
   })
   .refine(
-    (data) =>
-      data.title !== undefined ||
-      data.status !== undefined ||
-      data.tagId !== undefined,
+    (data) => Object.values(data).some((value) => value !== undefined),
     { message: 'Informe ao menos um campo para atualizar' },
   );
 
@@ -52,10 +65,29 @@ export const createActivitySchema = z.object({
     .positive('Horas estimadas deve ser um valor positivo')
     .optional(),
   tagId: z.string().min(1).optional(),
+  clientId: z.string().min(1).optional(),
+  machineId: z.string().min(1).optional(),
+  complexityLevel: complexityLevelSchema.optional(),
 });
 
-export const createProjectSchema = createActivitySchema;
+export const createProjectSchema = z.object({
+  title: z.string().trim().min(1, 'Título é obrigatório'),
+  description: z.string().trim().optional(),
+  estimatedHours: z.coerce
+    .number()
+    .positive('Horas estimadas deve ser um valor positivo')
+    .optional(),
+});
 
 export const updateProjectStatusSchema = updateActivityStatusSchema;
 
-export const updateProjectSchema = updateActivitySchema;
+export const updateProjectSchema = z
+  .object({
+    title: z.string().trim().min(1, 'Título é obrigatório').optional(),
+    status: cardStatusSchema.optional(),
+    description: z.string().trim().nullable().optional(),
+  })
+  .refine(
+    (data) => Object.values(data).some((value) => value !== undefined),
+    { message: 'Informe ao menos um campo para atualizar' },
+  );

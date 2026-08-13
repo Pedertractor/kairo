@@ -58,6 +58,11 @@ export async function timeEntryRoutes(app: FastifyInstance) {
     { preHandler: [app.authenticate] },
     controller.pauseActive,
   );
+  app.get(
+    '/teams/:teamId/activities/:activityId/time-entries',
+    { preHandler: [app.authenticate] },
+    controller.listActivityTimeEntries,
+  );
   app.post(
     '/teams/:teamId/activities/:activityId/time-entries',
     { preHandler: [app.authenticate] },

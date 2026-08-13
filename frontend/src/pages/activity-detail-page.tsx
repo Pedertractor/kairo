@@ -2,8 +2,11 @@ import { useEffect, useState } from 'react'
 import { ArrowLeft, Pencil } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
+import { ActivityDetailsDialog } from '@/components/activity-details-dialog'
 import { ActivityTagBadge } from '@/components/activity-tag-badge'
 import { ActivityStatusActions } from '@/components/activity-status-actions'
+import { ActivityTimeEntriesSection } from '@/components/activity-time-entries-section'
+import { ComplexityLevelMeter } from '@/components/complexity-level-meter'
 import { DeleteActivityDialog } from '@/components/delete-activity-dialog'
 import { EditActivityTagDialog } from '@/components/edit-activity-tag-dialog'
 import { EditActivityTitleDialog } from '@/components/edit-activity-title-dialog'
@@ -30,6 +33,7 @@ export function ActivityDetailPage() {
   const [isEditTagDialogOpen, setIsEditTagDialogOpen] = useState(false)
   const [isFinishDialogOpen, setIsFinishDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false)
 
   useEffect(() => {
     if (!teamId || !activityId) {
@@ -114,6 +118,7 @@ export function ActivityDetailPage() {
                   <ItemActionsMenu
                     title={activity.title}
                     canFinish={canFinishStatus(activity.status)}
+                    onDetails={() => setIsDetailsDialogOpen(true)}
                     onFinish={() => setIsFinishDialogOpen(true)}
                     onDelete={() => setIsDeleteDialogOpen(true)}
                   />
@@ -155,6 +160,13 @@ export function ActivityDetailPage() {
             {activity.description ? (
               <p className="text-muted-foreground">{activity.description}</p>
             ) : null}
+            {activity.complexityLevel ? (
+              <ComplexityLevelMeter
+                level={activity.complexityLevel}
+                size="lg"
+                className="text-sm text-muted-foreground"
+              />
+            ) : null}
             <CardTimeBudget
               loggedSeconds={activity.loggedSeconds}
               estimatedHours={activity.estimatedHours}
@@ -176,6 +188,13 @@ export function ActivityDetailPage() {
                 activity={activity}
                 open={isEditTagDialogOpen}
                 onOpenChange={setIsEditTagDialogOpen}
+                onUpdated={reloadActivity}
+              />
+              <ActivityDetailsDialog
+                teamId={teamId}
+                activity={activity}
+                open={isDetailsDialogOpen}
+                onOpenChange={setIsDetailsDialogOpen}
                 onUpdated={reloadActivity}
               />
               <UpdateActivityStatusDialog
@@ -200,6 +219,13 @@ export function ActivityDetailPage() {
                 onDeleted={() => navigate(`/equipes/${teamId}`)}
               />
             </>
+          ) : null}
+
+          {teamId && activityId ? (
+            <ActivityTimeEntriesSection
+              teamId={teamId}
+              activityId={activityId}
+            />
           ) : null}
         </>
       ) : (

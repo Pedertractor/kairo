@@ -21,6 +21,7 @@ const envSchema = z.object({
   API_BASE_NAME_APPLICATION: z
     .string()
     .min(1, 'API_BASE_NAME_APPLICATION é obrigatório'),
+  UPLOAD_DIR: z.string().min(1).default('uploads'),
 });
 
 const parsed = envSchema.safeParse(process.env);

@@ -13,7 +13,6 @@ import { TaskDetailPage } from '@/pages/task-detail-page'
 import { ApontamentosPage } from '@/pages/apontamentos-page'
 import { ProjetosPage } from '@/pages/projetos-page'
 import { TeamsPage } from '@/pages/teams-page'
-import { ThreeDPage } from '@/pages/3d-page'
 import { UsuariosPage } from '@/pages/usuarios-page'
 
 function ProtectedRoute({
@@ -22,7 +21,7 @@ function ProtectedRoute({
   hideHeader = false,
   mainClassName,
   requireAdmin = false,
-  requirePrinterOperator = false,
+  requireAdminOrLeader = false,
   requireTeamOwner = false,
 }: {
   children: React.ReactNode
@@ -30,7 +29,7 @@ function ProtectedRoute({
   hideHeader?: boolean
   mainClassName?: string
   requireAdmin?: boolean
-  requirePrinterOperator?: boolean
+  requireAdminOrLeader?: boolean
   requireTeamOwner?: boolean
 }) {
   const { isAuthenticated, user } = useAuth()
@@ -43,7 +42,11 @@ function ProtectedRoute({
     return <Navigate to="/" replace />
   }
 
-  if (requirePrinterOperator && !user?.printerOperator) {
+  if (
+    requireAdminOrLeader &&
+    user?.role !== 'ADMIN' &&
+    user?.role !== 'LEADER'
+  ) {
     return <Navigate to="/" replace />
   }
 
@@ -138,17 +141,13 @@ function App() {
         }
       />
       <Route
-        path="/3d"
-        element={
-          <ProtectedRoute key="3d" title="3D" requirePrinterOperator>
-            <ThreeDPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
         path="/usuarios"
         element={
-          <ProtectedRoute key="usuarios" title="Usuários" requireAdmin>
+          <ProtectedRoute
+            key="usuarios"
+            title="Usuários"
+            requireAdminOrLeader
+          >
             <UsuariosPage />
           </ProtectedRoute>
         }

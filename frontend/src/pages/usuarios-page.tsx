@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Crown,
   EllipsisIcon,
   KeyRound,
   Plus,
+  Search,
   Shield,
   UserCheck,
   UserX,
@@ -22,6 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@/hooks/use-auth'
 import { api } from '@/lib/api-handler'
@@ -37,6 +39,7 @@ const UNIT_LABELS: Record<UnitType, string> = {
 
 const ROLE_LABELS: Record<UserRole, string> = {
   ADMIN: 'Administrador',
+  LEADER: 'Líder',
   USER: 'Usuário',
 }
 
@@ -49,6 +52,7 @@ export function UsuariosPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [activeAction, setActiveAction] = useState<UserAction | null>(null)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [nameFilter, setNameFilter] = useState('')
 
   const loadUsers = useCallback(async () => {
     setIsLoading(true)
@@ -64,6 +68,18 @@ export function UsuariosPage() {
   useEffect(() => {
     void loadUsers()
   }, [loadUsers])
+
+  const filteredUsers = useMemo(() => {
+    const query = nameFilter.trim().toLowerCase()
+
+    if (query === '') {
+      return users
+    }
+
+    return users.filter((user) => user.name.toLowerCase().includes(query))
+  }, [users, nameFilter])
+
+  const hasActiveFilter = nameFilter.trim() !== ''
 
   function handleUserUpdated(updatedUser: User) {
     setUsers((currentUsers) =>
@@ -94,6 +110,9 @@ export function UsuariosPage() {
   }
 
   const isCurrentUser = (user: User) => user.id === currentUser?.id
+  const isLeader = currentUser?.role === 'LEADER'
+  const canManageUser = (user: User) =>
+    !isLeader || user.role !== 'ADMIN'
 
   return (
     <div className="flex flex-1 flex-col gap-6">
@@ -147,6 +166,20 @@ export function UsuariosPage() {
         onUpdated={handleUserUpdated}
       />
 
+      {!isLoading && users.length > 0 ? (
+        <div className="relative w-full sm:w-1/3">
+          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            value={nameFilter}
+            onChange={(event) => setNameFilter(event.target.value)}
+            placeholder="Buscar por nome..."
+            className="pl-8"
+            aria-label="Buscar usuários por nome"
+          />
+        </div>
+      ) : null}
+
       {isLoading ? (
         <div className="flex flex-col gap-2">
           {Array.from({ length: 5 }).map((_, index) => (
@@ -160,6 +193,15 @@ export function UsuariosPage() {
             Os usuários cadastrados na plataforma aparecerão aqui.
           </p>
         </div>
+      ) : filteredUsers.length === 0 ? (
+        <div className="flex min-h-48 flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/30 p-8 text-center">
+          <p className="text-sm font-medium">Nenhum usuário encontrado</p>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            {hasActiveFilter
+              ? 'Tente ajustar o filtro de nome.'
+              : 'Os usuários cadastrados na plataforma aparecerão aqui.'}
+          </p>
+        </div>
       ) : (
         <div className="overflow-hidden rounded-xl border bg-card">
           <div className="overflow-x-auto">
@@ -170,13 +212,12 @@ export function UsuariosPage() {
                   <th className="px-4 py-3 font-medium">Cartão</th>
                   <th className="px-4 py-3 font-medium">Unidade</th>
                   <th className="px-4 py-3 font-medium">Função</th>
-                  <th className="px-4 py-3 font-medium">Operador</th>
                   <th className="px-4 py-3 font-medium">Estado</th>
                   <th className="px-4 py-3 text-right font-medium">Ações</th>
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => (
+                {filteredUsers.map((user) => (
                   <tr
                     key={user.id}
                     className={cn(
@@ -202,6 +243,12 @@ export function UsuariosPage() {
                                 aria-label="Administrador"
                               />
                             ) : null}
+                            {user.role === 'LEADER' ? (
+                              <Shield
+                                className="size-3.5 shrink-0 text-sidebar-primary"
+                                aria-label="Líder"
+                              />
+                            ) : null}
                             {isCurrentUser(user) ? (
                               <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
                                 Você
@@ -221,18 +268,6 @@ export function UsuariosPage() {
                       <span
                         className={cn(
                           'inline-flex rounded-md px-2 py-0.5 text-xs',
-                          user.printerOperator
-                            ? 'bg-sidebar-primary/10 text-sidebar-primary'
-                            : 'bg-muted text-muted-foreground',
-                        )}
-                      >
-                        {user.printerOperator ? 'Sim' : 'Não'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={cn(
-                          'inline-flex rounded-md px-2 py-0.5 text-xs',
                           user.active
                             ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
                             : 'bg-muted text-muted-foreground',
@@ -242,56 +277,58 @@ export function UsuariosPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon-sm"
-                              aria-label={`Ações para ${user.name}`}
-                            />
-                          }
-                        >
-                          <EllipsisIcon />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {user.active ? (
-                            <>
+                      {canManageUser(user) ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label={`Ações para ${user.name}`}
+                              />
+                            }
+                          >
+                            <EllipsisIcon />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {user.active ? (
+                              <>
+                                <DropdownMenuItem
+                                  onClick={() => openAction(user, 'role')}
+                                >
+                                  <Shield />
+                                  Alterar função
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    openAction(user, 'reset-password')
+                                  }
+                                >
+                                  <KeyRound />
+                                  Repor senha
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  variant="destructive"
+                                  disabled={isCurrentUser(user)}
+                                  onClick={() => openAction(user, 'deactivate')}
+                                >
+                                  <UserX />
+                                  Remover da aplicação
+                                </DropdownMenuItem>
+                              </>
+                            ) : (
                               <DropdownMenuItem
-                                onClick={() => openAction(user, 'role')}
+                                onClick={() => void handleReactivate(user)}
                               >
-                                <Shield />
-                                Alterar função
+                                <UserCheck />
+                                Reativar usuário
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  openAction(user, 'reset-password')
-                                }
-                              >
-                                <KeyRound />
-                                Repor senha
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                variant="destructive"
-                                disabled={isCurrentUser(user)}
-                                onClick={() => openAction(user, 'deactivate')}
-                              >
-                                <UserX />
-                                Remover da aplicação
-                              </DropdownMenuItem>
-                            </>
-                          ) : (
-                            <DropdownMenuItem
-                              onClick={() => void handleReactivate(user)}
-                            >
-                              <UserCheck />
-                              Reativar usuário
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : null}
                     </td>
                   </tr>
                 ))}

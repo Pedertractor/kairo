@@ -7,6 +7,14 @@ const memberInclude = {
     },
     orderBy: { joinedAt: 'asc' as const },
   },
+  costCenters: {
+    include: {
+      costCenter: {
+        select: { id: true, costCenter: true, description: true },
+      },
+    },
+    orderBy: { costCenter: { costCenter: 'asc' as const } },
+  },
   _count: { select: { members: true } },
 };
 
@@ -83,6 +91,25 @@ export class TeamRepository {
         teamId_userId: { teamId, userId },
       },
       data: { role: 'MEMBER' },
+    });
+  }
+
+  updateTeam(
+    teamId: string,
+    data: {
+      name?: string;
+      description?: string | null;
+    },
+  ) {
+    return this.prisma.team.update({
+      where: { id: teamId },
+      data: {
+        ...(data.name !== undefined ? { name: data.name } : {}),
+        ...(data.description !== undefined
+          ? { description: data.description }
+          : {}),
+      },
+      include: memberInclude,
     });
   }
 

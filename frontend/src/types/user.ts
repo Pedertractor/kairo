@@ -10,13 +10,12 @@ export interface UserResponse {
 
 export interface UpdateUserRoleInput {
   role: UserRole
-  printerOperator: boolean
 }
 
 export interface CreateUserInput {
   cardNumber: string
   unit: UnitType
-  printerOperator: boolean
+  teamId?: string
 }
 
 export interface EmployeeLookupResult {

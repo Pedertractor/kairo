@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Pencil } from 'lucide-react'
 
-import { EditTaskTimeEntryDialog } from '@/components/edit-task-time-entry-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useAuth } from '@/hooks/use-auth'
 import { api } from '@/lib/api-handler'
 import { formatLoggedDuration } from '@/lib/format-duration'
 import { formatDateTime } from '@/lib/time-format'
@@ -18,26 +15,18 @@ const PAGE_SIZE = 10
 interface TaskTimeEntriesSectionProps {
   projectId: string
   taskId: string
-  onUpdated?: () => void
 }
 
 export function TaskTimeEntriesSection({
   projectId,
   taskId,
-  onUpdated,
 }: TaskTimeEntriesSectionProps) {
-  const { user } = useAuth()
   const [timeEntries, setTimeEntries] = useState<TaskTimeEntrySummary[]>([])
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(0)
   const [total, setTotal] = useState(0)
   const [selectedDate, setSelectedDate] = useState(toDateKey(new Date()))
   const [isLoading, setIsLoading] = useState(true)
-  const [entryToEdit, setEntryToEdit] = useState<TaskTimeEntrySummary | null>(
-    null,
-  )
-
-  const isAdmin = user?.role === 'ADMIN'
 
   const loadTimeEntries = useCallback(async () => {
     setIsLoading(true)
@@ -69,15 +58,6 @@ export function TaskTimeEntriesSection({
     setPage(1)
   }, [selectedDate])
 
-  function canEditEntry(entry: TaskTimeEntrySummary) {
-    return isAdmin && entry.userId === user?.id
-  }
-
-  function handleEntryUpdated() {
-    void loadTimeEntries()
-    onUpdated?.()
-  }
-
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -98,21 +78,6 @@ export function TaskTimeEntriesSection({
           />
         </div>
       </div>
-
-      <EditTaskTimeEntryDialog
-        projectId={projectId}
-        taskId={taskId}
-        entry={entryToEdit}
-        open={entryToEdit !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setEntryToEdit(null)
-          }
-        }}
-        onUpdated={() => {
-          handleEntryUpdated()
-        }}
-      />
 
       {isLoading ? (
         <div className="flex flex-col gap-2">
@@ -138,7 +103,6 @@ export function TaskTimeEntriesSection({
                     <th className="px-4 py-3 font-medium">Início</th>
                     <th className="px-4 py-3 font-medium">Fim</th>
                     <th className="px-4 py-3 font-medium">Duração</th>
-                    <th className="px-4 py-3 text-right font-medium">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -155,19 +119,6 @@ export function TaskTimeEntriesSection({
                       </td>
                       <td className="px-4 py-3 tabular-nums">
                         {formatLoggedDuration(entry.durationSeconds ?? 0)}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        {canEditEntry(entry) ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label="Editar apontamento"
-                            onClick={() => setEntryToEdit(entry)}
-                          >
-                            <Pencil />
-                          </Button>
-                        ) : null}
                       </td>
                     </tr>
                   ))}

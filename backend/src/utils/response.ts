@@ -25,6 +25,12 @@ export const MENSAGENS = {
   SENHA_IGUAL_PADRAO: 'A nova senha não pode ser igual à senha padrão',
   SENHAS_NAO_COINCIDEM: 'As senhas não coincidem',
   EQUIPE_CRIADA_SUCESSO: 'Equipe criada com sucesso',
+  EQUIPE_ATUALIZADA_SUCESSO: 'Equipe atualizada com sucesso',
+  CENTROS_CUSTO_SINCRONIZADOS_SUCESSO:
+    'Centros de custo sincronizados com sucesso',
+  CENTROS_CUSTO_ATUALIZADOS_SUCESSO:
+    'Centros de custo da equipe atualizados com sucesso',
+  CENTRO_CUSTO_NAO_ENCONTRADO: 'Centro de custo não encontrado',
   MEMBRO_REMOVIDO_SUCESSO: 'Membro removido com sucesso',
   ULTIMO_ADMIN_NAO_PODE_SER_REMOVIDO:
     'Não é possível remover o único administrador da equipe',
@@ -47,6 +53,8 @@ export const MENSAGENS = {
   TAG_CRIADA_SUCESSO: 'Tag criada com sucesso',
   TAG_JA_EXISTE: 'Já existe uma tag com este nome nesta equipe',
   TAG_NAO_ENCONTRADA: 'Tag não encontrada',
+  CLIENTE_NAO_ENCONTRADO: 'Cliente não encontrado',
+  MAQUINA_NAO_ENCONTRADA: 'Máquina não encontrada',
   PROJETO_CRIADO_SUCESSO: 'Projeto criado com sucesso',
   PROJETO_ATUALIZADO_SUCESSO: 'Projeto atualizado com sucesso',
   PROJETO_REMOVIDO_SUCESSO: 'Projeto excluído com sucesso',
@@ -74,24 +82,11 @@ export const MENSAGENS = {
   USUARIO_JA_CADASTRADO: 'Este usuário já está cadastrado na aplicação',
   FUNCIONARIO_NAO_ENCONTRADO: 'Funcionário não encontrado na API externa',
   ERRO_API_EXTERNA: 'Não foi possível consultar a API externa',
-  IMPRESSORA_CRIADA_SUCESSO: 'Impressora criada com sucesso',
-  IMPRESSORA_ATUALIZADA_SUCESSO: 'Impressora atualizada com sucesso',
-  IMPRESSORA_REMOVIDA_SUCESSO: 'Impressora removida com sucesso',
-  IMPRESSORA_NAO_ENCONTRADA: 'Impressora não encontrada',
-  IMPRESSORA_JA_OCUPADA: 'Esta impressora já está ocupada',
-  IMPRESSORA_NAO_ESTA_OCUPADA: 'Esta impressora não está ocupada',
-  IMPRESSORA_JA_PAUSADA: 'Esta impressora já está pausada',
-  IMPRESSORA_NAO_ESTA_PAUSADA: 'Esta impressora não está pausada',
-  IMPRESSAO_CONCLUIDA_SUCESSO: 'Impressão concluída com sucesso',
-  IMPRESSAO_PAUSADA_SUCESSO: 'Impressão pausada com sucesso',
-  IMPRESSAO_RETOMADA_SUCESSO: 'Impressão retomada com sucesso',
-  PECA_OBRIGATORIA_PARA_IMPRESSAO:
-    'Selecione uma peça para iniciar a impressão',
-  PECA_3D_CRIADA_SUCESSO: 'Peça 3D criada com sucesso',
-  PECA_3D_ATUALIZADA_SUCESSO: 'Peça 3D atualizada com sucesso',
-  PECA_3D_REMOVIDA_SUCESSO: 'Peça 3D removida com sucesso',
-  PECA_3D_NAO_ENCONTRADA: 'Peça 3D não encontrada',
-  CODIGO_PECA_3D_JA_CADASTRADO: 'Já existe uma peça 3D com este código',
+  DOCUMENTO_TIPO_INVALIDO:
+    'Apenas ficheiros PDF ou imagens (JPEG, PNG, WebP, GIF) são permitidos',
+  DOCUMENTO_TAMANHO_INVALIDO: 'O ficheiro não pode ultrapassar 10 MB',
+  DOCUMENTO_ENVIADO_SUCESSO: 'Documento enviado com sucesso',
+  DOCUMENTO_REMOVIDO_SUCESSO: 'Documento excluído com sucesso',
 } as const;
 
 export function sendError(

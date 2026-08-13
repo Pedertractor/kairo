@@ -3,7 +3,7 @@ import { ArrowLeft, Pencil } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { DeleteProjectDialog } from '@/components/delete-project-dialog'
-import { EditProjectTitleDialog } from '@/components/edit-project-title-dialog'
+import { EditProjectDialog } from '@/components/edit-project-dialog'
 import { FinishProjectDialog } from '@/components/finish-project-dialog'
 import { ItemActionsMenu } from '@/components/item-actions-menu'
 import { ProjectStatusActions } from '@/components/project-status-actions'
@@ -22,7 +22,7 @@ export function ProjectDetailPage() {
   const [project, setProject] = useState<ProjectSummary | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
-  const [isEditTitleDialogOpen, setIsEditTitleDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isFinishDialogOpen, setIsFinishDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
@@ -90,8 +90,8 @@ export function ProjectDetailPage() {
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  aria-label="Editar título"
-                  onClick={() => setIsEditTitleDialogOpen(true)}
+                  aria-label="Editar nome e descrição"
+                  onClick={() => setIsEditDialogOpen(true)}
                 >
                   <Pencil />
                 </Button>
@@ -131,11 +131,11 @@ export function ProjectDetailPage() {
             />
           </div>
 
-          <EditProjectTitleDialog
+          <EditProjectDialog
             teamId={project.teamId}
             project={project}
-            open={isEditTitleDialogOpen}
-            onOpenChange={setIsEditTitleDialogOpen}
+            open={isEditDialogOpen}
+            onOpenChange={setIsEditDialogOpen}
             onUpdated={(updated) =>
               setProject((current) =>
                 current
@@ -172,7 +172,10 @@ export function ProjectDetailPage() {
             onDeleted={() => navigate('/projetos')}
           />
 
-          <ProjectTasksSection projectId={project.id} />
+          <ProjectTasksSection
+            projectId={project.id}
+            teamId={project.teamId}
+          />
         </>
       ) : (
         <p className="text-sm text-muted-foreground">Projeto não encontrado.</p>

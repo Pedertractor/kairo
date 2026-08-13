@@ -1,6 +1,8 @@
 import { TeamRole } from '../generated/client.js';
+import { CostCenterRepository } from '../repositories/cost-center.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
 import { UserRepository } from '../repositories/user.repository.js';
+import type { CostCenterSummary } from '../types/cost-center.types.js';
 import type { TeamMemberSummary, TeamSummary, TeamUserOption } from '../types/team.types.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
@@ -17,6 +19,9 @@ type TeamWithMembers = {
     role: TeamRole;
     user: { id: string; name: string; absent: boolean };
   }>;
+  costCenters: Array<{
+    costCenter: CostCenterSummary;
+  }>;
 };
 
 function toTeamMembers(
@@ -30,6 +35,16 @@ function toTeamMembers(
   }));
 }
 
+function toTeamCostCenters(
+  costCenters: TeamWithMembers['costCenters'],
+): CostCenterSummary[] {
+  return costCenters.map((link) => ({
+    id: link.costCenter.id,
+    costCenter: link.costCenter.costCenter,
+    description: link.costCenter.description,
+  }));
+}
+
 function toTeamSummary(team: TeamWithMembers, role: TeamRole): TeamSummary {
   return {
     id: team.id,
@@ -38,6 +53,7 @@ function toTeamSummary(team: TeamWithMembers, role: TeamRole): TeamSummary {
     createdById: team.createdById,
     memberCount: team._count.members,
     members: toTeamMembers(team.members),
+    costCenters: toTeamCostCenters(team.costCenters),
     role,
     createdAt: team.createdAt.toISOString(),
   };
@@ -48,6 +64,7 @@ export class TeamService {
     private readonly teamRepository: TeamRepository,
     private readonly userRepository: UserRepository,
     private readonly absenceService: AbsenceService,
+    private readonly costCenterRepository: CostCenterRepository,
   ) {}
 
   async listUserTeams(userId: string): Promise<TeamSummary[]> {
@@ -299,5 +316,72 @@ export class TeamService {
     );
 
     return toTeamSummary(team, TeamRole.ADMIN);
+  }
+
+  async updateTeam(
+    teamId: string,
+    actorUserId: string,
+    data: {
+      name?: string;
+      description?: string | null;
+    },
+  ): Promise<TeamSummary> {
+    const actorMembership = await this.teamRepository.findMembershipByTeamAndUser(
+      teamId,
+      actorUserId,
+    );
+
+    if (!actorMembership) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    if (actorMembership.role !== TeamRole.ADMIN) {
+      throw new AppError(403, MENSAGENS.PROIBIDO);
+    }
+
+    const updated = await this.teamRepository.updateTeam(teamId, data);
+
+    return toTeamSummary(updated, actorMembership.role);
+  }
+
+  async listTeamCostCenters(
+    teamId: string,
+    actorUserId: string,
+  ): Promise<CostCenterSummary[]> {
+    const team = await this.getTeamForMember(teamId, actorUserId);
+    return team.costCenters;
+  }
+
+  async setTeamCostCenters(
+    teamId: string,
+    actorUserId: string,
+    costCenterIds: string[],
+  ): Promise<TeamSummary> {
+    const actorMembership = await this.teamRepository.findMembershipByTeamAndUser(
+      teamId,
+      actorUserId,
+    );
+
+    if (!actorMembership) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    if (actorMembership.role !== TeamRole.ADMIN) {
+      throw new AppError(403, MENSAGENS.PROIBIDO);
+    }
+
+    const uniqueIds = [...new Set(costCenterIds)];
+
+    if (uniqueIds.length > 0) {
+      const found = await this.costCenterRepository.findByIds(uniqueIds);
+
+      if (found.length !== uniqueIds.length) {
+        throw new AppError(400, MENSAGENS.CENTRO_CUSTO_NAO_ENCONTRADO);
+      }
+    }
+
+    await this.costCenterRepository.replaceTeamCostCenters(teamId, uniqueIds);
+
+    return this.getTeamForMember(teamId, actorUserId);
   }
 }

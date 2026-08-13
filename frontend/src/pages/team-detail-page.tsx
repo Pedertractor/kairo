@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Pencil } from 'lucide-react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { EditTeamDialog } from '@/components/edit-team-dialog';
 import { TeamActivitiesSection } from '@/components/team-activities-section';
+import { TeamDocumentsSection } from '@/components/team-documents-section';
 import { TeamMembersSection } from '@/components/team-members-section';
 import { TeamProjectsSection } from '@/components/team-projects-section';
 import { TeamTimeEntriesSection } from '@/components/team-time-entries-section';
@@ -17,7 +19,8 @@ type TeamTab =
   | 'projetos'
   | 'membros'
   | 'apontamentos'
-  | 'timeline';
+  | 'timeline'
+  | 'documentos';
 
 const TEAM_TABS = new Set<TeamTab>([
   'atividades',
@@ -25,6 +28,7 @@ const TEAM_TABS = new Set<TeamTab>([
   'membros',
   'apontamentos',
   'timeline',
+  'documentos',
 ]);
 
 function parseTeamTab(value: string | null): TeamTab | null {
@@ -43,6 +47,7 @@ export function TeamDetailPage() {
   const userIdFromUrl = searchParams.get('userId') ?? undefined;
   const [team, setTeam] = useState<TeamResponse['team'] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TeamTab>(
     tabFromUrl ?? 'atividades',
   );
@@ -103,11 +108,45 @@ export function TeamDetailPage() {
       ) : team ? (
         <>
           <div className='flex flex-col gap-2'>
-            <h1 className='text-2xl font-bold'>{team.name}</h1>
+            <div className='flex min-w-0 items-center gap-2'>
+              <h1 className='text-2xl font-bold'>{team.name}</h1>
+              {team.role === 'ADMIN' ? (
+                <Button
+                  type='button'
+                  variant='ghost'
+                  size='icon-sm'
+                  aria-label='Editar nome e descrição'
+                  onClick={() => setIsEditDialogOpen(true)}
+                >
+                  <Pencil />
+                </Button>
+              ) : null}
+            </div>
             {team.description ? (
               <p className='text-muted-foreground'>{team.description}</p>
             ) : null}
+            {(team.costCenters ?? []).length > 0 ? (
+              <ul className='flex flex-wrap gap-1.5'>
+                {team.costCenters.map((item) => (
+                  <li
+                    key={item.id}
+                    className='rounded-sm bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground'
+                  >
+                    {item.description.trim()
+                      ? `${item.costCenter} · ${item.description}`
+                      : item.costCenter}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </div>
+
+          <EditTeamDialog
+            team={team}
+            open={isEditDialogOpen}
+            onOpenChange={setIsEditDialogOpen}
+            onUpdated={setTeam}
+          />
 
           <Tabs
             value={activeTab}
@@ -145,6 +184,12 @@ export function TeamDetailPage() {
               >
                 Timeline
               </TabsTrigger>
+              <TabsTrigger
+                value='documentos'
+                className='data-[state=active]:border-sidebar-primary data-[state=active]:text-sidebar-primary'
+              >
+                Documentos
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value='membros'>
@@ -173,6 +218,13 @@ export function TeamDetailPage() {
                 teamId={team.id}
                 initialDate={dateFromUrl}
                 userId={userIdFromUrl}
+              />
+            </TabsContent>
+
+            <TabsContent value='documentos'>
+              <TeamDocumentsSection
+                teamId={team.id}
+                canDelete={team.role === 'ADMIN'}
               />
             </TabsContent>
           </Tabs>

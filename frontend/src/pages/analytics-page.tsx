@@ -1,10 +1,21 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   BarChart3,
+  BriefcaseBusiness,
+  ChevronDown,
   Clock3,
   FolderKanban,
   Gauge,
+  List,
   Sparkles,
+  Tags,
   TimerReset,
   Users,
   X,
@@ -14,6 +25,19 @@ import { DatePicker } from '@/components/date-picker';
 import { DateRangePicker } from '@/components/date-range-picker';
 import { TeamDayTimeline } from '@/components/team-day-timeline';
 import { Button } from '@/components/ui/button';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from '@/components/ui/combobox';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -26,7 +50,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { api } from '@/lib/api-handler';
 import { fromDateKey, toDateKey } from '@/lib/date';
 import { formatDuration } from '@/lib/time-format';
-import type { AnalyticsDashboard } from '@/types/analytics';
+import { cn } from '@/lib/utils';
+import type { AnalyticsDashboard, ClientAnalytics } from '@/types/analytics';
 import type {
   TeamDayDashboard,
   TeamDayTimelineBlock,
@@ -39,6 +64,18 @@ interface SelectedEmployeeTimeline {
   employeeName: string;
   teamId: string;
 }
+
+type TagFilterOption = {
+  value: string;
+  label: string;
+};
+
+type ClientFilterOption = {
+  value: string;
+  label: string;
+};
+
+type ClientViewMode = 'list' | 'chart';
 
 function utilizationColor(percent: number) {
   if (percent >= 100) return 'from-fuchsia-500 to-pink-500';
@@ -53,6 +90,114 @@ function getInclusiveDayCount(startDate: string, endDate: string): number {
   return Math.floor((end - start) / (24 * 60 * 60 * 1000)) + 1;
 }
 
+function AnalyticsSection({
+  icon,
+  title,
+  description,
+  open,
+  onOpenChange,
+  toolbar,
+  children,
+}: {
+  icon: ReactNode;
+  title: string;
+  description: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  toolbar?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <Collapsible
+      open={open}
+      onOpenChange={onOpenChange}
+      className='rounded-2xl border bg-card p-5 shadow-sm'
+    >
+      <div className='flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between'>
+        <div className='flex min-w-0 flex-1 items-start gap-3'>
+          {icon}
+          <div className='min-w-0 flex-1'>
+            <div className='flex items-center gap-1.5'>
+              <h2 className='font-semibold'>{title}</h2>
+              <CollapsibleTrigger
+                className='inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
+                aria-label={open ? `Ocultar ${title}` : `Mostrar ${title}`}
+              >
+                <ChevronDown
+                  className={cn(
+                    'size-4 transition-transform',
+                    !open && '-rotate-90',
+                  )}
+                />
+              </CollapsibleTrigger>
+            </div>
+            {open ? (
+              <p className='text-sm text-muted-foreground'>{description}</p>
+            ) : null}
+          </div>
+        </div>
+
+        {open && toolbar ? toolbar : null}
+      </div>
+
+      <CollapsibleContent className='mt-5'>{children}</CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+function ClientsChart({ clients }: { clients: ClientAnalytics[] }) {
+  const maxLoggedSeconds = Math.max(
+    ...clients.map((client) => client.loggedSeconds),
+    1,
+  );
+
+  return (
+    <div className='space-y-4'>
+      {clients.map((client, index) => {
+        const widthPercent = Math.max(
+          4,
+          Math.round((client.loggedSeconds / maxLoggedSeconds) * 100),
+        );
+        const barTone =
+          index % 3 === 0
+            ? 'from-amber-400 to-orange-500'
+            : index % 3 === 1
+              ? 'from-cyan-400 to-blue-500'
+              : 'from-violet-400 to-fuchsia-500';
+
+        return (
+          <div key={client.clientId ?? 'none'} className='space-y-2'>
+            <div className='flex items-end justify-between gap-3'>
+              <div className='min-w-0'>
+                <p className='truncate text-sm font-semibold'>
+                  {client.clientName}
+                </p>
+                <p className='text-xs text-muted-foreground'>
+                  {client.activityCount}{' '}
+                  {client.activityCount === 1 ? 'atividade' : 'atividades'} ·{' '}
+                  {client.taskCount}{' '}
+                  {client.taskCount === 1 ? 'tarefa' : 'tarefas'} ·{' '}
+                  {client.entryCount}{' '}
+                  {client.entryCount === 1 ? 'apontamento' : 'apontamentos'}
+                </p>
+              </div>
+              <p className='shrink-0 text-sm font-bold tabular-nums'>
+                {formatDuration(client.loggedSeconds)}
+              </p>
+            </div>
+            <div className='h-3 overflow-hidden rounded-full bg-muted'>
+              <div
+                className={`h-full rounded-full bg-linear-to-r ${barTone}`}
+                style={{ width: `${widthPercent}%` }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function AnalyticsPage() {
   const todayKey = toDateKey(new Date());
   const [startDate, setStartDate] = useState(todayKey);
@@ -61,6 +206,9 @@ export function AnalyticsPage() {
   const [teamId, setTeamId] = useState(ALL);
   const [employeeId, setEmployeeId] = useState(ALL);
   const [projectId, setProjectId] = useState(ALL);
+  const [selectedTag, setSelectedTag] = useState<TagFilterOption | null>(null);
+  const [selectedClient, setSelectedClient] =
+    useState<ClientFilterOption | null>(null);
   const [dashboard, setDashboard] = useState<AnalyticsDashboard | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTimeline, setSelectedTimeline] =
@@ -69,6 +217,10 @@ export function AnalyticsPage() {
     [],
   );
   const [isLoadingTimeline, setIsLoadingTimeline] = useState(false);
+  const [availabilityOpen, setAvailabilityOpen] = useState(true);
+  const [tagsOpen, setTagsOpen] = useState(true);
+  const [clientsOpen, setClientsOpen] = useState(true);
+  const [clientViewMode, setClientViewMode] = useState<ClientViewMode>('list');
   const timelineSectionRef = useRef<HTMLElement>(null);
 
   const loadDashboard = useCallback(async () => {
@@ -84,6 +236,8 @@ export function AnalyticsPage() {
       setDashboard({
         ...data,
         projects: data.projects ?? [],
+        activityTypes: data.activityTypes ?? [],
+        clients: data.clients ?? [],
         selectedProject: data.selectedProject
           ? {
               ...data.selectedProject,
@@ -108,6 +262,30 @@ export function AnalyticsPage() {
   useEffect(() => {
     void loadDashboard();
   }, [loadDashboard]);
+
+  useEffect(() => {
+    if (!selectedTag || !dashboard) return;
+
+    const stillExists = (dashboard.activityTypes ?? []).some(
+      (activityType) => (activityType.tagId ?? 'none') === selectedTag.value,
+    );
+
+    if (!stillExists) {
+      setSelectedTag(null);
+    }
+  }, [dashboard, selectedTag]);
+
+  useEffect(() => {
+    if (!selectedClient || !dashboard) return;
+
+    const stillExists = (dashboard.clients ?? []).some(
+      (client) => (client.clientId ?? 'none') === selectedClient.value,
+    );
+
+    if (!stillExists) {
+      setSelectedClient(null);
+    }
+  }, [dashboard, selectedClient]);
 
   const loadEmployeeTimeline = useCallback(async () => {
     if (!selectedTimeline) {
@@ -178,6 +356,34 @@ export function AnalyticsPage() {
   const selectedProject = dashboard?.selectedProject;
   const selectedProjectTeamId = selectedProject?.teamId ?? '';
   const periodDayCount = getInclusiveDayCount(startDate, endDate);
+  const activityTypes = dashboard?.activityTypes ?? [];
+  const clients = dashboard?.clients ?? [];
+  const tagOptions = useMemo<TagFilterOption[]>(
+    () =>
+      activityTypes.map((activityType) => ({
+        value: activityType.tagId ?? 'none',
+        label: activityType.tagName,
+      })),
+    [activityTypes],
+  );
+  const clientOptions = useMemo<ClientFilterOption[]>(
+    () =>
+      clients.map((client) => ({
+        value: client.clientId ?? 'none',
+        label: client.clientName,
+      })),
+    [clients],
+  );
+  const filteredActivityTypes = selectedTag
+    ? activityTypes.filter(
+        (activityType) => (activityType.tagId ?? 'none') === selectedTag.value,
+      )
+    : activityTypes;
+  const filteredClients = selectedClient
+    ? clients.filter(
+        (client) => (client.clientId ?? 'none') === selectedClient.value,
+      )
+    : clients;
 
   return (
     <div className='flex flex-1 flex-col gap-6 pb-4'>
@@ -210,6 +416,7 @@ export function AnalyticsPage() {
                   if (!nextRange?.from || !nextRange.to) return;
                   setStartDate(toDateKey(nextRange.from));
                   setEndDate(toDateKey(nextRange.to));
+                  setSelectedTag(null);
                 }}
               />
             </div>
@@ -221,6 +428,7 @@ export function AnalyticsPage() {
                   setTeamId(value ?? ALL);
                   setEmployeeId(ALL);
                   setProjectId(ALL);
+                  setSelectedTag(null);
                   setSelectedTimeline(null);
                 }}
               >
@@ -275,7 +483,10 @@ export function AnalyticsPage() {
               <Label className='text-white/80'>Funcionário</Label>
               <Select
                 value={employeeId}
-                onValueChange={(value) => setEmployeeId(value ?? ALL)}
+                onValueChange={(value) => {
+                  setEmployeeId(value ?? ALL);
+                  setSelectedTag(null);
+                }}
               >
                 <SelectTrigger className='mt-1 w-full min-w-0 border-white/30 bg-white/95 text-foreground'>
                   <SelectValue>
@@ -465,19 +676,17 @@ export function AnalyticsPage() {
         </section>
       ) : null}
 
-      <section className='rounded-2xl border bg-card p-5 shadow-sm'>
-        <div className='mb-5 flex items-center gap-3'>
+      <AnalyticsSection
+        open={availabilityOpen}
+        onOpenChange={setAvailabilityOpen}
+        icon={
           <div className='flex size-10 items-center justify-center rounded-xl bg-linear-to-br from-cyan-400 to-blue-600 text-white'>
             <Sparkles className='size-5' />
           </div>
-          <div>
-            <h2 className='font-semibold'>Disponibilidade por funcionário</h2>
-            <p className='text-sm text-muted-foreground'>
-              Clique no nome para ver a timeline do dia.
-            </p>
-          </div>
-        </div>
-
+        }
+        title='Disponibilidade por funcionário'
+        description='Clique no nome para ver a timeline do dia.'
+      >
         {isLoading ? (
           <div className='space-y-3'>
             {Array.from({ length: 4 }).map((_, index) => (
@@ -565,7 +774,294 @@ export function AnalyticsPage() {
             })}
           </div>
         )}
-      </section>
+      </AnalyticsSection>
+
+      <AnalyticsSection
+        open={tagsOpen}
+        onOpenChange={setTagsOpen}
+        icon={
+          <div className='flex size-10 items-center justify-center rounded-xl bg-linear-to-br from-emerald-400 to-teal-600 text-white'>
+            <Tags className='size-5' />
+          </div>
+        }
+        title='Atividades por etiqueta'
+        description='Quantidade de apontamentos e tempo por tipo de atividade no período.'
+        toolbar={
+          <div className='w-full min-w-0 sm:w-64'>
+            <Label htmlFor='activity-tag-filter'>Etiqueta</Label>
+            <Combobox
+              items={tagOptions}
+              value={selectedTag}
+              onValueChange={setSelectedTag}
+              itemToStringLabel={(item) => item.label}
+              isItemEqualToValue={(a, b) => a.value === b.value}
+            >
+              <ComboboxInput
+                id='activity-tag-filter'
+                className='mt-1 w-full'
+                placeholder='Buscar etiqueta...'
+                showClear
+              />
+              <ComboboxContent>
+                <ComboboxEmpty>Nenhuma etiqueta encontrada.</ComboboxEmpty>
+                <ComboboxList>
+                  {(item) => (
+                    <ComboboxItem key={item.value} value={item}>
+                      {item.label}
+                    </ComboboxItem>
+                  )}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
+          </div>
+        }
+      >
+        {isLoading ? (
+          <div className='space-y-3'>
+            {Array.from({ length: 3 }).map((_, index) => (
+              <Skeleton key={index} className='h-16 rounded-2xl' />
+            ))}
+          </div>
+        ) : activityTypes.length === 0 ? (
+          <div className='rounded-2xl border border-dashed p-10 text-center text-sm text-muted-foreground'>
+            Nenhum apontamento em atividades neste período.
+          </div>
+        ) : filteredActivityTypes.length === 0 ? (
+          <div className='rounded-2xl border border-dashed p-10 text-center text-sm text-muted-foreground'>
+            Nenhuma etiqueta correspondente ao filtro selecionado.
+          </div>
+        ) : (
+          <div className='space-y-3'>
+            {filteredActivityTypes.map((activityType) => {
+              const rowKey = activityType.tagId ?? 'none';
+              const memberCount = activityType.members.length;
+
+              return (
+                <Collapsible key={rowKey} className='rounded-2xl border'>
+                  <CollapsibleTrigger className='flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-muted/40'>
+                    <span
+                      className='size-3 shrink-0 rounded-full border border-black/10 bg-muted'
+                      style={
+                        activityType.tagColor
+                          ? { backgroundColor: activityType.tagColor }
+                          : undefined
+                      }
+                    />
+                    <div className='min-w-0 flex-1'>
+                      <p className='truncate font-semibold'>
+                        {activityType.tagName}
+                      </p>
+                      <p className='text-xs text-muted-foreground'>
+                        {memberCount} {memberCount === 1 ? 'membro' : 'membros'}{' '}
+                        · {activityType.activityCount}{' '}
+                        {activityType.activityCount === 1
+                          ? 'atividade'
+                          : 'atividades'}
+                      </p>
+                    </div>
+                    <span className='rounded-full bg-orange-500/10 px-2.5 py-1 text-xs font-bold text-orange-600 dark:text-orange-300'>
+                      {activityType.entryCount}{' '}
+                      {activityType.entryCount === 1
+                        ? 'apontamento'
+                        : 'apontamentos'}
+                    </span>
+                    <span className='min-w-20 text-right text-sm font-bold'>
+                      {formatDuration(activityType.loggedSeconds)}
+                    </span>
+                    <ChevronDown className='size-4 shrink-0 text-muted-foreground transition-transform in-data-panel-open:rotate-180' />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className='border-t px-4 pb-4'>
+                    <div className='mt-3 space-y-3'>
+                      {activityType.members.map((member) => {
+                        const sharePercent =
+                          activityType.loggedSeconds > 0
+                            ? Math.round(
+                                (member.loggedSeconds /
+                                  activityType.loggedSeconds) *
+                                  100,
+                              )
+                            : 0;
+                        const memberTeamId =
+                          dashboard?.rows.find(
+                            (row) => row.employeeId === member.employeeId,
+                          )?.teamId ?? '';
+
+                        return (
+                          <div
+                            key={member.employeeId}
+                            className='rounded-xl bg-muted/30 p-3'
+                          >
+                            <div className='flex items-center justify-between gap-3'>
+                              {memberTeamId ? (
+                                <button
+                                  type='button'
+                                  className='truncate text-sm font-semibold hover:underline'
+                                  onClick={() =>
+                                    openEmployeeTimeline(
+                                      member.employeeId,
+                                      member.employeeName,
+                                      memberTeamId,
+                                    )
+                                  }
+                                >
+                                  {member.employeeName}
+                                </button>
+                              ) : (
+                                <p className='truncate text-sm font-semibold'>
+                                  {member.employeeName}
+                                </p>
+                              )}
+                              <div className='flex shrink-0 items-center gap-3 text-xs text-muted-foreground'>
+                                <span>
+                                  {member.entryCount}{' '}
+                                  {member.entryCount === 1
+                                    ? 'registro'
+                                    : 'registros'}
+                                </span>
+                                <span className='font-bold text-foreground'>
+                                  {formatDuration(member.loggedSeconds)}
+                                </span>
+                              </div>
+                            </div>
+                            <div className='mt-2 h-1.5 overflow-hidden rounded-full bg-muted'>
+                              <div
+                                className={`h-full rounded-full bg-linear-to-r ${utilizationColor(sharePercent)}`}
+                                style={{
+                                  width: `${Math.min(100, sharePercent)}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              );
+            })}
+          </div>
+        )}
+      </AnalyticsSection>
+
+      <AnalyticsSection
+        open={clientsOpen}
+        onOpenChange={setClientsOpen}
+        icon={
+          <div className='flex size-10 items-center justify-center rounded-xl bg-linear-to-br from-amber-400 to-orange-600 text-white'>
+            <BriefcaseBusiness className='size-5' />
+          </div>
+        }
+        title='Atividades por cliente'
+        description='Quantidade de atividades, tarefas e tempo apontado por cliente no período.'
+        toolbar={
+          <div className='flex w-full min-w-0 flex-col gap-3 sm:w-auto sm:flex-row sm:items-end'>
+            <div className='flex gap-1 rounded-lg border bg-muted/40 p-1'>
+              <Button
+                type='button'
+                size='sm'
+                variant={clientViewMode === 'list' ? 'secondary' : 'ghost'}
+                aria-pressed={clientViewMode === 'list'}
+                aria-label='Ver lista'
+                onClick={() => setClientViewMode('list')}
+              >
+                <List />
+                Lista
+              </Button>
+              <Button
+                type='button'
+                size='sm'
+                variant={clientViewMode === 'chart' ? 'secondary' : 'ghost'}
+                aria-pressed={clientViewMode === 'chart'}
+                aria-label='Ver gráfico'
+                onClick={() => setClientViewMode('chart')}
+              >
+                <BarChart3 />
+                Gráfico
+              </Button>
+            </div>
+
+            <div className='w-full min-w-0 sm:w-64'>
+              <Label htmlFor='activity-client-filter'>Cliente</Label>
+              <Combobox
+                items={clientOptions}
+                value={selectedClient}
+                onValueChange={setSelectedClient}
+                itemToStringLabel={(item) => item.label}
+                isItemEqualToValue={(a, b) => a.value === b.value}
+              >
+                <ComboboxInput
+                  id='activity-client-filter'
+                  className='mt-1 w-full'
+                  placeholder='Buscar cliente...'
+                  showClear
+                />
+                <ComboboxContent>
+                  <ComboboxEmpty>Nenhum cliente encontrado.</ComboboxEmpty>
+                  <ComboboxList>
+                    {(item) => (
+                      <ComboboxItem key={item.value} value={item}>
+                        {item.label}
+                      </ComboboxItem>
+                    )}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+            </div>
+          </div>
+        }
+      >
+        {isLoading ? (
+          <div className='space-y-3'>
+            {Array.from({ length: 3 }).map((_, index) => (
+              <Skeleton key={index} className='h-16 rounded-2xl' />
+            ))}
+          </div>
+        ) : clients.length === 0 ? (
+          <div className='rounded-2xl border border-dashed p-10 text-center text-sm text-muted-foreground'>
+            Nenhuma atividade ou tarefa com cliente neste período.
+          </div>
+        ) : filteredClients.length === 0 ? (
+          <div className='rounded-2xl border border-dashed p-10 text-center text-sm text-muted-foreground'>
+            Nenhum cliente correspondente ao filtro selecionado.
+          </div>
+        ) : clientViewMode === 'chart' ? (
+          <ClientsChart clients={filteredClients} />
+        ) : (
+          <div className='space-y-3'>
+            {filteredClients.map((client) => {
+              const rowKey = client.clientId ?? 'none';
+
+              return (
+                <div
+                  key={rowKey}
+                  className='flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center'
+                >
+                  <div className='min-w-0 flex-1'>
+                    <p className='truncate font-semibold'>
+                      {client.clientName}
+                    </p>
+                    <p className='text-xs text-muted-foreground'>
+                      {client.activityCount}{' '}
+                      {client.activityCount === 1 ? 'atividade' : 'atividades'}{' '}
+                      · {client.taskCount}{' '}
+                      {client.taskCount === 1 ? 'tarefa' : 'tarefas'}
+                    </p>
+                  </div>
+                  <div className='flex flex-wrap items-center gap-2 sm:justify-end'>
+                    <span className='rounded-full bg-orange-500/10 px-2.5 py-1 text-xs font-bold text-orange-600 dark:text-orange-300'>
+                      {client.entryCount}{' '}
+                      {client.entryCount === 1 ? 'apontamento' : 'apontamentos'}
+                    </span>
+                    <span className='min-w-20 text-sm font-bold sm:text-right'>
+                      {formatDuration(client.loggedSeconds)}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </AnalyticsSection>
 
       {selectedTimeline ? (
         <section ref={timelineSectionRef} className='flex flex-col gap-3'>

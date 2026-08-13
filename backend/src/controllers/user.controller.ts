@@ -12,9 +12,9 @@ import { MENSAGENS, sendSuccess } from '../utils/response.js';
 export class UserController {
   constructor(private readonly service: UserService) {}
 
-  list = async (_request: FastifyRequest, reply: FastifyReply) => {
+  list = async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const users = await this.service.listUsers();
+      const users = await this.service.listUsers(request.user.sub);
       return sendSuccess(reply, { users });
     } catch (error) {
       return handleControllerError(error, reply);
@@ -49,9 +49,10 @@ export class UserController {
       }
 
       const user = await this.service.createUser(
+        request.user.sub,
         parsed.data.cardNumber,
         parsed.data.unit,
-        parsed.data.printerOperator,
+        parsed.data.teamId,
       );
 
       return sendSuccess(reply, { user }, 201, MENSAGENS.USUARIO_CRIADO_SUCESSO);
@@ -73,7 +74,6 @@ export class UserController {
         request.user.sub,
         params.data.id,
         body.data.role,
-        body.data.printerOperator,
       );
 
       return sendSuccess(
@@ -95,7 +95,10 @@ export class UserController {
         throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
       }
 
-      const user = await this.service.resetPassword(parsed.data.id);
+      const user = await this.service.resetPassword(
+        request.user.sub,
+        parsed.data.id,
+      );
 
       return sendSuccess(
         reply,
@@ -140,7 +143,10 @@ export class UserController {
         throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
       }
 
-      const user = await this.service.reactivate(parsed.data.id);
+      const user = await this.service.reactivate(
+        request.user.sub,
+        parsed.data.id,
+      );
 
       return sendSuccess(
         reply,

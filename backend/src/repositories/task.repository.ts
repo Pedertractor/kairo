@@ -1,4 +1,8 @@
-import type { PrismaClient, TaskStatus } from '../generated/client.js';
+import type {
+  ComplexityLevel,
+  PrismaClient,
+  TaskStatus,
+} from '../generated/client.js';
 
 export class TaskRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -8,6 +12,9 @@ export class TaskRepository {
       where: { id: taskId, deletedAt: null },
       include: {
         assignedTo: { select: { id: true, name: true } },
+        machine: {
+          select: { id: true, name: true, costCenter: true },
+        },
         card: {
           select: {
             id: true,
@@ -33,6 +40,8 @@ export class TaskRepository {
       title?: string;
       status?: TaskStatus;
       completedAt?: Date | null;
+      machineId?: string | null;
+      complexityLevel?: ComplexityLevel | null;
     },
   ) {
     return this.prisma.task.update({
@@ -43,9 +52,16 @@ export class TaskRepository {
         ...(data.completedAt !== undefined
           ? { completedAt: data.completedAt }
           : {}),
+        ...(data.machineId !== undefined ? { machineId: data.machineId } : {}),
+        ...(data.complexityLevel !== undefined
+          ? { complexityLevel: data.complexityLevel }
+          : {}),
       },
       include: {
         assignedTo: { select: { id: true, name: true } },
+        machine: {
+          select: { id: true, name: true, costCenter: true },
+        },
       },
     });
   }
@@ -67,6 +83,9 @@ export class TaskRepository {
       where: { cardId: projectId, deletedAt: null },
       include: {
         assignedTo: { select: { id: true, name: true } },
+        machine: {
+          select: { id: true, name: true, costCenter: true },
+        },
       },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
     });
@@ -85,6 +104,8 @@ export class TaskRepository {
     title: string;
     description?: string;
     estimatedHours?: number;
+    machineId?: string;
+    complexityLevel?: ComplexityLevel;
     sortOrder: number;
   }) {
     return this.prisma.task.create({
@@ -94,10 +115,15 @@ export class TaskRepository {
         title: data.title,
         description: data.description ?? null,
         estimatedHours: data.estimatedHours ?? null,
+        machineId: data.machineId ?? null,
+        complexityLevel: data.complexityLevel ?? null,
         sortOrder: data.sortOrder,
       },
       include: {
         assignedTo: { select: { id: true, name: true } },
+        machine: {
+          select: { id: true, name: true, costCenter: true },
+        },
       },
     });
   }
@@ -108,6 +134,9 @@ export class TaskRepository {
       data: { deletedAt: new Date() },
       include: {
         assignedTo: { select: { id: true, name: true } },
+        machine: {
+          select: { id: true, name: true, costCenter: true },
+        },
       },
     });
   }

@@ -14,6 +14,7 @@ enum UnitType {
 
 enum UserRole {
   ADMIN
+  LEADER
   USER
 }
 
@@ -56,6 +57,13 @@ enum TimeEntryType {
   MANUAL
 }
 
+enum ComplexityLevel {
+  BAIXA
+  MEDIA
+  ALTA
+  MUITO_ALTA
+}
+
 model User {
   id           String   @id @default(cuid())
   employeeId   String   @unique
@@ -63,11 +71,10 @@ model User {
   unit         UnitType
   cardNumber   String
   passwordHash String
-  role            UserRole
-  active          Boolean  @default(true)
-  firstLogin      Boolean  @default(true)
-  printerOperator Boolean  @default(false)
-  absent          Boolean  @default(false)
+  role       UserRole
+  active     Boolean  @default(true)
+  firstLogin Boolean  @default(true)
+  absent     Boolean  @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -86,6 +93,7 @@ model User {
   acceptedInvites TeamInvite[] @relation("InviteAcceptedBy")
 
   refreshTokens RefreshToken[]
+  documents     TeamDocument[]
 
   @@unique([unit, cardNumber])
   @@map("users")
@@ -120,12 +128,43 @@ model Team {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members TeamMember[]
-  invites TeamInvite[]
-  cards   Card[]
-  tags    Tag[]
+  members     TeamMember[]
+  invites     TeamInvite[]
+  cards       Card[]
+  tags        Tag[]
+  costCenters TeamCostCenter[]
+  documents   TeamDocument[]
 
   @@map("teams")
+}
+
+model CostCenter {
+  id          String @id @default(cuid())
+  costCenter  String @unique
+  description String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teams TeamCostCenter[]
+
+  @@map("cost_centers")
+}
+
+model TeamCostCenter {
+  id           String @id @default(cuid())
+  teamId       String
+  costCenterId String
+
+  team       Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  costCenter CostCenter @relation(fields: [costCenterId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([teamId, costCenterId])
+  @@index([teamId])
+  @@index([costCenterId])
+  @@map("team_cost_centers")
 }
 
 model TeamMember {
@@ -143,6 +182,27 @@ model TeamMember {
 
   @@unique([teamId, userId])
   @@map("team_members")
+}
+
+model TeamDocument {
+  id String @id @default(cuid())
+
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  uploadedById String
+  uploadedBy   User   @relation(fields: [uploadedById], references: [id])
+
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  storageKey   String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([teamId])
+  @@map("team_documents")
 }
 
 model TeamInvite {
@@ -188,6 +248,29 @@ model Tag {
   @@map("tags")
 }
 
+model Client {
+  id   String @id @default(cuid())
+  name String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cards Card[]
+
+  @@map("clients")
+}
+
+model Machine {
+  id         String @id @default(cuid())
+  name       String @unique
+  costCenter String
+
+  cards Card[]
+  tasks Task[]
+
+  @@map("machines")
+}
+
 model Card {
   id String @id @default(cuid())
 
@@ -200,11 +283,19 @@ model Card {
   tagId String?
   tag   Tag?    @relation(fields: [tagId], references: [id], onDelete: SetNull)
 
+  clientId String?
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  machineId String?
+  machine   Machine? @relation(fields: [machineId], references: [id], onDelete: SetNull)
+
   title       String
   description String?
 
   type   CardType
   status CardStatus @default(TODO)
+
+  complexityLevel ComplexityLevel?
 
   estimatedHours Decimal? @db.Decimal(10, 2)
 
@@ -220,6 +311,8 @@ model Card {
   @@index([teamId])
   @@index([createdById])
   @@index([tagId])
+  @@index([clientId])
+  @@index([machineId])
   @@index([deletedAt])
   @@map("cards")
 }
@@ -236,10 +329,15 @@ model Task {
   assignedToId String?
   assignedTo   User?   @relation("TaskAssignee", fields: [assignedToId], references: [id])
 
+  machineId String?
+  machine   Machine? @relation(fields: [machineId], references: [id], onDelete: SetNull)
+
   title       String
   description String?
 
   status TaskStatus @default(TODO)
+
+  complexityLevel ComplexityLevel?
 
   estimatedHours Decimal? @db.Decimal(10, 2)
 
@@ -257,6 +355,7 @@ model Task {
 
   @@index([cardId])
   @@index([assignedToId])
+  @@index([machineId])
   @@index([deletedAt])
   @@map("tasks")
 }
@@ -310,30 +409,4 @@ model UserFavorite {
   @@unique([userId, taskId])
   @@index([userId])
   @@map("user_favorites")
-}
-
-model PrintingMachine {
-  id           String     @id @default(cuid())
-  name         String
-  busy         Boolean    @default(false)
-  paused       Boolean    @default(false)
-  threeDPartId String?
-  threeDPart   ThreeDPart? @relation(fields: [threeDPartId], references: [id], onDelete: SetNull)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-
-  @@index([threeDPartId])
-  @@map("printing_machines")
-}
-
-model ThreeDPart {
-  id               String             @id @default(cuid())
-  name             String
-  code             String             @unique
-  timeToPrint      Int
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  printingMachines PrintingMachine[]
-
-  @@map("three_d_parts")
 }

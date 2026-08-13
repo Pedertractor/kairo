@@ -1,5 +1,5 @@
 export type UnitType = 'PEDERTRACTOR' | 'TRACTOR'
-export type UserRole = 'ADMIN' | 'USER'
+export type UserRole = 'ADMIN' | 'LEADER' | 'USER'
 
 export interface User {
   id: string
@@ -10,7 +10,6 @@ export interface User {
   role: UserRole
   active: boolean
   firstLogin: boolean
-  printerOperator: boolean
   absent: boolean
   hasOwnedTeams: boolean
 }

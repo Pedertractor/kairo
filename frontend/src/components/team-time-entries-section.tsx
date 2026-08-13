@@ -1,14 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Pencil } from 'lucide-react';
 
 import { DatePicker } from '@/components/date-picker';
-import { EditTaskTimeEntryDialog } from '@/components/edit-task-time-entry-dialog';
 import { TimeEntryDuration } from '@/components/time-entry-duration';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/lib/api-handler';
 import { fromDateKey, toDateKey } from '@/lib/date';
 import { formatDateTime } from '@/lib/time-format';
@@ -50,16 +47,12 @@ interface TeamTimeEntriesSectionProps {
 }
 
 export function TeamTimeEntriesSection({ teamId }: TeamTimeEntriesSectionProps) {
-  const { user } = useAuth();
   const [timeEntries, setTimeEntries] = useState<TeamTimeEntrySummary[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [total, setTotal] = useState(0);
   const [selectedDate, setSelectedDate] = useState(toDateKey(new Date()));
   const [isLoading, setIsLoading] = useState(true);
-  const [entryToEdit, setEntryToEdit] = useState<TeamTimeEntrySummary | null>(
-    null,
-  );
 
   const loadTimeEntries = useCallback(async () => {
     setIsLoading(true);
@@ -91,14 +84,6 @@ export function TeamTimeEntriesSection({ teamId }: TeamTimeEntriesSectionProps) 
     setPage(1);
   }, [selectedDate]);
 
-  function canEditEntry(entry: TeamTimeEntrySummary) {
-    return entry.userId === user?.id;
-  }
-
-  function handleEntryUpdated() {
-    void loadTimeEntries();
-  }
-
   return (
     <div className='flex flex-col gap-4'>
       <div className='flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between'>
@@ -123,19 +108,6 @@ export function TeamTimeEntriesSection({ teamId }: TeamTimeEntriesSectionProps) 
           />
         </div>
       </div>
-
-      <EditTaskTimeEntryDialog
-        entry={entryToEdit}
-        open={entryToEdit !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setEntryToEdit(null);
-          }
-        }}
-        onUpdated={() => {
-          handleEntryUpdated();
-        }}
-      />
 
       {isLoading ? (
         <div className='flex flex-col gap-2'>
@@ -163,7 +135,6 @@ export function TeamTimeEntriesSection({ teamId }: TeamTimeEntriesSectionProps) 
                     <th className='px-4 py-3 font-medium'>Início</th>
                     <th className='px-4 py-3 font-medium'>Fim</th>
                     <th className='px-4 py-3 font-medium'>Duração</th>
-                    <th className='px-4 py-3 text-right font-medium'>Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -212,19 +183,6 @@ export function TeamTimeEntriesSection({ teamId }: TeamTimeEntriesSectionProps) 
                             endedAt={entry.endedAt}
                             durationSeconds={entry.durationSeconds}
                           />
-                        </td>
-                        <td className='px-4 py-3 text-right'>
-                          {canEditEntry(entry) ? (
-                            <Button
-                              type='button'
-                              variant='ghost'
-                              size='icon-sm'
-                              aria-label='Editar apontamento'
-                              onClick={() => setEntryToEdit(entry)}
-                            >
-                              <Pencil />
-                            </Button>
-                          ) : null}
                         </td>
                       </tr>
                     );
