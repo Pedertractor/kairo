@@ -52,12 +52,16 @@ function toSyncItem(
   }
 
   const rawCode = record.CCUSTO;
-  const costCenter =
+  let costCenter =
     typeof rawCode === 'string'
       ? rawCode.trim()
       : typeof rawCode === 'number'
         ? String(rawCode)
         : '';
+
+  if (costCenter.startsWith('0')) {
+    costCenter = costCenter.slice(1);
+  }
 
   if (!costCenter) {
     return null;
