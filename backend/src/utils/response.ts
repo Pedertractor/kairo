@@ -82,6 +82,11 @@ export const MENSAGENS = {
   USUARIO_JA_CADASTRADO: 'Este usuário já está cadastrado na aplicação',
   FUNCIONARIO_NAO_ENCONTRADO: 'Funcionário não encontrado na API externa',
   ERRO_API_EXTERNA: 'Não foi possível consultar a API externa',
+  DOCUMENTO_TIPO_INVALIDO:
+    'Apenas ficheiros PDF ou imagens (JPEG, PNG, WebP, GIF) são permitidos',
+  DOCUMENTO_TAMANHO_INVALIDO: 'O ficheiro não pode ultrapassar 10 MB',
+  DOCUMENTO_ENVIADO_SUCESSO: 'Documento enviado com sucesso',
+  DOCUMENTO_REMOVIDO_SUCESSO: 'Documento excluído com sucesso',
 } as const;
 
 export function sendError(

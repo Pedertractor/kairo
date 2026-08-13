@@ -4,6 +4,7 @@ import { authRoutes } from './auth.route.js';
 import { cardRoutes } from './card.route.js';
 import { clientRoutes } from './client.route.js';
 import { costCenterRoutes } from './cost-center.route.js';
+import { documentRoutes } from './document.route.js';
 import { favoriteRoutes } from './favorite.route.js';
 import { machineRoutes } from './machine.route.js';
 import { taskRoutes } from './task.route.js';
@@ -21,6 +22,7 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(cardRoutes, { prefix: '/api' });
   await app.register(clientRoutes, { prefix: '/api' });
   await app.register(costCenterRoutes, { prefix: '/api' });
+  await app.register(documentRoutes, { prefix: '/api' });
   await app.register(machineRoutes, { prefix: '/api' });
   await app.register(tagRoutes, { prefix: '/api' });
   await app.register(taskRoutes, { prefix: '/api' });

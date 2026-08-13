@@ -11,11 +11,14 @@ services:
       # Dentro da rede Docker o host da base é o serviço, não localhost.
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@project-kairo-database:5432/${POSTGRES_DB}?schema=public
       NODE_ENV: production
+      UPLOAD_DIR: /usr/src/app/uploads
     # Startup via docker-entrypoint.sh:
     #   prisma migrate deploy (never reset)
     #   prisma db seed → users + clients + machines (insert missing only)
     #   npm run start
     command: ['./docker-entrypoint.sh']
+    volumes:
+      - project-kairo-uploads:/usr/src/app/uploads
     depends_on:
       project-kairo-database:
         condition: service_healthy
@@ -46,6 +49,8 @@ services:
 volumes:
   project-kairo-database:
     name: project-kairo-database
+  project-kairo-uploads:
+    name: project-kairo-uploads
 
 networks:
   project-kairo-network:
