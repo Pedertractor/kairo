@@ -15,6 +15,7 @@ services:
     # Startup via docker-entrypoint.sh:
     #   prisma migrate deploy (never reset)
     #   prisma db seed → users + clients + machines (insert missing only)
+    #                    + cost centers (upsert from external API)
     #   npm run start
     command: ['./docker-entrypoint.sh']
     volumes:
