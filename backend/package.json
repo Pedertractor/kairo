@@ -18,6 +18,7 @@
     "db:seed:machines": "tsx prisma/seed-machines.ts",
     "db:seed:cost-centers": "tsx prisma/sync-cost-centers.ts",
     "db:sync:cost-centers": "tsx prisma/sync-cost-centers.ts",
+    "db:tmp:reset-cost-centers": "tsx prisma/tmp-reset-cost-centers.ts",
     "db:seed:all": "tsx prisma/seed.ts && tsx prisma/seed-clients.ts && tsx prisma/seed-machines.ts && tsx prisma/sync-cost-centers.ts"
   },
   "keywords": [],
