@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 
 import { ActivityDetailsDialog } from '@/components/activity-details-dialog';
 import { ActivityTagBadge } from '@/components/activity-tag-badge';
+import { ComplexityLevelMeter, ComplexityLevelStripe } from '@/components/complexity-level-meter';
 import { CreateActivityDialog } from '@/components/create-activity-dialog';
 import { CreateTagDialog } from '@/components/create-tag-dialog';
 import { DeleteActivityDialog } from '@/components/delete-activity-dialog';
@@ -345,11 +346,15 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
                 key={activity.id}
                 className={cn(
                   'relative flex flex-col gap-2 rounded-lg border p-3 transition-all hover:bg-muted/50',
+                  activity.complexityLevel && 'pl-4',
                   CARD_STATUS_CARD_CLASS[activity.status],
                   isTimerActive &&
                     'border-sidebar-primary shadow-md shadow-sidebar-primary/15 ring-2 ring-sidebar-primary/35',
                 )}
               >
+                {activity.complexityLevel ? (
+                  <ComplexityLevelStripe level={activity.complexityLevel} />
+                ) : null}
                 <Link
                   to={`/equipes/${teamId}/atividades/${activity.id}`}
                   className='absolute inset-0 rounded-lg'
@@ -414,6 +419,13 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
                   <p className='pointer-events-none relative z-10 line-clamp-2 text-xs text-muted-foreground'>
                     {activity.description}
                   </p>
+                ) : null}
+                {activity.complexityLevel ? (
+                  <ComplexityLevelMeter
+                    level={activity.complexityLevel}
+                    size="md"
+                    className="pointer-events-none relative z-10 text-xs text-muted-foreground"
+                  />
                 ) : null}
                 <div className='pointer-events-none relative z-10'>
                   <CardTimeBudget

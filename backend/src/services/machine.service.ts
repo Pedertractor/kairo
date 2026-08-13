@@ -13,8 +13,26 @@ function toMachineSummary(machine: Machine): MachineSummary {
 export class MachineService {
   constructor(private readonly machineRepository: MachineRepository) {}
 
-  async list(search?: string): Promise<MachineSummary[]> {
-    const machines = await this.machineRepository.findMany(search);
+  async list(options?: {
+    search?: string;
+    teamId?: string;
+  }): Promise<MachineSummary[]> {
+    let costCenters: string[] | undefined;
+
+    if (options?.teamId) {
+      const links = await this.machineRepository.findCostCenterCodesByTeamId(
+        options.teamId,
+      );
+      costCenters = [
+        ...new Set(links.map((link) => link.costCenter.costCenter)),
+      ];
+    }
+
+    const machines = await this.machineRepository.findMany({
+      search: options?.search,
+      costCenters,
+    });
+
     return machines.map(toMachineSummary);
   }
 

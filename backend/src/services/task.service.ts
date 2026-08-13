@@ -1,4 +1,4 @@
-import type { Task, TaskStatus } from '../generated/client.js';
+import type { ComplexityLevel, Task, TaskStatus } from '../generated/client.js';
 import { CardRepository } from '../repositories/card.repository.js';
 import { FavoriteRepository } from '../repositories/favorite.repository.js';
 import { MachineRepository } from '../repositories/machine.repository.js';
@@ -42,6 +42,7 @@ function toTaskSummary(
     title: task.title,
     description: task.description,
     status: task.status,
+    complexityLevel: task.complexityLevel,
     estimatedHours: task.estimatedHours?.toString() ?? null,
     assignedToId: task.assignedToId,
     assignedToName: task.assignedTo?.name ?? null,
@@ -125,6 +126,7 @@ export class TaskService {
     description?: string,
     estimatedHours?: number,
     machineId?: string,
+    complexityLevel?: ComplexityLevel,
   ): Promise<TaskSummary> {
     await this.assertProjectAccess(projectId, userId);
 
@@ -143,6 +145,7 @@ export class TaskService {
       description,
       estimatedHours,
       machineId,
+      complexityLevel,
       sortOrder: maxSortOrder + 1,
     });
 
@@ -181,6 +184,7 @@ export class TaskService {
       title?: string;
       status?: TaskStatus;
       machineId?: string | null;
+      complexityLevel?: ComplexityLevel | null;
     },
   ): Promise<TaskDetail> {
     await this.assertProjectAccess(projectId, userId);
@@ -210,6 +214,7 @@ export class TaskService {
       status?: TaskStatus;
       completedAt?: Date | null;
       machineId?: string | null;
+      complexityLevel?: ComplexityLevel | null;
     } = {};
 
     if (data.title !== undefined) {
@@ -218,6 +223,10 @@ export class TaskService {
 
     if (data.machineId !== undefined) {
       updateData.machineId = data.machineId;
+    }
+
+    if (data.complexityLevel !== undefined) {
+      updateData.complexityLevel = data.complexityLevel;
     }
 
     if (data.status !== undefined) {

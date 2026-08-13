@@ -15,7 +15,10 @@ export class MachineController {
         throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
       }
 
-      const machines = await this.service.list(parsed.data.q);
+      const machines = await this.service.list({
+        search: parsed.data.q,
+        teamId: parsed.data.teamId,
+      });
 
       return sendSuccess(reply, { machines });
     } catch (error) {

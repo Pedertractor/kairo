@@ -172,7 +172,10 @@ export function ProjectDetailPage() {
             onDeleted={() => navigate('/projetos')}
           />
 
-          <ProjectTasksSection projectId={project.id} />
+          <ProjectTasksSection
+            projectId={project.id}
+            teamId={project.teamId}
+          />
         </>
       ) : (
         <p className="text-sm text-muted-foreground">Projeto não encontrado.</p>

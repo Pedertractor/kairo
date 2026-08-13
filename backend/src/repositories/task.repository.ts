@@ -1,4 +1,8 @@
-import type { PrismaClient, TaskStatus } from '../generated/client.js';
+import type {
+  ComplexityLevel,
+  PrismaClient,
+  TaskStatus,
+} from '../generated/client.js';
 
 export class TaskRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -37,6 +41,7 @@ export class TaskRepository {
       status?: TaskStatus;
       completedAt?: Date | null;
       machineId?: string | null;
+      complexityLevel?: ComplexityLevel | null;
     },
   ) {
     return this.prisma.task.update({
@@ -48,6 +53,9 @@ export class TaskRepository {
           ? { completedAt: data.completedAt }
           : {}),
         ...(data.machineId !== undefined ? { machineId: data.machineId } : {}),
+        ...(data.complexityLevel !== undefined
+          ? { complexityLevel: data.complexityLevel }
+          : {}),
       },
       include: {
         assignedTo: { select: { id: true, name: true } },
@@ -97,6 +105,7 @@ export class TaskRepository {
     description?: string;
     estimatedHours?: number;
     machineId?: string;
+    complexityLevel?: ComplexityLevel;
     sortOrder: number;
   }) {
     return this.prisma.task.create({
@@ -107,6 +116,7 @@ export class TaskRepository {
         description: data.description ?? null,
         estimatedHours: data.estimatedHours ?? null,
         machineId: data.machineId ?? null,
+        complexityLevel: data.complexityLevel ?? null,
         sortOrder: data.sortOrder,
       },
       include: {

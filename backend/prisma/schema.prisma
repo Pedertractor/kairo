@@ -57,6 +57,13 @@ enum TimeEntryType {
   MANUAL
 }
 
+enum ComplexityLevel {
+  BAIXA
+  MEDIA
+  ALTA
+  MUITO_ALTA
+}
+
 model User {
   id           String   @id @default(cuid())
   employeeId   String   @unique
@@ -265,6 +272,8 @@ model Card {
   type   CardType
   status CardStatus @default(TODO)
 
+  complexityLevel ComplexityLevel?
+
   estimatedHours Decimal? @db.Decimal(10, 2)
 
   deletedAt DateTime?
@@ -304,6 +313,8 @@ model Task {
   description String?
 
   status TaskStatus @default(TODO)
+
+  complexityLevel ComplexityLevel?
 
   estimatedHours Decimal? @db.Decimal(10, 2)
 

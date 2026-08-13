@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { CreateTaskDialog } from '@/components/create-task-dialog';
+import { ComplexityLevelMeter, ComplexityLevelStripe } from '@/components/complexity-level-meter';
 import { DeleteTaskDialog } from '@/components/delete-task-dialog';
 import { FavoriteButton } from '@/components/favorite-button';
 import { FinishTaskDialog } from '@/components/finish-task-dialog';
@@ -32,6 +33,7 @@ import type { TaskStatus, TaskSummary, TasksListResponse } from '@/types/task';
 
 interface ProjectTasksSectionProps {
   projectId: string;
+  teamId: string;
 }
 
 const VISIBILITY_ACTIVE = 'active';
@@ -48,7 +50,10 @@ const TASK_CARD_STATUS_CLASS: Record<TaskStatus, string> = {
     'border-rose-200 bg-rose-50/65 dark:border-rose-900/60 dark:bg-rose-950/20',
 };
 
-export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
+export function ProjectTasksSection({
+  projectId,
+  teamId,
+}: ProjectTasksSectionProps) {
   const { isTaskCurrent } = useActiveTimer();
   const [tasks, setTasks] = useState<TaskSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -110,6 +115,7 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
 
       <CreateTaskDialog
         projectId={projectId}
+        teamId={teamId}
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
         onCreated={loadTasks}
@@ -212,7 +218,15 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
                     'border-sidebar-primary shadow-md shadow-sidebar-primary/15 ring-2 ring-sidebar-primary/35',
                 )}
               >
-                <div className='relative z-[2] flex h-full items-start gap-2 p-3'>
+                {task.complexityLevel ? (
+                  <ComplexityLevelStripe level={task.complexityLevel} />
+                ) : null}
+                <div
+                  className={cn(
+                    'relative z-[2] flex h-full items-start gap-2 p-3',
+                    task.complexityLevel && 'pl-4',
+                  )}
+                >
                   <Link
                     to={`/projetos/${projectId}/tarefas/${task.id}`}
                     className='flex min-w-0 flex-1 flex-col gap-1.5'
@@ -231,7 +245,13 @@ export function ProjectTasksSection({ projectId }: ProjectTasksSectionProps) {
                         {task.description}
                       </p>
                     ) : null}
-                    <div className='mt-auto flex min-w-0 flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground'>
+                    <div className='mt-auto flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground'>
+                      {task.complexityLevel ? (
+                        <ComplexityLevelMeter
+                          level={task.complexityLevel}
+                          className="text-[11px] text-muted-foreground"
+                        />
+                      ) : null}
                       {task.estimatedHours ? (
                         <span>{task.estimatedHours}h</span>
                       ) : null}

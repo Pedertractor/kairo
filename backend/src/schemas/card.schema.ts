@@ -26,6 +26,13 @@ export const cardStatusSchema = z.enum([
   'CANCELED',
 ]);
 
+export const complexityLevelSchema = z.enum([
+  'BAIXA',
+  'MEDIA',
+  'ALTA',
+  'MUITO_ALTA',
+]);
+
 export const updateActivityStatusSchema = z.object({
   status: cardStatusSchema,
 });
@@ -43,6 +50,7 @@ export const updateActivitySchema = z
       .optional(),
     clientId: z.string().min(1).nullable().optional(),
     machineId: z.string().min(1).nullable().optional(),
+    complexityLevel: complexityLevelSchema.nullable().optional(),
   })
   .refine(
     (data) => Object.values(data).some((value) => value !== undefined),
@@ -59,6 +67,7 @@ export const createActivitySchema = z.object({
   tagId: z.string().min(1).optional(),
   clientId: z.string().min(1).optional(),
   machineId: z.string().min(1).optional(),
+  complexityLevel: complexityLevelSchema.optional(),
 });
 
 export const createProjectSchema = z.object({

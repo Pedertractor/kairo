@@ -1,4 +1,4 @@
-import type { TaskStatus } from '../generated/client.js';
+import type { ComplexityLevel, TaskStatus } from '../generated/client.js';
 
 export interface TaskMachineSummary {
   id: string;
@@ -12,6 +12,7 @@ export interface TaskSummary {
   title: string;
   description: string | null;
   status: TaskStatus;
+  complexityLevel: ComplexityLevel | null;
   estimatedHours: string | null;
   assignedToId: string | null;
   assignedToName: string | null;

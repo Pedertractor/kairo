@@ -9,6 +9,13 @@ export const taskParamSchema = z.object({
   taskId: z.string().min(1),
 });
 
+export const complexityLevelSchema = z.enum([
+  'BAIXA',
+  'MEDIA',
+  'ALTA',
+  'MUITO_ALTA',
+]);
+
 export const createTaskSchema = z.object({
   title: z.string().trim().min(1, 'Título é obrigatório'),
   description: z.string().trim().optional(),
@@ -17,6 +24,7 @@ export const createTaskSchema = z.object({
     .positive('Horas estimadas deve ser um valor positivo')
     .optional(),
   machineId: z.string().min(1).optional(),
+  complexityLevel: complexityLevelSchema.optional(),
 });
 
 export const taskStatusSchema = z.enum([
@@ -32,11 +40,13 @@ export const updateTaskSchema = z
     title: z.string().trim().min(1, 'Título é obrigatório').optional(),
     status: taskStatusSchema.optional(),
     machineId: z.string().min(1).nullable().optional(),
+    complexityLevel: complexityLevelSchema.nullable().optional(),
   })
   .refine(
     (data) =>
       data.title !== undefined ||
       data.status !== undefined ||
-      data.machineId !== undefined,
+      data.machineId !== undefined ||
+      data.complexityLevel !== undefined,
     { message: 'Informe ao menos um campo para atualizar' },
   );

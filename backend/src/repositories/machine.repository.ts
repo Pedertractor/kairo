@@ -3,28 +3,42 @@ import type { PrismaClient } from '../generated/client.js';
 export class MachineRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  findMany(search?: string) {
-    const q = search?.trim();
+  findMany(options?: { search?: string; costCenters?: string[] }) {
+    const q = options?.search?.trim();
+    const costCenters = options?.costCenters;
+
+    if (costCenters !== undefined && costCenters.length === 0) {
+      return Promise.resolve([]);
+    }
 
     return this.prisma.machine.findMany({
-      where: q
-        ? {
-            OR: [
-              {
-                name: {
-                  contains: q,
-                  mode: 'insensitive',
-                },
+      where: {
+        ...(costCenters
+          ? {
+              costCenter: {
+                in: costCenters,
               },
-              {
-                costCenter: {
-                  contains: q,
-                  mode: 'insensitive',
+            }
+          : {}),
+        ...(q
+          ? {
+              OR: [
+                {
+                  name: {
+                    contains: q,
+                    mode: 'insensitive' as const,
+                  },
                 },
-              },
-            ],
-          }
-        : undefined,
+                {
+                  costCenter: {
+                    contains: q,
+                    mode: 'insensitive' as const,
+                  },
+                },
+              ],
+            }
+          : {}),
+      },
       orderBy: { name: 'asc' },
     });
   }
@@ -32,6 +46,17 @@ export class MachineRepository {
   findById(id: string) {
     return this.prisma.machine.findUnique({
       where: { id },
+    });
+  }
+
+  findCostCenterCodesByTeamId(teamId: string) {
+    return this.prisma.teamCostCenter.findMany({
+      where: { teamId },
+      select: {
+        costCenter: {
+          select: { costCenter: true },
+        },
+      },
     });
   }
 }

@@ -1,4 +1,4 @@
-import type { Card, CardStatus } from '../generated/client.js';
+import type { Card, CardStatus, ComplexityLevel } from '../generated/client.js';
 import { CardRepository } from '../repositories/card.repository.js';
 import { ClientRepository } from '../repositories/client.repository.js';
 import { FavoriteRepository } from '../repositories/favorite.repository.js';
@@ -74,6 +74,7 @@ function toActivitySummary(
     title: card.title,
     description: card.description,
     status: card.status,
+    complexityLevel: card.complexityLevel,
     estimatedHours: card.estimatedHours?.toString() ?? null,
     loggedSeconds,
     isFavorite,
@@ -221,6 +222,7 @@ export class CardService {
     tagId?: string,
     clientId?: string,
     machineId?: string,
+    complexityLevel?: ComplexityLevel,
   ): Promise<ActivitySummary> {
     await this.assertTeamMember(teamId, userId);
 
@@ -245,6 +247,7 @@ export class CardService {
       tagId,
       clientId,
       machineId,
+      complexityLevel,
     });
 
     return toActivitySummary(card);
@@ -271,6 +274,7 @@ export class CardService {
       estimatedHours?: number | null;
       clientId?: string | null;
       machineId?: string | null;
+      complexityLevel?: ComplexityLevel | null;
     },
   ): Promise<ActivitySummary> {
     await this.assertTeamMember(teamId, userId);

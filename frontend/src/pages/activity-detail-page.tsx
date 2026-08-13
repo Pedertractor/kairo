@@ -6,6 +6,7 @@ import { ActivityDetailsDialog } from '@/components/activity-details-dialog'
 import { ActivityTagBadge } from '@/components/activity-tag-badge'
 import { ActivityStatusActions } from '@/components/activity-status-actions'
 import { ActivityTimeEntriesSection } from '@/components/activity-time-entries-section'
+import { ComplexityLevelMeter } from '@/components/complexity-level-meter'
 import { DeleteActivityDialog } from '@/components/delete-activity-dialog'
 import { EditActivityTagDialog } from '@/components/edit-activity-tag-dialog'
 import { EditActivityTitleDialog } from '@/components/edit-activity-title-dialog'
@@ -158,6 +159,13 @@ export function ActivityDetailPage() {
             </div>
             {activity.description ? (
               <p className="text-muted-foreground">{activity.description}</p>
+            ) : null}
+            {activity.complexityLevel ? (
+              <ComplexityLevelMeter
+                level={activity.complexityLevel}
+                size="lg"
+                className="text-sm text-muted-foreground"
+              />
             ) : null}
             <CardTimeBudget
               loggedSeconds={activity.loggedSeconds}

@@ -1,6 +1,7 @@
 import type {
   CardStatus,
   CardType,
+  ComplexityLevel,
   PrismaClient,
 } from '../generated/client.js';
 
@@ -63,6 +64,7 @@ export class CardRepository {
       estimatedHours?: number | null;
       clientId?: string | null;
       machineId?: string | null;
+      complexityLevel?: ComplexityLevel | null;
     },
   ) {
     return this.prisma.card.update({
@@ -79,6 +81,9 @@ export class CardRepository {
           : {}),
         ...(data.clientId !== undefined ? { clientId: data.clientId } : {}),
         ...(data.machineId !== undefined ? { machineId: data.machineId } : {}),
+        ...(data.complexityLevel !== undefined
+          ? { complexityLevel: data.complexityLevel }
+          : {}),
       },
       include: activityTagInclude,
     });
@@ -94,6 +99,7 @@ export class CardRepository {
     tagId?: string;
     clientId?: string;
     machineId?: string;
+    complexityLevel?: ComplexityLevel;
   }) {
     return this.prisma.card.create({
       data: {
@@ -107,6 +113,7 @@ export class CardRepository {
         tagId: data.tagId ?? null,
         clientId: data.clientId ?? null,
         machineId: data.machineId ?? null,
+        complexityLevel: data.complexityLevel ?? null,
       },
       include: activityTagInclude,
     });

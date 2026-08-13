@@ -73,6 +73,7 @@ export class CardController {
         body.data.tagId,
         body.data.clientId,
         body.data.machineId,
+        body.data.complexityLevel,
       );
 
       return sendSuccess(

@@ -1,4 +1,4 @@
-import type { CardStatus } from '../generated/client.js';
+import type { CardStatus, ComplexityLevel } from '../generated/client.js';
 
 export interface ActivityTagSummary {
   id: string;
@@ -23,6 +23,7 @@ export interface ActivitySummary {
   title: string;
   description: string | null;
   status: CardStatus;
+  complexityLevel: ComplexityLevel | null;
   estimatedHours: string | null;
   loggedSeconds: number;
   isFavorite: boolean;

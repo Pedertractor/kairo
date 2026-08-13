@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Loader2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { ComplexityLevelMeter } from '@/components/complexity-level-meter'
 import {
   Combobox,
   ComboboxContent,
@@ -20,8 +21,20 @@ import {
 } from '@/components/ui/dialog'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/lib/api-handler'
+import {
+  COMPLEXITY_LEVELS,
+  NO_COMPLEXITY,
+  isComplexityLevel,
+} from '@/lib/complexity-level'
 import type { MachineSummary, MachinesListResponse } from '@/types/machine'
 import type { CreateTaskInput, TaskResponse } from '@/types/task'
 
@@ -32,6 +45,7 @@ type MachineComboboxOption = {
 
 interface CreateTaskDialogProps {
   projectId: string
+  teamId: string
   open: boolean
   onOpenChange: (open: boolean) => void
   onCreated: () => void
@@ -46,6 +60,7 @@ function toMachineOption(machine: MachineSummary): MachineComboboxOption {
 
 export function CreateTaskDialog({
   projectId,
+  teamId,
   open,
   onOpenChange,
   onCreated,
@@ -57,6 +72,7 @@ export function CreateTaskDialog({
   const [machines, setMachines] = useState<MachineSummary[]>([])
   const [selectedMachine, setSelectedMachine] =
     useState<MachineComboboxOption | null>(null)
+  const [complexityLevel, setComplexityLevel] = useState(NO_COMPLEXITY)
   const [isLoadingMachines, setIsLoadingMachines] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -71,11 +87,13 @@ export function CreateTaskDialog({
     setEstimatedHours('')
     setIndefiniteTime(false)
     setSelectedMachine(null)
+    setComplexityLevel(NO_COMPLEXITY)
   }
 
   useEffect(() => {
     if (open) {
       setSelectedMachine(null)
+      setComplexityLevel(NO_COMPLEXITY)
       setIsLoadingMachines(true)
     }
   }, [open])
@@ -89,9 +107,12 @@ export function CreateTaskDialog({
 
     async function loadMachines() {
       try {
-        const data = await api<MachinesListResponse>('/machines', {
-          toastOnError: false,
-        })
+        const data = await api<MachinesListResponse>(
+          `/machines?teamId=${encodeURIComponent(teamId)}`,
+          {
+            toastOnError: false,
+          },
+        )
 
         if (!cancelled) {
           setMachines(data.machines)
@@ -112,7 +133,7 @@ export function CreateTaskDialog({
     return () => {
       cancelled = true
     }
-  }, [open])
+  }, [open, teamId])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -136,6 +157,10 @@ export function CreateTaskDialog({
 
       if (selectedMachine) {
         payload.machineId = selectedMachine.value
+      }
+
+      if (isComplexityLevel(complexityLevel)) {
+        payload.complexityLevel = complexityLevel
       }
 
       await api<TaskResponse>(`/projects/${projectId}/tasks`, {
@@ -228,6 +253,39 @@ export function CreateTaskDialog({
                   </ComboboxContent>
                 </Combobox>
               )}
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="task-complexity">
+                Nível de complexidade
+              </FieldLabel>
+              <Select
+                value={complexityLevel}
+                onValueChange={(value) =>
+                  setComplexityLevel(value ?? NO_COMPLEXITY)
+                }
+                disabled={isSubmitting}
+              >
+                <SelectTrigger id="task-complexity" className="w-full">
+                  <SelectValue placeholder="Não definido">
+                    {(selectedValue) => {
+                      const value = String(selectedValue ?? NO_COMPLEXITY)
+                      if (!isComplexityLevel(value)) {
+                        return 'Não definido'
+                      }
+
+                      return <ComplexityLevelMeter level={value} />
+                    }}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_COMPLEXITY}>Não definido</SelectItem>
+                  {COMPLEXITY_LEVELS.map((level) => (
+                    <SelectItem key={level} value={level}>
+                      <ComplexityLevelMeter level={level} />
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </Field>
             <Field>
               <FieldLabel htmlFor="task-estimated-hours">

@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react'
 
 import { ActivityTagBadge } from '@/components/activity-tag-badge'
 import { CardTimeBudget } from '@/components/card-time-budget'
+import { ComplexityLevelMeter } from '@/components/complexity-level-meter'
 import { Button } from '@/components/ui/button'
 import {
   Combobox,
@@ -39,6 +40,11 @@ import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/lib/api-handler'
 import { CARD_STATUSES, STATUS_LABELS } from '@/lib/card-status'
+import {
+  COMPLEXITY_LEVELS,
+  NO_COMPLEXITY,
+  isComplexityLevel,
+} from '@/lib/complexity-level'
 import type {
   ActivityResponse,
   ActivitySummary,
@@ -110,6 +116,7 @@ export function ActivityDetailsDialog({
   const [description, setDescription] = useState('')
   const [status, setStatus] = useState<CardStatus>('TODO')
   const [tagId, setTagId] = useState(NO_TAG)
+  const [complexityLevel, setComplexityLevel] = useState(NO_COMPLEXITY)
   const [estimatedHours, setEstimatedHours] = useState('')
   const [selectedClient, setSelectedClient] =
     useState<ClientComboboxOption | null>(null)
@@ -122,10 +129,18 @@ export function ActivityDetailsDialog({
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const clientOptions = useMemo(() => clients.map(toClientOption), [clients])
-  const machineOptions = useMemo(
-    () => machines.map(toMachineOption),
-    [machines],
-  )
+  const machineOptions = useMemo(() => {
+    const options = machines.map(toMachineOption)
+
+    if (
+      activity?.machine &&
+      !options.some((option) => option.value === activity.machine?.id)
+    ) {
+      options.unshift(toMachineOption(activity.machine))
+    }
+
+    return options
+  }, [machines, activity?.machine])
 
   useEffect(() => {
     if (!open || !activity) {
@@ -136,6 +151,7 @@ export function ActivityDetailsDialog({
     setDescription(activity.description ?? '')
     setStatus(activity.status)
     setTagId(activity.tag?.id ?? NO_TAG)
+    setComplexityLevel(activity.complexityLevel ?? NO_COMPLEXITY)
     setEstimatedHours(toHoursInput(activity.estimatedHours))
     setSelectedClient(activity.client ? toClientOption(activity.client) : null)
     setSelectedMachine(
@@ -159,9 +175,12 @@ export function ActivityDetailsDialog({
           api<ClientsListResponse>('/clients', { toastOnError: false }).catch(
             () => ({ clients: [] }) as ClientsListResponse,
           ),
-          api<MachinesListResponse>('/machines', {
-            toastOnError: false,
-          }).catch(() => ({ machines: [] }) as MachinesListResponse),
+          api<MachinesListResponse>(
+            `/machines?teamId=${encodeURIComponent(teamId)}`,
+            {
+              toastOnError: false,
+            },
+          ).catch(() => ({ machines: [] }) as MachinesListResponse),
         ])
 
         if (!cancelled) {
@@ -219,6 +238,13 @@ export function ActivityDetailsDialog({
     const nextMachineId = selectedMachine?.value ?? null
     if (nextMachineId !== (activity.machine?.id ?? null)) {
       payload.machineId = nextMachineId
+    }
+
+    const nextComplexity = isComplexityLevel(complexityLevel)
+      ? complexityLevel
+      : null
+    if (nextComplexity !== (activity.complexityLevel ?? null)) {
+      payload.complexityLevel = nextComplexity
     }
 
     const nextHours = toHoursValue(estimatedHours)
@@ -429,6 +455,43 @@ export function ActivityDetailsDialog({
                   </ComboboxContent>
                 </Combobox>
               )}
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="activity-details-complexity">
+                Nível de complexidade
+              </FieldLabel>
+              <Select
+                value={complexityLevel}
+                onValueChange={(value) =>
+                  setComplexityLevel(value ?? NO_COMPLEXITY)
+                }
+                disabled={isSubmitting || !activity}
+              >
+                <SelectTrigger
+                  id="activity-details-complexity"
+                  className="w-full"
+                >
+                  <SelectValue placeholder="Não definido">
+                    {(selectedValue) => {
+                      const value = String(selectedValue ?? NO_COMPLEXITY)
+                      if (!isComplexityLevel(value)) {
+                        return 'Não definido'
+                      }
+
+                      return <ComplexityLevelMeter level={value} />
+                    }}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_COMPLEXITY}>Não definido</SelectItem>
+                  {COMPLEXITY_LEVELS.map((level) => (
+                    <SelectItem key={level} value={level}>
+                      <ComplexityLevelMeter level={level} />
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </Field>
 
             <Field>

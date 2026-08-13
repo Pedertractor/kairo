@@ -1,8 +1,9 @@
+import type { ComplexityLevel } from '@/lib/complexity-level'
 import type { ClientSummary } from '@/types/client'
 import type { MachineSummary } from '@/types/machine'
 import type { ActivityTag } from '@/types/tag'
 
-export type { ActivityTag }
+export type { ActivityTag, ComplexityLevel }
 
 export type CardStatus =
   | 'TODO'
@@ -17,6 +18,7 @@ export interface ActivitySummary {
   title: string
   description: string | null
   status: CardStatus
+  complexityLevel: ComplexityLevel | null
   estimatedHours: string | null
   loggedSeconds: number
   isFavorite: boolean
@@ -43,6 +45,7 @@ export interface CreateActivityInput {
   tagId?: string
   clientId?: string
   machineId?: string
+  complexityLevel?: ComplexityLevel
 }
 
 export interface UpdateActivityStatusInput {
@@ -57,6 +60,7 @@ export interface UpdateActivityInput {
   estimatedHours?: number | null
   clientId?: string | null
   machineId?: string | null
+  complexityLevel?: ComplexityLevel | null
 }
 
 export interface ProjectSummary {
