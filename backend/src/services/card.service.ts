@@ -1,4 +1,5 @@
 import type { Card, CardStatus, ComplexityLevel } from '../generated/client.js';
+import { TeamRole, UserRole } from '../generated/client.js';
 import { CardRepository } from '../repositories/card.repository.js';
 import { ClientRepository } from '../repositories/client.repository.js';
 import { FavoriteRepository } from '../repositories/favorite.repository.js';
@@ -6,6 +7,7 @@ import { MachineRepository } from '../repositories/machine.repository.js';
 import { TagRepository } from '../repositories/tag.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
+import { UserRepository } from '../repositories/user.repository.js';
 import type {
   ActivityClientSummary,
   ActivityMachineSummary,
@@ -116,6 +118,7 @@ export class CardService {
     private readonly tagRepository: TagRepository,
     private readonly clientRepository: ClientRepository,
     private readonly machineRepository: MachineRepository,
+    private readonly userRepository: UserRepository,
   ) {}
 
   private async assertTeamMember(teamId: string, userId: string) {
@@ -127,6 +130,26 @@ export class CardService {
     if (!membership) {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
     }
+
+    return membership;
+  }
+
+  private async assertCanEditEstimatedHours(
+    teamRole: TeamRole,
+    userId: string,
+    createdById: string,
+  ) {
+    if (createdById === userId || teamRole === TeamRole.ADMIN) {
+      return;
+    }
+
+    const user = await this.userRepository.findById(userId);
+
+    if (user?.role === UserRole.ADMIN) {
+      return;
+    }
+
+    throw new AppError(403, MENSAGENS.HORAS_ESTIMADAS_SEM_PERMISSAO);
   }
 
   private async assertTeamTag(teamId: string, tagId: string) {
@@ -426,14 +449,23 @@ export class CardService {
       title?: string;
       status?: CardStatus;
       description?: string | null;
+      estimatedHours?: number | null;
     },
   ): Promise<ProjectSummary> {
-    await this.assertTeamMember(teamId, userId);
+    const membership = await this.assertTeamMember(teamId, userId);
 
     const card = await this.cardRepository.findProjectById(projectId);
 
     if (!card || card.teamId !== teamId || card.type !== 'PROJECT') {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    if (data.estimatedHours !== undefined) {
+      await this.assertCanEditEstimatedHours(
+        membership.role,
+        userId,
+        card.createdById,
+      );
     }
 
     const updated = await this.cardRepository.updateProject(projectId, data);
