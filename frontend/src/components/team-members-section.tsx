@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { format } from 'date-fns';
+import { ptBR as dateFnsPtBR } from 'date-fns/locale';
 import {
   CalendarCheck,
   CalendarOff,
@@ -24,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/hooks/use-auth';
+import { fromDateKey } from '@/lib/date';
 import { getInitials } from '@/lib/initials';
 import { cn } from '@/lib/utils';
 import type { TeamMemberSummary, TeamRole, TeamSummary } from '@/types/team';
@@ -170,7 +173,11 @@ export function TeamMembersSection({
                   </div>
                   <p className='text-xs text-muted-foreground'>
                     {ROLE_LABELS[member.role]}
-                    {member.absent ? ' · Ausente' : ''}
+                    {member.absent
+                      ? member.absenceStartedAt
+                        ? ` · Ausente desde ${format(fromDateKey(member.absenceStartedAt), 'P', { locale: dateFnsPtBR })}`
+                        : ' · Ausente'
+                      : ''}
                   </p>
                 </div>
 

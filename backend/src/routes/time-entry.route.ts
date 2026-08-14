@@ -1,20 +1,32 @@
 import type { FastifyInstance } from 'fastify';
 import { TimeEntryController } from '../controllers/time-entry.controller.js';
+import { AbsenceRepository } from '../repositories/absence.repository.js';
 import { CardRepository } from '../repositories/card.repository.js';
 import { TaskRepository } from '../repositories/task.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
 import { UserRepository } from '../repositories/user.repository.js';
+import { AbsenceService } from '../services/absence.service.js';
 import { TimeEntryService } from '../services/time-entry.service.js';
 
 export async function timeEntryRoutes(app: FastifyInstance) {
+  const userRepository = new UserRepository(app.prisma);
+  const timeEntryRepository = new TimeEntryRepository(app.prisma);
+  const taskRepository = new TaskRepository(app.prisma);
+  const absenceService = new AbsenceService(
+    userRepository,
+    new AbsenceRepository(app.prisma),
+    timeEntryRepository,
+    taskRepository,
+  );
   const controller = new TimeEntryController(
     new TimeEntryService(
-      new TimeEntryRepository(app.prisma),
+      timeEntryRepository,
       new CardRepository(app.prisma),
       new TeamRepository(app.prisma),
-      new TaskRepository(app.prisma),
-      new UserRepository(app.prisma),
+      taskRepository,
+      userRepository,
+      absenceService,
     ),
   );
 

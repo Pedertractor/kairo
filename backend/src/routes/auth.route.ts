@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { AuthController } from '../controllers/auth.controller.js';
+import { AbsenceRepository } from '../repositories/absence.repository.js';
 import { RefreshTokenRepository } from '../repositories/refresh-token.repository.js';
 import { TaskRepository } from '../repositories/task.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
@@ -15,6 +16,7 @@ export async function authRoutes(app: FastifyInstance) {
       new RefreshTokenRepository(app.prisma),
       new AbsenceService(
         userRepository,
+        new AbsenceRepository(app.prisma),
         new TimeEntryRepository(app.prisma),
         new TaskRepository(app.prisma),
       ),

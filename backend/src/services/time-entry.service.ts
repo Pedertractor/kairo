@@ -24,6 +24,7 @@ import type {
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 import { getEntryDurationSeconds } from '../utils/time-entry-duration.js';
+import { AbsenceService } from './absence.service.js';
 import { releaseTaskIfIdle } from './task-status-sync.js';
 
 function toTimeEntrySummary(entry: TimeEntry): TimeEntrySummary {
@@ -380,6 +381,7 @@ export class TimeEntryService {
     private readonly teamRepository: TeamRepository,
     private readonly taskRepository: TaskRepository,
     private readonly userRepository: UserRepository,
+    private readonly absenceService: AbsenceService,
   ) {}
 
   async getActiveTimer(userId: string): Promise<ActiveTimer | null> {
@@ -409,7 +411,7 @@ export class TimeEntryService {
       throw new AppError(404, MENSAGENS.USUARIO_NAO_ENCONTRADO);
     }
 
-    if (user.absent) {
+    if (await this.absenceService.isCurrentlyAbsent(userId)) {
       throw new AppError(403, MENSAGENS.USUARIO_AUSENTE);
     }
   }

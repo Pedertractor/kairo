@@ -95,8 +95,27 @@ model User {
   refreshTokens RefreshToken[]
   documents     TeamDocument[]
 
+  absencePeriods UserAbsencePeriod[] @relation("UserAbsencePeriods")
+  createdAbsences UserAbsencePeriod[] @relation("AbsenceCreatedBy")
+
   @@unique([unit, cardNumber])
   @@map("users")
+}
+
+model UserAbsencePeriod {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation("UserAbsencePeriods", fields: [userId], references: [id], onDelete: Cascade)
+  startedAt   DateTime
+  endedAt     DateTime?
+  createdById String
+  createdBy   User      @relation("AbsenceCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId, startedAt])
+  @@index([userId, endedAt])
+  @@map("user_absence_periods")
 }
 
 model RefreshToken {

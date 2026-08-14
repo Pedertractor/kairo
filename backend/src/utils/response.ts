@@ -71,6 +71,14 @@ export const MENSAGENS = {
   USUARIO_AUSENTE:
     'Não é possível iniciar um apontamento enquanto você estiver ausente',
   AUSENCIA_ATUALIZADA_SUCESSO: 'Status de ausência atualizado com sucesso',
+  AUSENCIA_JA_ATIVA: 'Este usuário já possui um período de ausência em aberto',
+  AUSENCIA_NAO_ATIVA: 'Não há período de ausência em aberto para encerrar',
+  AUSENCIA_SOBREPOSTA:
+    'O período informado se sobrepõe a outra ausência deste usuário',
+  AUSENCIA_INICIO_FUTURO:
+    'A data de início da ausência não pode ser no futuro',
+  AUSENCIA_FIM_ANTES_INICIO:
+    'A data de fim deve ser igual ou posterior à data de início',
   APONTAMENTO_ATUALIZADO_SUCESSO: 'Apontamento atualizado com sucesso',
   USUARIO_ROLE_ATUALIZADO_SUCESSO: 'Função do usuário atualizada com sucesso',
   USUARIO_SENHA_REPOSTA_SUCESSO: 'Senha reposta com sucesso',

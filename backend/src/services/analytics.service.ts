@@ -1,3 +1,4 @@
+import { AbsenceRepository } from '../repositories/absence.repository.js';
 import { AnalyticsRepository } from '../repositories/analytics.repository.js';
 import type {
   ActivityTypeAnalytics,
@@ -39,6 +40,50 @@ function getInclusiveDayCount(startDate: string, endDate: string): number {
   return Math.floor(diffMs / (24 * 60 * 60 * 1000)) + 1;
 }
 
+function getInclusiveDayCountFromDates(
+  start: Date,
+  endInclusive: Date,
+): number {
+  const diffMs = endInclusive.getTime() - start.getTime();
+  return Math.floor(diffMs / (24 * 60 * 60 * 1000)) + 1;
+}
+
+function countAbsenceDaysInPeriod(
+  absences: Array<{ startedAt: Date; endedAt: Date | null }>,
+  periodStart: Date,
+  periodEndExclusive: Date,
+  now: Date,
+): number {
+  const todayStart = new Date(`${formatDateKey(now)}T00:00:00.000`);
+  const periodEndInclusive = new Date(periodEndExclusive);
+  periodEndInclusive.setDate(periodEndInclusive.getDate() - 1);
+
+  let totalDays = 0;
+
+  for (const absence of absences) {
+    const absenceEndInclusive = absence.endedAt ?? todayStart;
+    const overlapStart =
+      absence.startedAt.getTime() > periodStart.getTime()
+        ? absence.startedAt
+        : periodStart;
+    const overlapEndInclusive =
+      absenceEndInclusive.getTime() < periodEndInclusive.getTime()
+        ? absenceEndInclusive
+        : periodEndInclusive;
+
+    if (overlapStart.getTime() > overlapEndInclusive.getTime()) {
+      continue;
+    }
+
+    totalDays += getInclusiveDayCountFromDates(
+      overlapStart,
+      overlapEndInclusive,
+    );
+  }
+
+  return totalDays;
+}
+
 function getOverlapSeconds(
   startedAt: Date,
   endedAt: Date | null,
@@ -53,7 +98,10 @@ function getOverlapSeconds(
 }
 
 export class AnalyticsService {
-  constructor(private readonly repository: AnalyticsRepository) {}
+  constructor(
+    private readonly repository: AnalyticsRepository,
+    private readonly absenceRepository: AbsenceRepository,
+  ) {}
 
   async getDashboard(
     ownerId: string,
@@ -132,39 +180,77 @@ export class AnalyticsService {
     const endDate = options.endDate ?? todayKey;
     const { periodStart, periodEnd } = getPeriodBounds(startDate, endDate);
     const dayCount = getInclusiveDayCount(startDate, endDate);
-    const availabilitySeconds = DAILY_AVAILABILITY_SECONDS * dayCount;
     const scopedTeamIds = scopedTeams.map((team) => team.id);
-    const [entries, projectEntries, activityEntries, clientActivities, clientTasks] =
-      await Promise.all([
-        this.repository.findEntriesForTeams(
-          scopedTeamIds,
-          periodStart,
-          periodEnd,
-          selectedProject?.id,
-        ),
-        selectedProject
-          ? this.repository.findEntriesForProject(selectedProject.id)
-          : Promise.resolve([]),
-        this.repository.findActivityEntriesForTeams(
-          scopedTeamIds,
-          periodStart,
-          periodEnd,
-          options.employeeId,
-        ),
-        this.repository.findActivitiesForClientAnalytics(
-          scopedTeamIds,
-          periodStart,
-          periodEnd,
-          options.employeeId,
-        ),
-        this.repository.findTasksForClientAnalytics(
-          scopedTeamIds,
-          periodStart,
-          periodEnd,
-          options.employeeId,
-        ),
-      ]);
+    const employeeIds = [...employeesById.keys()];
+    const [
+      entries,
+      projectEntries,
+      activityEntries,
+      clientActivities,
+      clientTasks,
+      absencePeriods,
+    ] = await Promise.all([
+      this.repository.findEntriesForTeams(
+        scopedTeamIds,
+        periodStart,
+        periodEnd,
+        selectedProject?.id,
+      ),
+      selectedProject
+        ? this.repository.findEntriesForProject(selectedProject.id)
+        : Promise.resolve([]),
+      this.repository.findActivityEntriesForTeams(
+        scopedTeamIds,
+        periodStart,
+        periodEnd,
+        options.employeeId,
+      ),
+      this.repository.findActivitiesForClientAnalytics(
+        scopedTeamIds,
+        periodStart,
+        periodEnd,
+        options.employeeId,
+      ),
+      this.repository.findTasksForClientAnalytics(
+        scopedTeamIds,
+        periodStart,
+        periodEnd,
+        options.employeeId,
+      ),
+      this.absenceRepository.findOverlappingRange(
+        employeeIds,
+        periodStart,
+        periodEnd,
+      ),
+    ]);
     const now = new Date();
+    const absencesByEmployee = new Map<
+      string,
+      Array<{ startedAt: Date; endedAt: Date | null }>
+    >();
+
+    for (const period of absencePeriods) {
+      const list = absencesByEmployee.get(period.userId) ?? [];
+      list.push({ startedAt: period.startedAt, endedAt: period.endedAt });
+      absencesByEmployee.set(period.userId, list);
+    }
+
+    const availabilityByEmployee = new Map<string, number>();
+
+    for (const employeeId of employeeIds) {
+      const absenceDays = countAbsenceDaysInPeriod(
+        absencesByEmployee.get(employeeId) ?? [],
+        periodStart,
+        periodEnd,
+        now,
+      );
+      const availableDays = Math.max(0, dayCount - absenceDays);
+      availabilityByEmployee.set(
+        employeeId,
+        DAILY_AVAILABILITY_SECONDS * availableDays,
+      );
+    }
+
     const totalsByEmployee = new Map<
       string,
       { loggedSeconds: number; timeEntryCount: number }
@@ -398,6 +484,7 @@ export class AnalyticsService {
           loggedSeconds: 0,
           timeEntryCount: 0,
         };
+        const availabilitySeconds = availabilityByEmployee.get(employee.id) ?? 0;
 
         return {
           employeeId: employee.id,
@@ -411,9 +498,10 @@ export class AnalyticsService {
             availabilitySeconds - totals.loggedSeconds,
           ),
           timeEntryCount: totals.timeEntryCount,
-          utilizationPercent: Math.round(
-            (totals.loggedSeconds / availabilitySeconds) * 100,
-          ),
+          utilizationPercent:
+            availabilitySeconds > 0
+              ? Math.round((totals.loggedSeconds / availabilitySeconds) * 100)
+              : 0,
         };
       });
 

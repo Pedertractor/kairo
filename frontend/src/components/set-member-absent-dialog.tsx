@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
+import { DatePicker } from '@/components/date-picker'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -9,9 +10,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
 import { useActiveTimer } from '@/hooks/use-active-timer'
 import { useAuth } from '@/hooks/use-auth'
 import { api } from '@/lib/api-handler'
+import { fromDateKey, toDateKey } from '@/lib/date'
 import type { TeamMemberSummary, TeamResponse, TeamSummary } from '@/types/team'
 
 interface SetMemberAbsentDialogProps {
@@ -32,8 +35,20 @@ export function SetMemberAbsentDialog({
   const { user, refreshUser } = useAuth()
   const { refresh: refreshTimer } = useActiveTimer()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined)
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined)
 
   const nextAbsent = member ? !member.absent : false
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    const today = fromDateKey(toDateKey(new Date()))
+    setStartDate(today)
+    setEndDate(nextAbsent ? undefined : today)
+  }, [open, nextAbsent])
 
   async function handleConfirm() {
     if (!member) {
@@ -43,11 +58,24 @@ export function SetMemberAbsentDialog({
     setIsSubmitting(true)
 
     try {
+      const body: {
+        absent: boolean
+        startDate?: string
+        endDate?: string | null
+      } = { absent: nextAbsent }
+
+      if (nextAbsent) {
+        body.startDate = toDateKey(startDate ?? new Date())
+        body.endDate = endDate ? toDateKey(endDate) : null
+      } else {
+        body.endDate = toDateKey(endDate ?? new Date())
+      }
+
       const data = await api<TeamResponse>(
         `/teams/${teamId}/members/${member.id}/absent`,
         {
           method: 'PATCH',
-          body: JSON.stringify({ absent: nextAbsent }),
+          body: JSON.stringify(body),
         },
       )
 
@@ -62,6 +90,14 @@ export function SetMemberAbsentDialog({
       setIsSubmitting(false)
     }
   }
+
+  const canSubmit =
+    !isSubmitting &&
+    Boolean(member) &&
+    (nextAbsent
+      ? Boolean(startDate) &&
+        (!endDate || toDateKey(endDate) >= toDateKey(startDate!))
+      : Boolean(endDate))
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -92,6 +128,44 @@ export function SetMemberAbsentDialog({
           </DialogDescription>
         </DialogHeader>
 
+        <div className='space-y-3'>
+          {nextAbsent ? (
+            <>
+              <div className='space-y-1.5'>
+                <Label htmlFor='member-absence-start'>Data de início</Label>
+                <DatePicker
+                  id='member-absence-start'
+                  date={startDate}
+                  onDateChange={setStartDate}
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div className='space-y-1.5'>
+                <Label htmlFor='member-absence-end'>
+                  Data de fim (opcional)
+                </Label>
+                <DatePicker
+                  id='member-absence-end'
+                  date={endDate}
+                  onDateChange={setEndDate}
+                  disabled={isSubmitting}
+                  placeholder='Em aberto'
+                />
+              </div>
+            </>
+          ) : (
+            <div className='space-y-1.5'>
+              <Label htmlFor='member-absence-return'>Data de retorno</Label>
+              <DatePicker
+                id='member-absence-return'
+                date={endDate}
+                onDateChange={setEndDate}
+                disabled={isSubmitting}
+              />
+            </div>
+          )}
+        </div>
+
         <DialogFooter>
           <Button
             type='button'
@@ -103,7 +177,7 @@ export function SetMemberAbsentDialog({
           </Button>
           <Button
             type='button'
-            disabled={isSubmitting || !member}
+            disabled={!canSubmit}
             onClick={() => void handleConfirm()}
           >
             {isSubmitting

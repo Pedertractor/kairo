@@ -104,8 +104,16 @@ export class AuthService {
     return this.toAuthenticatedUser(user);
   }
 
-  async updateAbsent(userId: string, absent: boolean) {
-    const user = await this.absenceService.setAbsent(userId, absent);
+  async updateAbsent(
+    userId: string,
+    absent: boolean,
+    options?: { startDate?: string; endDate?: string | null },
+  ) {
+    const user = await this.absenceService.setAbsent(userId, absent, {
+      startDate: options?.startDate,
+      endDate: options?.endDate,
+      createdById: userId,
+    });
     return this.toAuthenticatedUser(user);
   }
 
