@@ -7,6 +7,7 @@ import { MachineRepository } from '../repositories/machine.repository.js';
 import { TagRepository } from '../repositories/tag.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
+import { UserRepository } from '../repositories/user.repository.js';
 import { CardService } from '../services/card.service.js';
 
 export async function cardRoutes(app: FastifyInstance) {
@@ -19,6 +20,7 @@ export async function cardRoutes(app: FastifyInstance) {
       new TagRepository(app.prisma),
       new ClientRepository(app.prisma),
       new MachineRepository(app.prisma),
+      new UserRepository(app.prisma),
     ),
   );
 

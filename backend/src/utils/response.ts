@@ -57,6 +57,8 @@ export const MENSAGENS = {
   MAQUINA_NAO_ENCONTRADA: 'Máquina não encontrada',
   PROJETO_CRIADO_SUCESSO: 'Projeto criado com sucesso',
   PROJETO_ATUALIZADO_SUCESSO: 'Projeto atualizado com sucesso',
+  HORAS_ESTIMADAS_SEM_PERMISSAO:
+    'Apenas o criador do projeto ou um administrador podem alterar as horas estimadas',
   PROJETO_REMOVIDO_SUCESSO: 'Projeto excluído com sucesso',
   TAREFA_CRIADA_SUCESSO: 'Tarefa criada com sucesso',
   TAREFA_ATUALIZADA_SUCESSO: 'Tarefa atualizada com sucesso',

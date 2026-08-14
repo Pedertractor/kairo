@@ -99,4 +99,5 @@ export interface UpdateProjectInput {
   title?: string
   status?: CardStatus
   description?: string | null
+  estimatedHours?: number | null
 }

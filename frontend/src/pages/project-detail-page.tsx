@@ -90,7 +90,7 @@ export function ProjectDetailPage() {
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  aria-label="Editar nome e descrição"
+                  aria-label="Editar projeto"
                   onClick={() => setIsEditDialogOpen(true)}
                 >
                   <Pencil />
