@@ -13,16 +13,18 @@ export async function timeEntryRoutes(app: FastifyInstance) {
   const userRepository = new UserRepository(app.prisma);
   const timeEntryRepository = new TimeEntryRepository(app.prisma);
   const taskRepository = new TaskRepository(app.prisma);
+  const cardRepository = new CardRepository(app.prisma);
   const absenceService = new AbsenceService(
     userRepository,
     new AbsenceRepository(app.prisma),
     timeEntryRepository,
     taskRepository,
+    cardRepository,
   );
   const controller = new TimeEntryController(
     new TimeEntryService(
       timeEntryRepository,
-      new CardRepository(app.prisma),
+      cardRepository,
       new TeamRepository(app.prisma),
       taskRepository,
       userRepository,

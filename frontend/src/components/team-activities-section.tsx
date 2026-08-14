@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useActiveTimer } from '@/hooks/use-active-timer';
+import { subscribeActivityDataInvalidation } from '@/lib/activity-data-invalidation';
 import { api } from '@/lib/api-handler';
 import { CardTimeBudget } from '@/components/card-time-budget';
 import {
@@ -67,24 +68,39 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
   const [tagFilter, setTagFilter] = useState(ALL_TAGS);
   const [visibilityFilter, setVisibilityFilter] = useState(VISIBILITY_ACTIVE);
 
-  const loadActivities = useCallback(async () => {
-    setIsLoading(true);
+  const loadActivities = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!options?.silent) {
+        setIsLoading(true);
+      }
 
-    try {
-      const [activitiesData, tagsData] = await Promise.all([
-        api<ActivitiesListResponse>(`/teams/${teamId}/activities`),
-        api<TagsListResponse>(`/teams/${teamId}/tags`),
-      ]);
-      setActivities(activitiesData.activities);
-      setTags(tagsData.tags);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [teamId]);
+      try {
+        const [activitiesData, tagsData] = await Promise.all([
+          api<ActivitiesListResponse>(`/teams/${teamId}/activities`),
+          api<TagsListResponse>(`/teams/${teamId}/tags`),
+        ]);
+        setActivities(activitiesData.activities);
+        setTags(tagsData.tags);
+      } finally {
+        if (!options?.silent) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [teamId],
+  );
 
   useEffect(() => {
     void loadActivities();
   }, [loadActivities]);
+
+  useEffect(
+    () =>
+      subscribeActivityDataInvalidation(() =>
+        void loadActivities({ silent: true }),
+      ),
+    [loadActivities],
+  );
 
   const filteredActivities = useMemo(() => {
     const query = nameFilter.trim().toLowerCase();

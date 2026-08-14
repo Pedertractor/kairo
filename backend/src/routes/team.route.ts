@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { TeamController } from '../controllers/team.controller.js';
 import { createRequireAdminOrLeader } from '../middleware/require-admin-or-leader.js';
 import { AbsenceRepository } from '../repositories/absence.repository.js';
+import { CardRepository } from '../repositories/card.repository.js';
 import { CostCenterRepository } from '../repositories/cost-center.repository.js';
 import { TaskRepository } from '../repositories/task.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
@@ -19,6 +20,7 @@ export async function teamRoutes(app: FastifyInstance) {
     absenceRepository,
     new TimeEntryRepository(app.prisma),
     new TaskRepository(app.prisma),
+    new CardRepository(app.prisma),
   );
   const controller = new TeamController(
     new TeamService(

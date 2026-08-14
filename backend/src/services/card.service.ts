@@ -320,6 +320,19 @@ export class CardService {
       await this.assertMachine(data.machineId);
     }
 
+    if (
+      (data.status === 'DONE' || data.status === 'CANCELED') &&
+      card.status !== data.status
+    ) {
+      const activeEntries =
+        await this.timeEntryRepository.findActiveManyByCardId(activityId);
+      const endedAt = new Date();
+
+      for (const entry of activeEntries) {
+        await this.timeEntryRepository.stopEntry(entry, endedAt);
+      }
+    }
+
     const updated = await this.cardRepository.updateActivity(activityId, data);
 
     const [loggedByCard, favorite] = await Promise.all([

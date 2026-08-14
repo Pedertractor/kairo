@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { ArrowLeft, Pencil } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
@@ -15,6 +15,7 @@ import { ItemActionsMenu } from '@/components/item-actions-menu'
 import { UpdateActivityStatusDialog } from '@/components/update-activity-status-dialog'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { subscribeActivityDataInvalidation } from '@/lib/activity-data-invalidation'
 import { api } from '@/lib/api-handler'
 import { CardTimeBudget } from '@/components/card-time-budget'
 import { canFinishStatus } from '@/lib/card-status'
@@ -35,6 +36,17 @@ export function ActivityDetailPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false)
 
+  const loadActivity = useCallback(async () => {
+    if (!teamId || !activityId) {
+      return
+    }
+
+    const data = await api<ActivityResponse>(
+      `/teams/${teamId}/activities/${activityId}`,
+    )
+    setActivity(data.activity)
+  }, [teamId, activityId])
+
   useEffect(() => {
     if (!teamId || !activityId) {
       setIsLoading(false)
@@ -43,7 +55,7 @@ export function ActivityDetailPage() {
 
     let cancelled = false
 
-    async function loadActivity() {
+    async function load() {
       setIsLoading(true)
 
       try {
@@ -60,23 +72,19 @@ export function ActivityDetailPage() {
       }
     }
 
-    void loadActivity()
+    void load()
 
     return () => {
       cancelled = true
     }
   }, [teamId, activityId])
 
-  async function reloadActivity() {
-    if (!teamId || !activityId) {
-      return
-    }
+  useEffect(
+    () => subscribeActivityDataInvalidation(() => void loadActivity()),
+    [loadActivity],
+  )
 
-    const data = await api<ActivityResponse>(
-      `/teams/${teamId}/activities/${activityId}`,
-    )
-    setActivity(data.activity)
-  }
+  const reloadActivity = loadActivity
 
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-6">

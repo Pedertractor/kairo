@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { UserController } from '../controllers/user.controller.js';
 import { createRequireAdminOrLeader } from '../middleware/require-admin-or-leader.js';
+import { CardRepository } from '../repositories/card.repository.js';
 import { RefreshTokenRepository } from '../repositories/refresh-token.repository.js';
 import { TaskRepository } from '../repositories/task.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
@@ -19,6 +20,7 @@ export async function userRoutes(app: FastifyInstance) {
       new RefreshTokenRepository(app.prisma),
       new TimeEntryRepository(app.prisma),
       new TaskRepository(app.prisma),
+      new CardRepository(app.prisma),
     ),
   );
 

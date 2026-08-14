@@ -1,10 +1,12 @@
 import { AbsenceRepository } from '../repositories/absence.repository.js';
+import { CardRepository } from '../repositories/card.repository.js';
 import { TaskRepository } from '../repositories/task.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
 import { UserRepository } from '../repositories/user.repository.js';
 import type { User } from '../generated/client.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
+import { releaseActivityIfIdle } from './card-status-sync.js';
 import { releaseTaskIfIdle } from './task-status-sync.js';
 
 const DATE_KEY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
@@ -52,6 +54,7 @@ export class AbsenceService {
     private readonly absenceRepository: AbsenceRepository,
     private readonly timeEntryRepository: TimeEntryRepository,
     private readonly taskRepository: TaskRepository,
+    private readonly cardRepository: CardRepository,
   ) {}
 
   async isCurrentlyAbsent(userId: string): Promise<boolean> {
@@ -138,6 +141,11 @@ export class AbsenceService {
           this.timeEntryRepository,
           this.taskRepository,
           activeEntry.taskId,
+        );
+        await releaseActivityIfIdle(
+          this.timeEntryRepository,
+          this.cardRepository,
+          activeEntry.cardId,
         );
       }
     }

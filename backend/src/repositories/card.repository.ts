@@ -54,6 +54,19 @@ export class CardRepository {
     });
   }
 
+  /** Updates status unless the activity is already DONE or CANCELED. */
+  updateStatusIfOpen(cardId: string, status: CardStatus) {
+    return this.prisma.card.updateMany({
+      where: {
+        id: cardId,
+        type: 'ACTIVITY',
+        deletedAt: null,
+        status: { notIn: ['DONE', 'CANCELED'] },
+      },
+      data: { status },
+    });
+  }
+
   updateActivity(
     activityId: string,
     data: {

@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { TeamRole, UserRole } from '../generated/client.js';
 import { env } from '../config/env.js';
 import { EmployeeService } from './employee.service.js';
+import { CardRepository } from '../repositories/card.repository.js';
 import { RefreshTokenRepository } from '../repositories/refresh-token.repository.js';
 import { TaskRepository } from '../repositories/task.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
@@ -12,6 +13,7 @@ import type { EmployeeLookupResult } from '../types/employee.types.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 import { toEmployeeId, toSafeUser } from '../utils/user.js';
+import { releaseActivityIfIdle } from './card-status-sync.js';
 import { releaseTaskIfIdle } from './task-status-sync.js';
 
 export class UserService {
@@ -23,6 +25,7 @@ export class UserService {
     private readonly refreshTokenRepository: RefreshTokenRepository,
     private readonly timeEntryRepository: TimeEntryRepository,
     private readonly taskRepository: TaskRepository,
+    private readonly cardRepository: CardRepository,
   ) {}
 
   /** Closes a leftover running timer so it never holds a task open. */
@@ -39,6 +42,11 @@ export class UserService {
       this.timeEntryRepository,
       this.taskRepository,
       activeEntry.taskId,
+    );
+    await releaseActivityIfIdle(
+      this.timeEntryRepository,
+      this.cardRepository,
+      activeEntry.cardId,
     );
   }
 
