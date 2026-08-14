@@ -130,6 +130,10 @@ export class TeamController {
         request.user.sub,
         params.data.userId,
         body.data.absent,
+        {
+          startDate: body.data.startDate,
+          endDate: body.data.endDate,
+        },
       );
 
       return sendSuccess(

@@ -73,6 +73,10 @@ export class AuthController {
       const user = await this.service.updateAbsent(
         request.user.sub,
         parsed.data.absent,
+        {
+          startDate: parsed.data.startDate,
+          endDate: parsed.data.endDate,
+        },
       );
 
       return sendSuccess(

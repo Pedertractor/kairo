@@ -8,6 +8,7 @@ export interface TeamMemberSummary {
   name: string
   role: TeamRole
   absent: boolean
+  absenceStartedAt: string | null
 }
 
 export interface TeamSummary {

@@ -1,4 +1,5 @@
 import { TeamRole } from '../generated/client.js';
+import { AbsenceRepository } from '../repositories/absence.repository.js';
 import { CostCenterRepository } from '../repositories/cost-center.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
 import { UserRepository } from '../repositories/user.repository.js';
@@ -24,14 +25,23 @@ type TeamWithMembers = {
   }>;
 };
 
+function formatDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function toTeamMembers(
   members: TeamWithMembers['members'],
+  absenceStartedAtByUserId: Map<string, string>,
 ): TeamMemberSummary[] {
   return members.map((member) => ({
     id: member.user.id,
     name: member.user.name,
     role: member.role,
     absent: member.user.absent,
+    absenceStartedAt: absenceStartedAtByUserId.get(member.user.id) ?? null,
   }));
 }
 
@@ -45,14 +55,18 @@ function toTeamCostCenters(
   }));
 }
 
-function toTeamSummary(team: TeamWithMembers, role: TeamRole): TeamSummary {
+function toTeamSummary(
+  team: TeamWithMembers,
+  role: TeamRole,
+  absenceStartedAtByUserId: Map<string, string>,
+): TeamSummary {
   return {
     id: team.id,
     name: team.name,
     description: team.description,
     createdById: team.createdById,
     memberCount: team._count.members,
-    members: toTeamMembers(team.members),
+    members: toTeamMembers(team.members, absenceStartedAtByUserId),
     costCenters: toTeamCostCenters(team.costCenters),
     role,
     createdAt: team.createdAt.toISOString(),
@@ -64,14 +78,41 @@ export class TeamService {
     private readonly teamRepository: TeamRepository,
     private readonly userRepository: UserRepository,
     private readonly absenceService: AbsenceService,
+    private readonly absenceRepository: AbsenceRepository,
     private readonly costCenterRepository: CostCenterRepository,
   ) {}
 
+  private async loadAbsenceStartedAtByUserIds(
+    userIds: string[],
+  ): Promise<Map<string, string>> {
+    const periods = await this.absenceRepository.findCurrentStartedAtByUserIds(
+      userIds,
+    );
+    const map = new Map<string, string>();
+
+    for (const period of periods) {
+      if (!map.has(period.userId)) {
+        map.set(period.userId, formatDateKey(period.startedAt));
+      }
+    }
+
+    return map;
+  }
+
   async listUserTeams(userId: string): Promise<TeamSummary[]> {
     const memberships = await this.teamRepository.findMembershipsByUserId(userId);
+    const memberIds = [
+      ...new Set(
+        memberships.flatMap((membership) =>
+          membership.team.members.map((member) => member.user.id),
+        ),
+      ),
+    ];
+    const absenceStartedAtByUserId =
+      await this.loadAbsenceStartedAtByUserIds(memberIds);
 
     return memberships.map((membership) =>
-      toTeamSummary(membership.team, membership.role),
+      toTeamSummary(membership.team, membership.role, absenceStartedAtByUserId),
     );
   }
 
@@ -85,7 +126,15 @@ export class TeamService {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
     }
 
-    return toTeamSummary(membership.team, membership.role);
+    const absenceStartedAtByUserId = await this.loadAbsenceStartedAtByUserIds(
+      membership.team.members.map((member) => member.user.id),
+    );
+
+    return toTeamSummary(
+      membership.team,
+      membership.role,
+      absenceStartedAtByUserId,
+    );
   }
 
   async removeMember(
@@ -254,6 +303,7 @@ export class TeamService {
     actorUserId: string,
     targetUserId: string,
     absent: boolean,
+    options?: { startDate?: string; endDate?: string | null },
   ): Promise<TeamSummary> {
     const actorMembership = await this.teamRepository.findMembershipByTeamAndUser(
       teamId,
@@ -278,7 +328,11 @@ export class TeamService {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
     }
 
-    await this.absenceService.setAbsent(targetUserId, absent);
+    await this.absenceService.setAbsent(targetUserId, absent, {
+      startDate: options?.startDate,
+      endDate: options?.endDate,
+      createdById: actorUserId,
+    });
 
     return this.getTeamForMember(teamId, actorUserId);
   }
@@ -315,7 +369,7 @@ export class TeamService {
       TeamRole.ADMIN,
     );
 
-    return toTeamSummary(team, TeamRole.ADMIN);
+    return this.getTeamForMember(team.id, userId);
   }
 
   async updateTeam(
@@ -339,9 +393,9 @@ export class TeamService {
       throw new AppError(403, MENSAGENS.PROIBIDO);
     }
 
-    const updated = await this.teamRepository.updateTeam(teamId, data);
+    await this.teamRepository.updateTeam(teamId, data);
 
-    return toTeamSummary(updated, actorMembership.role);
+    return this.getTeamForMember(teamId, actorUserId);
   }
 
   async listTeamCostCenters(

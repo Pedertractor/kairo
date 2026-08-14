@@ -57,18 +57,30 @@ export const MENSAGENS = {
   MAQUINA_NAO_ENCONTRADA: 'Máquina não encontrada',
   PROJETO_CRIADO_SUCESSO: 'Projeto criado com sucesso',
   PROJETO_ATUALIZADO_SUCESSO: 'Projeto atualizado com sucesso',
+  HORAS_ESTIMADAS_SEM_PERMISSAO:
+    'Apenas o criador do projeto ou um administrador podem alterar as horas estimadas',
   PROJETO_REMOVIDO_SUCESSO: 'Projeto excluído com sucesso',
   TAREFA_CRIADA_SUCESSO: 'Tarefa criada com sucesso',
   TAREFA_ATUALIZADA_SUCESSO: 'Tarefa atualizada com sucesso',
   TAREFA_REMOVIDA_SUCESSO: 'Tarefa excluída com sucesso',
   TAREFA_TIMER_STATUS_INVALIDO:
     'Não é possível iniciar o timer de uma tarefa concluída ou cancelada',
+  ATIVIDADE_TIMER_STATUS_INVALIDO:
+    'Não é possível iniciar o timer de uma atividade concluída ou cancelada',
   TIMER_INICIADO_SUCESSO: 'Timer iniciado com sucesso',
   TIMER_JA_ATIVO: 'Você já tem um timer ativo para este item',
   TIMER_PAUSADO_SUCESSO: 'Timer pausado com sucesso',
   USUARIO_AUSENTE:
     'Não é possível iniciar um apontamento enquanto você estiver ausente',
   AUSENCIA_ATUALIZADA_SUCESSO: 'Status de ausência atualizado com sucesso',
+  AUSENCIA_JA_ATIVA: 'Este usuário já possui um período de ausência em aberto',
+  AUSENCIA_NAO_ATIVA: 'Não há período de ausência em aberto para encerrar',
+  AUSENCIA_SOBREPOSTA:
+    'O período informado se sobrepõe a outra ausência deste usuário',
+  AUSENCIA_INICIO_FUTURO:
+    'A data de início da ausência não pode ser no futuro',
+  AUSENCIA_FIM_ANTES_INICIO:
+    'A data de fim deve ser igual ou posterior à data de início',
   APONTAMENTO_ATUALIZADO_SUCESSO: 'Apontamento atualizado com sucesso',
   USUARIO_ROLE_ATUALIZADO_SUCESSO: 'Função do usuário atualizada com sucesso',
   USUARIO_SENHA_REPOSTA_SUCESSO: 'Senha reposta com sucesso',

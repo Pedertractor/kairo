@@ -24,6 +24,8 @@ import type {
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 import { getEntryDurationSeconds } from '../utils/time-entry-duration.js';
+import { AbsenceService } from './absence.service.js';
+import { releaseActivityIfIdle } from './card-status-sync.js';
 import { releaseTaskIfIdle } from './task-status-sync.js';
 
 function toTimeEntrySummary(entry: TimeEntry): TimeEntrySummary {
@@ -296,7 +298,9 @@ function mapRecentEntry(entry: RecentEntry): RecentWorkItem | null {
     status: entry.card.status,
     parentTitle: null,
     lastWorkedAt: entry.startedAt.toISOString(),
-    canStartTimer: kind === 'ACTIVITY',
+      canStartTimer:
+        kind === 'ACTIVITY' &&
+        !['DONE', 'CANCELED'].includes(entry.card.status),
     activityId: kind === 'ACTIVITY' ? entry.card.id : null,
     projectId: kind === 'PROJECT' ? entry.card.id : null,
     taskId: null,
@@ -380,6 +384,7 @@ export class TimeEntryService {
     private readonly teamRepository: TeamRepository,
     private readonly taskRepository: TaskRepository,
     private readonly userRepository: UserRepository,
+    private readonly absenceService: AbsenceService,
   ) {}
 
   async getActiveTimer(userId: string): Promise<ActiveTimer | null> {
@@ -392,13 +397,19 @@ export class TimeEntryService {
     return toActiveTimer(entry);
   }
 
-  private async pauseTaskForStoppedEntry(
+  private async pauseWorkForStoppedEntry(
     taskId: string | null | undefined,
+    cardId: string | null | undefined,
   ): Promise<void> {
     await releaseTaskIfIdle(
       this.timeEntryRepository,
       this.taskRepository,
       taskId,
+    );
+    await releaseActivityIfIdle(
+      this.timeEntryRepository,
+      this.cardRepository,
+      cardId,
     );
   }
 
@@ -409,7 +420,7 @@ export class TimeEntryService {
       throw new AppError(404, MENSAGENS.USUARIO_NAO_ENCONTRADO);
     }
 
-    if (user.absent) {
+    if (await this.absenceService.isCurrentlyAbsent(userId)) {
       throw new AppError(403, MENSAGENS.USUARIO_AUSENTE);
     }
   }
@@ -436,6 +447,10 @@ export class TimeEntryService {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
     }
 
+    if (card.status === 'DONE' || card.status === 'CANCELED') {
+      throw new AppError(400, MENSAGENS.ATIVIDADE_TIMER_STATUS_INVALIDO);
+    }
+
     const activeEntry =
       await this.timeEntryRepository.findActiveByUserId(userId);
 
@@ -447,7 +462,10 @@ export class TimeEntryService {
 
     if (activeEntry) {
       await this.timeEntryRepository.stopEntry(activeEntry, startedAt);
-      await this.pauseTaskForStoppedEntry(activeEntry.taskId);
+      await this.pauseWorkForStoppedEntry(
+        activeEntry.taskId,
+        activeEntry.cardId,
+      );
     }
 
     const entry = await this.timeEntryRepository.startTimer({
@@ -455,6 +473,16 @@ export class TimeEntryService {
       userId,
       startedAt,
     });
+
+    const marked = await this.cardRepository.updateStatusIfOpen(
+      activityId,
+      'IN_PROGRESS',
+    );
+
+    if (marked.count === 0) {
+      await this.timeEntryRepository.deleteById(entry.id);
+      throw new AppError(400, MENSAGENS.ATIVIDADE_TIMER_STATUS_INVALIDO);
+    }
 
     return {
       timeEntry: toTimeEntrySummary(entry),
@@ -508,7 +536,10 @@ export class TimeEntryService {
 
     if (activeEntry) {
       await this.timeEntryRepository.stopEntry(activeEntry, startedAt);
-      await this.pauseTaskForStoppedEntry(activeEntry.taskId);
+      await this.pauseWorkForStoppedEntry(
+        activeEntry.taskId,
+        activeEntry.cardId,
+      );
     }
 
     const entry = await this.timeEntryRepository.startTaskTimer({
@@ -553,7 +584,10 @@ export class TimeEntryService {
       new Date(),
     );
 
-    await this.pauseTaskForStoppedEntry(activeEntry.taskId);
+    await this.pauseWorkForStoppedEntry(
+      activeEntry.taskId,
+      activeEntry.cardId,
+    );
 
     return toTimeEntrySummary(stopped);
   }
@@ -708,7 +742,7 @@ export class TimeEntryService {
       endedAtDate,
     );
 
-    await this.pauseTaskForStoppedEntry(taskId);
+    await this.pauseWorkForStoppedEntry(taskId, null);
 
     return toTaskTimeEntrySummary(updated);
   }
@@ -757,7 +791,7 @@ export class TimeEntryService {
       endedAtDate,
     );
 
-    await this.pauseTaskForStoppedEntry(entry.taskId);
+    await this.pauseWorkForStoppedEntry(entry.taskId, entry.cardId);
 
     const updated =
       await this.timeEntryRepository.findByIdWithRelations(timeEntryId);

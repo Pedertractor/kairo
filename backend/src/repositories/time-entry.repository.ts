@@ -82,6 +82,12 @@ export class TimeEntryRepository {
     });
   }
 
+  countActiveByCardId(cardId: string) {
+    return this.prisma.timeEntry.count({
+      where: { cardId, endedAt: null, type: 'TIMER' },
+    });
+  }
+
   stopEntry(entry: TimeEntry, endedAt: Date) {
     const durationSeconds = Math.max(
       0,

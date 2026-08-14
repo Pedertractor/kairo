@@ -86,6 +86,11 @@ export const updateProjectSchema = z
     title: z.string().trim().min(1, 'Título é obrigatório').optional(),
     status: cardStatusSchema.optional(),
     description: z.string().trim().nullable().optional(),
+    estimatedHours: z.coerce
+      .number()
+      .positive('Horas estimadas deve ser um valor positivo')
+      .nullable()
+      .optional(),
   })
   .refine(
     (data) => Object.values(data).some((value) => value !== undefined),

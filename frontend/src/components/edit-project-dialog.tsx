@@ -9,15 +9,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { useAuth } from '@/hooks/use-auth'
 import { api } from '@/lib/api-handler'
 import type {
   ProjectResponse,
   ProjectSummary,
   UpdateProjectInput,
 } from '@/types/card'
+import type { TeamResponse } from '@/types/team'
 
 interface EditProjectDialogProps {
   teamId: string
@@ -27,6 +34,22 @@ interface EditProjectDialogProps {
   onUpdated: (project: ProjectSummary) => void
 }
 
+function toHoursInput(estimatedHours: string | null) {
+  if (!estimatedHours) {
+    return ''
+  }
+
+  const parsed = Number.parseFloat(estimatedHours)
+
+  return Number.isFinite(parsed) ? String(parsed) : ''
+}
+
+function toHoursValue(input: string) {
+  const parsed = Number.parseFloat(input)
+
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+}
+
 export function EditProjectDialog({
   teamId,
   project,
@@ -34,16 +57,58 @@ export function EditProjectDialog({
   onOpenChange,
   onUpdated,
 }: EditProjectDialogProps) {
+  const { user } = useAuth()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [estimatedHours, setEstimatedHours] = useState('')
+  const [canEditEstimatedHours, setCanEditEstimatedHours] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
-    if (open && project) {
-      setTitle(project.title)
-      setDescription(project.description ?? '')
+    if (!open || !project) {
+      return
     }
+
+    setTitle(project.title)
+    setDescription(project.description ?? '')
+    setEstimatedHours(toHoursInput(project.estimatedHours))
   }, [open, project])
+
+  useEffect(() => {
+    if (!open || !project || !user) {
+      setCanEditEstimatedHours(false)
+      return
+    }
+
+    if (user.role === 'ADMIN' || user.id === project.createdById) {
+      setCanEditEstimatedHours(true)
+      return
+    }
+
+    let cancelled = false
+
+    async function loadTeamRole() {
+      try {
+        const data = await api<TeamResponse>(`/teams/${teamId}`, {
+          toastOnError: false,
+        })
+
+        if (!cancelled) {
+          setCanEditEstimatedHours(data.team.role === 'ADMIN')
+        }
+      } catch {
+        if (!cancelled) {
+          setCanEditEstimatedHours(false)
+        }
+      }
+    }
+
+    void loadTeamRole()
+
+    return () => {
+      cancelled = true
+    }
+  }, [open, project, teamId, user])
 
   function buildPayload(current: ProjectSummary): UpdateProjectInput {
     const payload: UpdateProjectInput = {}
@@ -56,6 +121,13 @@ export function EditProjectDialog({
     const nextDescription = description.trim() || null
     if (nextDescription !== (current.description ?? null)) {
       payload.description = nextDescription
+    }
+
+    if (canEditEstimatedHours) {
+      const nextHours = toHoursValue(estimatedHours)
+      if (nextHours !== toHoursValue(current.estimatedHours ?? '')) {
+        payload.estimatedHours = nextHours
+      }
     }
 
     return payload
@@ -99,7 +171,9 @@ export function EditProjectDialog({
           <DialogHeader>
             <DialogTitle>Editar projeto</DialogTitle>
             <DialogDescription>
-              Altere o nome e a descrição do projeto.
+              {canEditEstimatedHours
+                ? 'Altere o nome, a descrição e as horas estimadas do projeto.'
+                : 'Altere o nome e a descrição do projeto.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -129,6 +203,27 @@ export function EditProjectDialog({
                 disabled={isSubmitting}
               />
             </Field>
+
+            {canEditEstimatedHours ? (
+              <Field>
+                <FieldLabel htmlFor="edit-project-estimated-hours">
+                  Horas estimadas
+                </FieldLabel>
+                <Input
+                  id="edit-project-estimated-hours"
+                  type="number"
+                  min="0"
+                  step="0.25"
+                  value={estimatedHours}
+                  onChange={(event) => setEstimatedHours(event.target.value)}
+                  placeholder="Ex.: 40"
+                  disabled={isSubmitting}
+                />
+                <FieldDescription>
+                  Deixe em branco para tempo indefinido.
+                </FieldDescription>
+              </Field>
+            ) : null}
           </FieldGroup>
 
           <DialogFooter>

@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 
 import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/lib/api-handler';
+import { invalidateActivityData } from '@/lib/activity-data-invalidation';
 import { invalidateHomeData } from '@/lib/home-data-invalidation';
 import {
   readPausedTimerTarget,
@@ -172,6 +173,7 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
       clearPausedTarget();
       invalidateHomeData();
       invalidateTaskData();
+      invalidateActivityData();
     } finally {
       setIsStarting(false);
     }
@@ -195,6 +197,7 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
         clearPausedTarget();
         invalidateHomeData();
         invalidateTaskData();
+        invalidateActivityData();
       } finally {
         setIsStarting(false);
       }
@@ -222,6 +225,7 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
 
       invalidateHomeData();
       invalidateTaskData();
+      invalidateActivityData();
     } finally {
       setIsPausing(false);
     }

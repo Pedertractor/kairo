@@ -54,6 +54,19 @@ export class CardRepository {
     });
   }
 
+  /** Updates status unless the activity is already DONE or CANCELED. */
+  updateStatusIfOpen(cardId: string, status: CardStatus) {
+    return this.prisma.card.updateMany({
+      where: {
+        id: cardId,
+        type: 'ACTIVITY',
+        deletedAt: null,
+        status: { notIn: ['DONE', 'CANCELED'] },
+      },
+      data: { status },
+    });
+  }
+
   updateActivity(
     activityId: string,
     data: {
@@ -169,6 +182,7 @@ export class CardRepository {
       title?: string;
       status?: CardStatus;
       description?: string | null;
+      estimatedHours?: number | null;
     },
   ) {
     return this.prisma.card.update({
@@ -178,6 +192,9 @@ export class CardRepository {
         ...(data.status !== undefined ? { status: data.status } : {}),
         ...(data.description !== undefined
           ? { description: data.description }
+          : {}),
+        ...(data.estimatedHours !== undefined
+          ? { estimatedHours: data.estimatedHours }
           : {}),
       },
     });
