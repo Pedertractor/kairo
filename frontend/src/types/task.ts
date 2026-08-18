@@ -57,4 +57,5 @@ export interface UpdateTaskInput {
   status?: TaskStatus
   machineId?: string | null
   complexityLevel?: ComplexityLevel | null
+  estimatedHours?: number | null
 }

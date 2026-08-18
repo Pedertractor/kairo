@@ -3,6 +3,7 @@ import { ArrowLeft, Pencil } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { DeleteProjectDialog } from '@/components/delete-project-dialog'
+import { EditEstimatedHoursDialog } from '@/components/edit-estimated-hours-dialog'
 import { EditProjectDialog } from '@/components/edit-project-dialog'
 import { FinishProjectDialog } from '@/components/finish-project-dialog'
 import { ItemActionsMenu } from '@/components/item-actions-menu'
@@ -11,6 +12,7 @@ import { ProjectTasksSection } from '@/components/project-tasks-section'
 import { UpdateProjectStatusDialog } from '@/components/update-project-status-dialog'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useCanEditEstimatedHours } from '@/hooks/use-can-edit-estimated-hours'
 import { api } from '@/lib/api-handler'
 import { CardTimeBudget } from '@/components/card-time-budget'
 import { canFinishStatus } from '@/lib/card-status'
@@ -23,8 +25,14 @@ export function ProjectDetailPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isEditHoursDialogOpen, setIsEditHoursDialogOpen] = useState(false)
   const [isFinishDialogOpen, setIsFinishDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const canEditEstimatedHours = useCanEditEstimatedHours(
+    project?.teamId,
+    project?.createdById,
+    project !== null,
+  )
 
   useEffect(() => {
     if (!projectId) {
@@ -128,6 +136,11 @@ export function ProjectDetailPage() {
               loggedSeconds={project.loggedSeconds}
               estimatedHours={project.estimatedHours}
               className="text-sm"
+              onEdit={
+                canEditEstimatedHours
+                  ? () => setIsEditHoursDialogOpen(true)
+                  : undefined
+              }
             />
           </div>
 
@@ -146,6 +159,30 @@ export function ProjectDetailPage() {
                   : updated,
               )
             }
+          />
+
+          <EditEstimatedHoursDialog
+            open={isEditHoursDialogOpen}
+            onOpenChange={setIsEditHoursDialogOpen}
+            estimatedHours={project.estimatedHours}
+            onSave={async (estimatedHours) => {
+              const data = await api<ProjectResponse>(
+                `/teams/${project.teamId}/projects/${project.id}`,
+                {
+                  method: 'PATCH',
+                  body: JSON.stringify({ estimatedHours }),
+                },
+              )
+
+              setProject((current) =>
+                current
+                  ? {
+                      ...data.project,
+                      teamName: data.project.teamName ?? current.teamName,
+                    }
+                  : data.project,
+              )
+            }}
           />
 
           <UpdateProjectStatusDialog

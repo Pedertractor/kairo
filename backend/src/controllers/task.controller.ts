@@ -99,6 +99,7 @@ export class TaskController {
           status: body.data.status,
           machineId: body.data.machineId,
           complexityLevel: body.data.complexityLevel,
+          estimatedHours: body.data.estimatedHours,
         },
       );
 

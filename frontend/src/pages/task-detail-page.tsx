@@ -3,6 +3,7 @@ import { ArrowLeft, Pencil } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { DeleteTaskDialog } from '@/components/delete-task-dialog'
+import { EditEstimatedHoursDialog } from '@/components/edit-estimated-hours-dialog'
 import { EditTaskTitleDialog } from '@/components/edit-task-title-dialog'
 import { FavoriteButton } from '@/components/favorite-button'
 import { FinishTaskDialog } from '@/components/finish-task-dialog'
@@ -32,6 +33,7 @@ export function TaskDetailPage() {
   const [task, setTask] = useState<TaskDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isEditTitleDialogOpen, setIsEditTitleDialogOpen] = useState(false)
+  const [isEditHoursDialogOpen, setIsEditHoursDialogOpen] = useState(false)
   const [isFinishDialogOpen, setIsFinishDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
@@ -186,6 +188,9 @@ export function TaskDetailPage() {
               loggedSeconds={task.loggedSeconds}
               estimatedHours={task.estimatedHours}
               className="text-sm"
+              onEdit={
+                projectId ? () => setIsEditHoursDialogOpen(true) : undefined
+              }
             />
           </div>
 
@@ -197,6 +202,22 @@ export function TaskDetailPage() {
                 open={isEditTitleDialogOpen}
                 onOpenChange={setIsEditTitleDialogOpen}
                 onUpdated={setTask}
+              />
+              <EditEstimatedHoursDialog
+                open={isEditHoursDialogOpen}
+                onOpenChange={setIsEditHoursDialogOpen}
+                estimatedHours={task.estimatedHours}
+                onSave={async (estimatedHours) => {
+                  const data = await api<TaskDetailResponse>(
+                    `/projects/${projectId}/tasks/${task.id}`,
+                    {
+                      method: 'PATCH',
+                      body: JSON.stringify({ estimatedHours }),
+                    },
+                  )
+
+                  setTask(data.task)
+                }}
               />
               <FinishTaskDialog
                 projectId={projectId}

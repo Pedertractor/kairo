@@ -41,12 +41,13 @@ export const updateTaskSchema = z
     status: taskStatusSchema.optional(),
     machineId: z.string().min(1).nullable().optional(),
     complexityLevel: complexityLevelSchema.nullable().optional(),
+    estimatedHours: z.coerce
+      .number()
+      .positive('Horas estimadas deve ser um valor positivo')
+      .nullable()
+      .optional(),
   })
   .refine(
-    (data) =>
-      data.title !== undefined ||
-      data.status !== undefined ||
-      data.machineId !== undefined ||
-      data.complexityLevel !== undefined,
+    (data) => Object.values(data).some((value) => value !== undefined),
     { message: 'Informe ao menos um campo para atualizar' },
   );
