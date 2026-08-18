@@ -17,14 +17,13 @@ import {
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { useAuth } from '@/hooks/use-auth'
+import { useCanEditEstimatedHours } from '@/hooks/use-can-edit-estimated-hours'
 import { api } from '@/lib/api-handler'
 import type {
   ProjectResponse,
   ProjectSummary,
   UpdateProjectInput,
 } from '@/types/card'
-import type { TeamResponse } from '@/types/team'
 
 interface EditProjectDialogProps {
   teamId: string
@@ -57,11 +56,14 @@ export function EditProjectDialog({
   onOpenChange,
   onUpdated,
 }: EditProjectDialogProps) {
-  const { user } = useAuth()
+  const canEditEstimatedHours = useCanEditEstimatedHours(
+    teamId,
+    project?.createdById,
+    open && project !== null,
+  )
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [estimatedHours, setEstimatedHours] = useState('')
-  const [canEditEstimatedHours, setCanEditEstimatedHours] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
@@ -73,42 +75,6 @@ export function EditProjectDialog({
     setDescription(project.description ?? '')
     setEstimatedHours(toHoursInput(project.estimatedHours))
   }, [open, project])
-
-  useEffect(() => {
-    if (!open || !project || !user) {
-      setCanEditEstimatedHours(false)
-      return
-    }
-
-    if (user.role === 'ADMIN' || user.id === project.createdById) {
-      setCanEditEstimatedHours(true)
-      return
-    }
-
-    let cancelled = false
-
-    async function loadTeamRole() {
-      try {
-        const data = await api<TeamResponse>(`/teams/${teamId}`, {
-          toastOnError: false,
-        })
-
-        if (!cancelled) {
-          setCanEditEstimatedHours(data.team.role === 'ADMIN')
-        }
-      } catch {
-        if (!cancelled) {
-          setCanEditEstimatedHours(false)
-        }
-      }
-    }
-
-    void loadTeamRole()
-
-    return () => {
-      cancelled = true
-    }
-  }, [open, project, teamId, user])
 
   function buildPayload(current: ProjectSummary): UpdateProjectInput {
     const payload: UpdateProjectInput = {}

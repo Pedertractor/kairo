@@ -42,6 +42,7 @@ export class TaskRepository {
       completedAt?: Date | null;
       machineId?: string | null;
       complexityLevel?: ComplexityLevel | null;
+      estimatedHours?: number | null;
     },
   ) {
     return this.prisma.task.update({
@@ -55,6 +56,9 @@ export class TaskRepository {
         ...(data.machineId !== undefined ? { machineId: data.machineId } : {}),
         ...(data.complexityLevel !== undefined
           ? { complexityLevel: data.complexityLevel }
+          : {}),
+        ...(data.estimatedHours !== undefined
+          ? { estimatedHours: data.estimatedHours }
           : {}),
       },
       include: {

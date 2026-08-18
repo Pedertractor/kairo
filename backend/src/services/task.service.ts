@@ -185,6 +185,7 @@ export class TaskService {
       status?: TaskStatus;
       machineId?: string | null;
       complexityLevel?: ComplexityLevel | null;
+      estimatedHours?: number | null;
     },
   ): Promise<TaskDetail> {
     await this.assertProjectAccess(projectId, userId);
@@ -215,6 +216,7 @@ export class TaskService {
       completedAt?: Date | null;
       machineId?: string | null;
       complexityLevel?: ComplexityLevel | null;
+      estimatedHours?: number | null;
     } = {};
 
     if (data.title !== undefined) {
@@ -227,6 +229,10 @@ export class TaskService {
 
     if (data.complexityLevel !== undefined) {
       updateData.complexityLevel = data.complexityLevel;
+    }
+
+    if (data.estimatedHours !== undefined) {
+      updateData.estimatedHours = data.estimatedHours;
     }
 
     if (data.status !== undefined) {
