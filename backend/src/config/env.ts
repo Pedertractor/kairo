@@ -22,6 +22,8 @@ const envSchema = z.object({
     .string()
     .min(1, 'API_BASE_NAME_APPLICATION é obrigatório'),
   UPLOAD_DIR: z.string().min(1).default('uploads'),
+  ORION_URL: z.string().url('ORION_URL deve ser uma URL válida').optional(),
+  ORION_APP_TOKEN: z.string().min(1).optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
