@@ -27,4 +27,17 @@ export class TagRepository {
   create(data: { teamId: string; name: string; color: string }) {
     return this.prisma.tag.create({ data });
   }
+
+  update(id: string, data: { name?: string; color?: string }) {
+    return this.prisma.tag.update({
+      where: { id },
+      data,
+    });
+  }
+
+  delete(id: string) {
+    return this.prisma.tag.delete({
+      where: { id },
+    });
+  }
 }
