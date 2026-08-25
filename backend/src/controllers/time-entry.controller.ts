@@ -1,4 +1,6 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import { notifyOrion } from '../lib/orion.js';
+import { UserRepository } from '../repositories/user.repository.js';
 import { activityParamSchema, teamIdParamSchema } from '../schemas/card.schema.js';
 import { taskParamSchema } from '../schemas/task.schema.js';
 import {
@@ -15,7 +17,10 @@ import { AppError, handleControllerError } from '../utils/errors.js';
 import { MENSAGENS, sendSuccess } from '../utils/response.js';
 
 export class TimeEntryController {
-  constructor(private readonly service: TimeEntryService) {}
+  constructor(
+    private readonly service: TimeEntryService,
+    private readonly userRepository: UserRepository,
+  ) {}
 
   getActive = async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -65,6 +70,8 @@ export class TimeEntryController {
         parsed.data.taskId,
         request.user.sub,
       );
+
+      void this.notifyTaskStarted(request.user.sub, parsed.data);
 
       return sendSuccess(
         reply,
@@ -287,4 +294,31 @@ export class TimeEntryController {
       return handleControllerError(error, reply);
     }
   };
+
+  private async notifyTaskStarted(
+    userId: string,
+    params: { projectId: string; taskId: string },
+  ): Promise<void> {
+    try {
+      const user = await this.userRepository.findById(userId);
+
+      if (!user) {
+        return;
+      }
+
+      await notifyOrion({
+        userId: user.id,
+        userName: user.name,
+        cardNumberUser: user.cardNumber,
+        metadata: {
+          action: 'start_task',
+          module: 'tasks',
+          taskId: params.taskId,
+          projectId: params.projectId,
+        },
+      });
+    } catch (error) {
+      console.error('[orion]', error);
+    }
+  }
 }

@@ -30,6 +30,7 @@ export async function timeEntryRoutes(app: FastifyInstance) {
       userRepository,
       absenceService,
     ),
+    userRepository,
   );
 
   app.get(
