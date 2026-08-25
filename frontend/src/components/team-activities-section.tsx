@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, Search } from 'lucide-react';
+import { Search, Tags } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { ActivityDetailsDialog } from '@/components/activity-details-dialog';
 import { ActivityTagBadge } from '@/components/activity-tag-badge';
 import { ComplexityLevelMeter, ComplexityLevelStripe } from '@/components/complexity-level-meter';
 import { CreateActivityDialog } from '@/components/create-activity-dialog';
-import { CreateTagDialog } from '@/components/create-tag-dialog';
+import { ManageTagsDialog } from '@/components/manage-tags-dialog';
 import { DeleteActivityDialog } from '@/components/delete-activity-dialog';
 import { EditActivityTagDialog } from '@/components/edit-activity-tag-dialog';
 import { FavoriteButton } from '@/components/favorite-button';
@@ -53,7 +53,7 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
   const [tags, setTags] = useState<TagSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isCreateTagDialogOpen, setIsCreateTagDialogOpen] = useState(false);
+  const [isManageTagsDialogOpen, setIsManageTagsDialogOpen] = useState(false);
   const [activityToFinish, setActivityToFinish] =
     useState<ActivitySummary | null>(null);
   const [activityToDelete, setActivityToDelete] =
@@ -158,14 +158,47 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
         tags={tags}
       />
 
-      <CreateTagDialog
+      <ManageTagsDialog
         teamId={teamId}
-        open={isCreateTagDialogOpen}
-        onOpenChange={setIsCreateTagDialogOpen}
+        tags={tags}
+        open={isManageTagsDialogOpen}
+        onOpenChange={setIsManageTagsDialogOpen}
         onCreated={(tag) => {
           setTags((current) =>
             [...current, tag].sort((a, b) => a.name.localeCompare(b.name)),
           );
+        }}
+        onUpdated={(tag) => {
+          setTags((current) =>
+            current
+              .map((item) => (item.id === tag.id ? tag : item))
+              .sort((a, b) => a.name.localeCompare(b.name)),
+          );
+          setActivities((current) =>
+            current.map((activity) =>
+              activity.tag?.id === tag.id
+                ? {
+                    ...activity,
+                    tag: {
+                      id: tag.id,
+                      name: tag.name,
+                      color: tag.color,
+                    },
+                  }
+                : activity,
+            ),
+          );
+        }}
+        onDeleted={(tagId) => {
+          setTags((current) => current.filter((tag) => tag.id !== tagId));
+          setActivities((current) =>
+            current.map((activity) =>
+              activity.tag?.id === tagId
+                ? { ...activity, tag: null }
+                : activity,
+            ),
+          );
+          setTagFilter((current) => (current === tagId ? ALL_TAGS : current));
         }}
       />
 
@@ -320,10 +353,10 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
           <Button
             type='button'
             variant='outline'
-            onClick={() => setIsCreateTagDialogOpen(true)}
+            onClick={() => setIsManageTagsDialogOpen(true)}
           >
-            <Plus />
-            Nova tag
+            <Tags />
+            Tags
           </Button>
         </div>
       ) : null}

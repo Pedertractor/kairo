@@ -57,4 +57,50 @@ export class TagService {
     const tag = await this.tagRepository.create({ teamId, name, color });
     return toTagSummary(tag);
   }
+
+  async update(
+    teamId: string,
+    tagId: string,
+    userId: string,
+    data: { name?: string; color?: string },
+  ): Promise<TagSummary> {
+    await this.assertTeamMember(teamId, userId);
+
+    const tag = await this.tagRepository.findById(tagId);
+
+    if (!tag || tag.teamId !== teamId) {
+      throw new AppError(404, MENSAGENS.TAG_NAO_ENCONTRADA);
+    }
+
+    if (data.name && data.name !== tag.name) {
+      const existing = await this.tagRepository.findByTeamAndName(
+        teamId,
+        data.name,
+      );
+
+      if (existing) {
+        throw new AppError(409, MENSAGENS.TAG_JA_EXISTE);
+      }
+    }
+
+    const updated = await this.tagRepository.update(tagId, data);
+    return toTagSummary(updated);
+  }
+
+  async delete(
+    teamId: string,
+    tagId: string,
+    userId: string,
+  ): Promise<TagSummary> {
+    await this.assertTeamMember(teamId, userId);
+
+    const tag = await this.tagRepository.findById(tagId);
+
+    if (!tag || tag.teamId !== teamId) {
+      throw new AppError(404, MENSAGENS.TAG_NAO_ENCONTRADA);
+    }
+
+    const deleted = await this.tagRepository.delete(tagId);
+    return toTagSummary(deleted);
+  }
 }

@@ -51,6 +51,8 @@ export const MENSAGENS = {
   ATIVIDADE_ATUALIZADA_SUCESSO: 'Atividade atualizada com sucesso',
   ATIVIDADE_REMOVIDA_SUCESSO: 'Atividade excluída com sucesso',
   TAG_CRIADA_SUCESSO: 'Tag criada com sucesso',
+  TAG_ATUALIZADA_SUCESSO: 'Tag atualizada com sucesso',
+  TAG_REMOVIDA_SUCESSO: 'Tag excluída com sucesso',
   TAG_JA_EXISTE: 'Já existe uma tag com este nome nesta equipe',
   TAG_NAO_ENCONTRADA: 'Tag não encontrada',
   CLIENTE_NAO_ENCONTRADO: 'Cliente não encontrado',

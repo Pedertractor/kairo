@@ -22,4 +22,14 @@ export async function tagRoutes(app: FastifyInstance) {
     { preHandler: [app.authenticate] },
     controller.create,
   );
+  app.patch(
+    '/teams/:teamId/tags/:tagId',
+    { preHandler: [app.authenticate] },
+    controller.update,
+  );
+  app.delete(
+    '/teams/:teamId/tags/:tagId',
+    { preHandler: [app.authenticate] },
+    controller.delete,
+  );
 }
