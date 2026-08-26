@@ -118,7 +118,11 @@ export class UserService {
         actorUserId,
       );
 
-      if (!membership || membership.role !== TeamRole.ADMIN) {
+      if (
+        !membership ||
+        membership.role !== TeamRole.ADMIN ||
+        !membership.team.active
+      ) {
         throw new AppError(403, MENSAGENS.PROIBIDO);
       }
     }

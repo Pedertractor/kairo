@@ -49,7 +49,7 @@ export function TeamDetailsDialog({
   const [costCenterIds, setCostCenterIds] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const canEdit = team?.role === 'ADMIN'
+  const canEdit = team?.role === 'ADMIN' && team.active
 
   useEffect(() => {
     if (open && team) {

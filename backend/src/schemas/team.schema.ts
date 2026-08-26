@@ -15,6 +15,13 @@ export const updateTeamSchema = z
     { message: 'Informe ao menos um campo para atualizar' },
   );
 
+export const listTeamsQuerySchema = z.object({
+  active: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((value) => value !== 'false'),
+});
+
 export const teamIdParamSchema = z.object({
   id: z.string().min(1),
 });

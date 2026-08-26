@@ -2,6 +2,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import {
   addTeamMemberSchema,
   createTeamSchema,
+  listTeamsQuerySchema,
   teamIdParamSchema,
   teamMemberParamSchema,
   updateMemberAbsentSchema,
@@ -17,7 +18,16 @@ export class TeamController {
 
   list = async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const teams = await this.service.listUserTeams(request.user.sub);
+      const parsed = listTeamsQuerySchema.safeParse(request.query);
+
+      if (!parsed.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const teams = await this.service.listUserTeams(
+        request.user.sub,
+        parsed.data.active,
+      );
       return sendSuccess(reply, { teams });
     } catch (error) {
       return handleControllerError(error, reply);
@@ -38,6 +48,56 @@ export class TeamController {
       );
 
       return sendSuccess(reply, { team });
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  deactivate = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const parsed = teamIdParamSchema.safeParse(request.params);
+
+      if (!parsed.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const team = await this.service.setTeamActive(
+        parsed.data.id,
+        request.user.sub,
+        false,
+      );
+
+      return sendSuccess(
+        reply,
+        { team },
+        200,
+        MENSAGENS.EQUIPE_INATIVADA_SUCESSO,
+      );
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  reactivate = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const parsed = teamIdParamSchema.safeParse(request.params);
+
+      if (!parsed.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const team = await this.service.setTeamActive(
+        parsed.data.id,
+        request.user.sub,
+        true,
+      );
+
+      return sendSuccess(
+        reply,
+        { team },
+        200,
+        MENSAGENS.EQUIPE_REATIVADA_SUCESSO,
+      );
     } catch (error) {
       return handleControllerError(error, reply);
     }

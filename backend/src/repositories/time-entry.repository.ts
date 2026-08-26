@@ -286,8 +286,13 @@ export class TimeEntryRepository {
       where: {
         userId,
         OR: [
-          { card: { deletedAt: null } },
-          { task: { deletedAt: null, card: { deletedAt: null } } },
+          { card: { deletedAt: null, team: { active: true } } },
+          {
+            task: {
+              deletedAt: null,
+              card: { deletedAt: null, team: { active: true } },
+            },
+          },
         ],
       },
       orderBy: { startedAt: 'desc' },

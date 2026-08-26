@@ -17,6 +17,7 @@ import type {
 } from '../types/card.types.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
+import { assertTeamMembership } from '../utils/team-access.js';
 
 type CardWithRelations = Card & {
   tag?: ActivityTagSummary | null;
@@ -127,11 +128,7 @@ export class CardService {
       userId,
     );
 
-    if (!membership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
-
-    return membership;
+    return assertTeamMembership(membership);
   }
 
   private async assertCanEditEstimatedHours(

@@ -153,6 +153,7 @@ export class CardRepository {
         type: 'PROJECT' as CardType,
         deletedAt: null,
         team: {
+          active: true,
           members: { some: { userId } },
         },
       },

@@ -23,6 +23,7 @@ import type {
 } from '../types/time-entry.types.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
+import { assertTeamMembership } from '../utils/team-access.js';
 import { getEntryDurationSeconds } from '../utils/time-entry-duration.js';
 import { AbsenceService } from './absence.service.js';
 import { releaseActivityIfIdle } from './card-status-sync.js';
@@ -413,6 +414,15 @@ export class TimeEntryService {
     );
   }
 
+  private async assertTeamMember(teamId: string, userId: string) {
+    const membership = await this.teamRepository.findMembershipByTeamAndUser(
+      teamId,
+      userId,
+    );
+    assertTeamMembership(membership);
+    return membership;
+  }
+
   private async assertUserPresent(userId: string): Promise<void> {
     const user = await this.userRepository.findById(userId);
 
@@ -431,15 +441,7 @@ export class TimeEntryService {
     userId: string,
   ): Promise<ActiveTimer> {
     await this.assertUserPresent(userId);
-
-    const membership = await this.teamRepository.findMembershipByTeamAndUser(
-      teamId,
-      userId,
-    );
-
-    if (!membership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
+    await this.assertTeamMember(teamId, userId);
 
     const card = await this.cardRepository.findActivityById(activityId);
 
@@ -516,14 +518,7 @@ export class TimeEntryService {
       throw new AppError(400, MENSAGENS.TAREFA_TIMER_STATUS_INVALIDO);
     }
 
-    const membership = await this.teamRepository.findMembershipByTeamAndUser(
-      task.card.teamId,
-      userId,
-    );
-
-    if (!membership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
+    await this.assertTeamMember(task.card.teamId, userId);
 
     const activeEntry =
       await this.timeEntryRepository.findActiveByUserId(userId);
@@ -609,14 +604,7 @@ export class TimeEntryService {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
     }
 
-    const membership = await this.teamRepository.findMembershipByTeamAndUser(
-      task.card.teamId,
-      userId,
-    );
-
-    if (!membership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
+    await this.assertTeamMember(task.card.teamId, userId);
 
     const skip = (options.page - 1) * options.pageSize;
 
@@ -648,14 +636,7 @@ export class TimeEntryService {
     userId: string,
     options: { date?: string; page: number; pageSize: number },
   ): Promise<PaginatedTaskTimeEntries> {
-    const membership = await this.teamRepository.findMembershipByTeamAndUser(
-      teamId,
-      userId,
-    );
-
-    if (!membership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
+    await this.assertTeamMember(teamId, userId);
 
     const card = await this.cardRepository.findActivityById(activityId);
 
@@ -717,14 +698,7 @@ export class TimeEntryService {
       throw new AppError(403, MENSAGENS.PROIBIDO);
     }
 
-    const membership = await this.teamRepository.findMembershipByTeamAndUser(
-      entry.task.card.teamId,
-      userId,
-    );
-
-    if (!membership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
+    await this.assertTeamMember(entry.task.card.teamId, userId);
 
     const startedAtDate = new Date(startedAt);
     const endedAtDate = endedAt ? new Date(endedAt) : null;
@@ -766,14 +740,7 @@ export class TimeEntryService {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
     }
 
-    const membership = await this.teamRepository.findMembershipByTeamAndUser(
-      teamId,
-      userId,
-    );
-
-    if (!membership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
+    await this.assertTeamMember(teamId, userId);
 
     const startedAtDate = new Date(startedAt);
     const endedAtDate = endedAt ? new Date(endedAt) : null;
@@ -844,14 +811,7 @@ export class TimeEntryService {
     userId: string,
     options: { date?: string; page: number; pageSize: number },
   ): Promise<PaginatedTeamTimeEntries> {
-    const membership = await this.teamRepository.findMembershipByTeamAndUser(
-      teamId,
-      userId,
-    );
-
-    if (!membership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
+    await this.assertTeamMember(teamId, userId);
 
     const skip = (options.page - 1) * options.pageSize;
 
@@ -986,14 +946,7 @@ export class TimeEntryService {
     userId: string,
     date?: string,
   ): Promise<TeamDayDashboard> {
-    const membership = await this.teamRepository.findMembershipByTeamAndUser(
-      teamId,
-      userId,
-    );
-
-    if (!membership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
+    await this.assertTeamMember(teamId, userId);
 
     const targetDate = date ?? formatDateKey(new Date());
     const { dayStart, dayEnd } = parseDayBounds(targetDate);

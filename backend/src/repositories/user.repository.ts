@@ -19,7 +19,7 @@ export class UserRepository {
 
   async hasOwnedTeams(userId: string): Promise<boolean> {
     const ownedMembership = await this.prisma.teamMember.findFirst({
-      where: { userId, role: 'ADMIN' },
+      where: { userId, role: 'ADMIN', team: { active: true } },
       select: { id: true },
     });
 
@@ -63,6 +63,7 @@ export class UserRepository {
         memberships: {
           some: {
             team: {
+              active: true,
               members: {
                 some: {
                   userId: leaderUserId,
@@ -82,6 +83,7 @@ export class UserRepository {
       where: {
         userId: targetUserId,
         team: {
+          active: true,
           members: {
             some: {
               userId: leaderUserId,
