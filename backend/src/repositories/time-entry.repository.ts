@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient, TimeEntry } from '../generated/client.js';
+import { parseDayBounds } from '../utils/app-timezone.js';
 import {
   getEntryDurationSeconds,
   sumEntryDurations,
@@ -160,9 +161,7 @@ export class TimeEntryRepository {
     const where: Prisma.TimeEntryWhereInput = { taskId };
 
     if (date) {
-      const dayStart = new Date(`${date}T00:00:00.000`);
-      const dayEnd = new Date(dayStart);
-      dayEnd.setDate(dayEnd.getDate() + 1);
+      const { dayStart, dayEnd } = parseDayBounds(date);
 
       where.startedAt = { lt: dayEnd };
       where.OR = [{ endedAt: { gt: dayStart } }, { endedAt: null }];
@@ -201,9 +200,7 @@ export class TimeEntryRepository {
     const where: Prisma.TimeEntryWhereInput = { cardId };
 
     if (date) {
-      const dayStart = new Date(`${date}T00:00:00.000`);
-      const dayEnd = new Date(dayStart);
-      dayEnd.setDate(dayEnd.getDate() + 1);
+      const { dayStart, dayEnd } = parseDayBounds(date);
 
       where.startedAt = { lt: dayEnd };
       where.OR = [{ endedAt: { gt: dayStart } }, { endedAt: null }];
@@ -363,9 +360,7 @@ export class TimeEntryRepository {
       return teamFilter;
     }
 
-    const dayStart = new Date(`${date}T00:00:00.000`);
-    const dayEnd = new Date(dayStart);
-    dayEnd.setDate(dayEnd.getDate() + 1);
+    const { dayStart, dayEnd } = parseDayBounds(date);
 
     return {
       AND: [
@@ -396,9 +391,7 @@ export class TimeEntryRepository {
       };
     }
 
-    const dayStart = new Date(`${date}T00:00:00.000`);
-    const dayEnd = new Date(dayStart);
-    dayEnd.setDate(dayEnd.getDate() + 1);
+    const { dayStart, dayEnd } = parseDayBounds(date);
 
     return {
       AND: [

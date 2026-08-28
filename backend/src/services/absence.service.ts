@@ -4,12 +4,11 @@ import { TaskRepository } from '../repositories/task.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
 import { UserRepository } from '../repositories/user.repository.js';
 import type { User } from '../generated/client.js';
+import { formatDateKey, isDateKey, parseDayBounds } from '../utils/app-timezone.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 import { releaseActivityIfIdle } from './card-status-sync.js';
 import { releaseTaskIfIdle } from './task-status-sync.js';
-
-const DATE_KEY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
 export interface SetAbsentOptions {
   startDate?: string;
@@ -17,19 +16,12 @@ export interface SetAbsentOptions {
   createdById: string;
 }
 
-function formatDateKey(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
 function parseDateKey(dateKey: string): Date {
-  if (!DATE_KEY_REGEX.test(dateKey)) {
+  if (!isDateKey(dateKey)) {
     throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
   }
 
-  return new Date(`${dateKey}T00:00:00.000`);
+  return parseDayBounds(dateKey).dayStart;
 }
 
 function startOfToday(): Date {

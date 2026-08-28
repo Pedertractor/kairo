@@ -12,6 +12,7 @@ const INLINE_TIME_MIN_HEIGHT = 46
 
 interface TimelineBlockProps {
   block: DayTimelineBlock
+  selectedDate: string
   top: number
   height: number
   colors: { bar: string; subtext: string }
@@ -19,13 +20,18 @@ interface TimelineBlockProps {
 
 export function TimelineBlock({
   block,
+  selectedDate,
   top,
   height,
   colors,
 }: TimelineBlockProps) {
   const showTitle = height >= INLINE_TITLE_MIN_HEIGHT
   const showTime = height >= INLINE_TIME_MIN_HEIGHT
-  const timeRange = formatTimeRange(block.startedAt, block.endedAt)
+  const timeRange = formatTimeRange(
+    block.startedAt,
+    block.endedAt,
+    selectedDate,
+  )
 
   return (
     <Tooltip>

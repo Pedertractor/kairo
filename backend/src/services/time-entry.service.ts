@@ -21,6 +21,11 @@ import type {
   TimeEntrySummary,
   UserTimeEntrySummary,
 } from '../types/time-entry.types.js';
+import {
+  formatDateKey,
+  parseDayBounds,
+  shiftDateKey,
+} from '../utils/app-timezone.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 import { assertTeamMembership } from '../utils/team-access.js';
@@ -142,20 +147,30 @@ function toTaskTimeEntrySummary(
   };
 }
 
-function parseDayBounds(date: string): { dayStart: Date; dayEnd: Date } {
-  const dayStart = new Date(`${date}T00:00:00.000`);
-  const dayEnd = new Date(dayStart);
-  dayEnd.setDate(dayEnd.getDate() + 1);
+function getClippedBlockTimes(
+  entry: { startedAt: Date; endedAt: Date | null },
+  dayStart: Date,
+  dayEnd: Date,
+  now: Date,
+): { startedAt: string; endedAt: string | null; isActive: boolean } | null {
+  const entryEnd = entry.endedAt ?? now;
+  const overlapStart = new Date(
+    Math.max(entry.startedAt.getTime(), dayStart.getTime()),
+  );
+  const overlapEnd = new Date(Math.min(entryEnd.getTime(), dayEnd.getTime()));
 
-  return { dayStart, dayEnd };
-}
+  if (overlapStart >= overlapEnd) {
+    return null;
+  }
 
-function formatDateKey(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+  const continuesAfterDay = entryEnd.getTime() > dayEnd.getTime();
+  const isLiveOnThisDay = entry.endedAt === null && !continuesAfterDay;
 
-  return `${year}-${month}-${day}`;
+  return {
+    startedAt: overlapStart.toISOString(),
+    endedAt: isLiveOnThisDay ? null : overlapEnd.toISOString(),
+    isActive: isLiveOnThisDay,
+  };
 }
 
 function getOverlapSeconds(
@@ -176,13 +191,9 @@ function mapDayEntryToBlock(
   dayEnd: Date,
   now: Date,
 ): DayTimelineBlock | null {
-  const entryEnd = entry.endedAt ?? now;
-  const overlapStart = new Date(
-    Math.max(entry.startedAt.getTime(), dayStart.getTime()),
-  );
-  const overlapEnd = new Date(Math.min(entryEnd.getTime(), dayEnd.getTime()));
+  const clipped = getClippedBlockTimes(entry, dayStart, dayEnd, now);
 
-  if (overlapStart >= overlapEnd) {
+  if (!clipped) {
     return null;
   }
 
@@ -198,9 +209,9 @@ function mapDayEntryToBlock(
       title: `${parentCard.title} · ${entry.task.title}`,
       kind: 'TASK',
       teamId: parentCard.teamId,
-      startedAt: overlapStart.toISOString(),
-      endedAt: entry.endedAt ? overlapEnd.toISOString() : null,
-      isActive: entry.endedAt === null,
+      startedAt: clipped.startedAt,
+      endedAt: clipped.endedAt,
+      isActive: clipped.isActive,
     };
   }
 
@@ -219,9 +230,9 @@ function mapDayEntryToBlock(
     title: entry.card.title,
     kind,
     teamId: entry.card.teamId,
-    startedAt: overlapStart.toISOString(),
-    endedAt: entry.endedAt ? overlapEnd.toISOString() : null,
-    isActive: entry.endedAt === null,
+    startedAt: clipped.startedAt,
+    endedAt: clipped.endedAt,
+    isActive: clipped.isActive,
   };
 }
 
@@ -876,9 +887,7 @@ export class TimeEntryService {
     const { dayStart, dayEnd } = parseDayBounds(targetDate);
     const now = new Date();
 
-    const previousDay = new Date(dayStart);
-    previousDay.setDate(previousDay.getDate() - 1);
-    const previousDate = formatDateKey(previousDay);
+    const previousDate = shiftDateKey(targetDate, -1);
     const { dayStart: prevStart, dayEnd: prevEnd } =
       parseDayBounds(previousDate);
 
@@ -952,9 +961,7 @@ export class TimeEntryService {
     const { dayStart, dayEnd } = parseDayBounds(targetDate);
     const now = new Date();
 
-    const previousDay = new Date(dayStart);
-    previousDay.setDate(previousDay.getDate() - 1);
-    const previousDate = formatDateKey(previousDay);
+    const previousDate = shiftDateKey(targetDate, -1);
     const { dayStart: prevStart, dayEnd: prevEnd } =
       parseDayBounds(previousDate);
 

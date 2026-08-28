@@ -1,4 +1,4 @@
-import dayjs from 'dayjs';
+import { getMinutesOnSelectedDay } from '@/lib/timeline-day';
 
 export interface TimelineLayoutInput {
   id: string;
@@ -14,24 +14,28 @@ export interface TimelineLayoutResult<T extends TimelineLayoutInput> {
   endMinutes: number;
 }
 
-function getMinutesFromMidnight(iso: string): number {
-  const date = dayjs(iso);
-
-  return date.hour() * 60 + date.minute();
-}
-
 export function layoutOverlappingBlocks<T extends TimelineLayoutInput>(
   blocks: T[],
   rangeStart: number,
   rangeEnd: number,
   now: Date,
+  selectedDate: string,
 ): TimelineLayoutResult<T>[] {
   const items = blocks
     .map((block) => {
-      const start = Math.max(getMinutesFromMidnight(block.startedAt), rangeStart);
+      const start = Math.max(
+        getMinutesOnSelectedDay(block.startedAt, selectedDate),
+        rangeStart,
+      );
       const end = block.endedAt
-        ? Math.min(getMinutesFromMidnight(block.endedAt), rangeEnd)
-        : Math.min(getMinutesFromMidnight(now.toISOString()), rangeEnd);
+        ? Math.min(
+            getMinutesOnSelectedDay(block.endedAt, selectedDate),
+            rangeEnd,
+          )
+        : Math.min(
+            getMinutesOnSelectedDay(now.toISOString(), selectedDate),
+            rangeEnd,
+          );
 
       return { block, start, end };
     })

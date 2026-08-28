@@ -10,14 +10,16 @@ import { Button } from '@/components/ui/button';
 import { buildMemberColorMap } from '@/lib/member-colors';
 import { toDateKey } from '@/lib/date';
 import { formatCurrentTime } from '@/lib/format-time';
+import {
+  formatDayMinutes,
+  getVisibleTimelineRange,
+} from '@/lib/timeline-day';
 import { layoutOverlappingBlocks } from '@/lib/timeline-overlap-layout';
 import { cn } from '@/lib/utils';
 import type { TeamDayTimelineBlock } from '@/types/time-entry';
 
 dayjs.locale('pt-br');
 
-const TIMELINE_START_HOUR = 5;
-const TIMELINE_END_HOUR = 18;
 const TIMELINE_VIEWPORT_HEIGHT = 440;
 const TIMELINE_EDGE_PADDING = 14;
 const BASE_HOUR_HEIGHT = 58;
@@ -86,10 +88,7 @@ function clampZoom(value: number) {
 }
 
 function formatTickLabel(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-
-  return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+  return formatDayMinutes(minutes);
 }
 
 function getTickInterval(zoom: number): number {
@@ -114,9 +113,11 @@ function shouldShowTickLabel(minutes: number, zoom: number): boolean {
   return false;
 }
 
-function buildTicks(zoom: number): TimelineTick[] {
-  const rangeStart = TIMELINE_START_HOUR * 60;
-  const rangeEnd = TIMELINE_END_HOUR * 60;
+function buildTicks(
+  zoom: number,
+  rangeStart: number,
+  rangeEnd: number,
+): TimelineTick[] {
   const interval = getTickInterval(zoom);
   const ticks: TimelineTick[] = [];
 
@@ -157,12 +158,18 @@ export function TeamDayTimeline({
   zoomRef.current = zoom;
 
   const hourHeight = BASE_HOUR_HEIGHT * zoom;
-  const timelineSpanHours = TIMELINE_END_HOUR - TIMELINE_START_HOUR;
+  const { rangeStart, rangeEnd } = getVisibleTimelineRange(
+    blocks,
+    selectedDate,
+    now,
+  );
+  const timelineSpanHours = (rangeEnd - rangeStart) / 60;
   const contentHeight =
     timelineSpanHours * hourHeight + TIMELINE_EDGE_PADDING * 2;
-  const rangeStart = TIMELINE_START_HOUR * 60;
-  const rangeEnd = TIMELINE_END_HOUR * 60;
-  const ticks = useMemo(() => buildTicks(zoom), [zoom]);
+  const ticks = useMemo(
+    () => buildTicks(zoom, rangeStart, rangeEnd),
+    [zoom, rangeStart, rangeEnd],
+  );
 
   const memberColorMap = useMemo(
     () => buildMemberColorMap(blocks.map((block) => block.userId)),
@@ -203,8 +210,15 @@ export function TeamDayTimeline({
   );
 
   const laidOutBlocks = useMemo(
-    () => layoutOverlappingBlocks(blocks, rangeStart, rangeEnd, now),
-    [blocks, rangeStart, rangeEnd, now],
+    () =>
+      layoutOverlappingBlocks(
+        blocks,
+        rangeStart,
+        rangeEnd,
+        now,
+        selectedDate,
+      ),
+    [blocks, rangeStart, rangeEnd, now, selectedDate],
   );
 
   const minutesToTop = useCallback(
@@ -508,6 +522,7 @@ export function TeamDayTimeline({
                       <TeamTimelineBlock
                         key={layout.block.id}
                         block={layout.block}
+                        selectedDate={selectedDate}
                         top={top}
                         height={height}
                         column={memberColumn}

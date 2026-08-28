@@ -13,13 +13,16 @@ import {
 } from '@/lib/activity-colors'
 import { toDateKey } from '@/lib/date'
 import { formatCurrentTime } from '@/lib/format-time'
+import {
+  formatDayMinutes,
+  getMinutesOnSelectedDay,
+  getVisibleTimelineRange,
+} from '@/lib/timeline-day'
 import { cn } from '@/lib/utils'
 import type { DayTimelineBlock } from '@/types/time-entry'
 
 dayjs.locale('pt-br')
 
-const TIMELINE_START_HOUR = 5
-const TIMELINE_END_HOUR = 18
 const TIMELINE_VIEWPORT_HEIGHT = 440
 const TIMELINE_EDGE_PADDING = 14
 const BASE_HOUR_HEIGHT = 58
@@ -76,17 +79,8 @@ function clampZoom(value: number) {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value))
 }
 
-function getMinutesFromMidnight(iso: string): number {
-  const date = dayjs(iso)
-
-  return date.hour() * 60 + date.minute()
-}
-
 function formatTickLabel(minutes: number): string {
-  const hours = Math.floor(minutes / 60)
-  const mins = minutes % 60
-
-  return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`
+  return formatDayMinutes(minutes)
 }
 
 function getTickInterval(zoom: number): number {
@@ -111,9 +105,11 @@ function shouldShowTickLabel(minutes: number, zoom: number): boolean {
   return false
 }
 
-function buildTicks(zoom: number): TimelineTick[] {
-  const rangeStart = TIMELINE_START_HOUR * 60
-  const rangeEnd = TIMELINE_END_HOUR * 60
+function buildTicks(
+  zoom: number,
+  rangeStart: number,
+  rangeEnd: number,
+): TimelineTick[] {
   const interval = getTickInterval(zoom)
   const ticks: TimelineTick[] = []
 
@@ -136,13 +132,27 @@ function getBlockStyle(
   block: DayTimelineBlock,
   hourHeight: number,
   now: Date,
-) {
-  const rangeStart = TIMELINE_START_HOUR * 60
-  const rangeEnd = TIMELINE_END_HOUR * 60
-  const start = Math.max(getMinutesFromMidnight(block.startedAt), rangeStart)
+  selectedDate: string,
+  rangeStart: number,
+  rangeEnd: number,
+): { top: number; height: number } | null {
+  const start = Math.max(
+    getMinutesOnSelectedDay(block.startedAt, selectedDate),
+    rangeStart,
+  )
   const end = block.endedAt
-    ? Math.min(getMinutesFromMidnight(block.endedAt), rangeEnd)
-    : Math.min(getMinutesFromMidnight(now.toISOString()), rangeEnd)
+    ? Math.min(
+        getMinutesOnSelectedDay(block.endedAt, selectedDate),
+        rangeEnd,
+      )
+    : Math.min(
+        getMinutesOnSelectedDay(now.toISOString(), selectedDate),
+        rangeEnd,
+      )
+
+  if (end <= start) {
+    return null
+  }
 
   const top =
     TIMELINE_EDGE_PADDING + ((start - rangeStart) / 60) * hourHeight
@@ -190,12 +200,18 @@ export function DayTimeline({
   zoomRef.current = zoom
 
   const hourHeight = BASE_HOUR_HEIGHT * zoom
-  const timelineSpanHours = TIMELINE_END_HOUR - TIMELINE_START_HOUR
+  const { rangeStart, rangeEnd } = getVisibleTimelineRange(
+    blocks,
+    selectedDate,
+    now,
+  )
+  const timelineSpanHours = (rangeEnd - rangeStart) / 60
   const contentHeight =
     timelineSpanHours * hourHeight + TIMELINE_EDGE_PADDING * 2
-  const rangeStart = TIMELINE_START_HOUR * 60
-  const rangeEnd = TIMELINE_END_HOUR * 60
-  const ticks = useMemo(() => buildTicks(zoom), [zoom])
+  const ticks = useMemo(
+    () => buildTicks(zoom, rangeStart, rangeEnd),
+    [zoom, rangeStart, rangeEnd],
+  )
   const activityColorMap = useMemo(
     () => buildActivityColorMap(blocks.map((block) => block.title)),
     [blocks],
@@ -309,8 +325,8 @@ export function DayTimeline({
       ? null
       : blocks.reduce((latest, block) => {
           const end = block.endedAt
-            ? getMinutesFromMidnight(block.endedAt)
-            : currentMinutes
+            ? getMinutesOnSelectedDay(block.endedAt, selectedDate)
+            : getMinutesOnSelectedDay(now.toISOString(), selectedDate)
 
           return Math.max(
             latest,
@@ -444,7 +460,19 @@ export function DayTimeline({
                 ))}
 
                 {blocks.map((block) => {
-                  const { top, height } = getBlockStyle(block, hourHeight, now)
+                  const style = getBlockStyle(
+                    block,
+                    hourHeight,
+                    now,
+                    selectedDate,
+                    rangeStart,
+                    rangeEnd,
+                  )
+
+                  if (!style) {
+                    return null
+                  }
+
                   const colors = getBlockColors(
                     block,
                     isToday,
@@ -456,8 +484,9 @@ export function DayTimeline({
                     <TimelineBlock
                       key={block.id}
                       block={block}
-                      top={top}
-                      height={height}
+                      selectedDate={selectedDate}
+                      top={style.top}
+                      height={style.height}
                       colors={colors}
                     />
                   )

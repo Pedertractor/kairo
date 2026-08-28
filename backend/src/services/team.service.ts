@@ -5,6 +5,7 @@ import { TeamRepository } from '../repositories/team.repository.js';
 import { UserRepository } from '../repositories/user.repository.js';
 import type { CostCenterSummary } from '../types/cost-center.types.js';
 import type { TeamMemberSummary, TeamSummary, TeamUserOption } from '../types/team.types.js';
+import { formatDateKey } from '../utils/app-timezone.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 import { assertTeamMembership } from '../utils/team-access.js';
@@ -26,13 +27,6 @@ type TeamWithMembers = {
     costCenter: CostCenterSummary;
   }>;
 };
-
-function formatDateKey(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
 
 function toTeamMembers(
   members: TeamWithMembers['members'],

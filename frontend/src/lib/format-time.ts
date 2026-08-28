@@ -1,10 +1,25 @@
-import dayjs from 'dayjs'
+import {
+  formatDayMinutes,
+  getMinutesOnSelectedDay,
+  MINUTES_IN_DAY,
+} from '@/lib/timeline-day'
 
-export function formatTimeRange(startedAt: string, endedAt: string | null): string {
-  const start = dayjs(startedAt).format('HH:mm')
-  const end = endedAt ? dayjs(endedAt).format('HH:mm') : 'agora'
+export function formatTimeRange(
+  startedAt: string,
+  endedAt: string | null,
+  selectedDate: string,
+): string {
+  const startMinutes = getMinutesOnSelectedDay(startedAt, selectedDate)
+  const endMinutes = endedAt
+    ? getMinutesOnSelectedDay(endedAt, selectedDate)
+    : null
+  const crossesMidnight =
+    startMinutes === 0 || endMinutes === MINUTES_IN_DAY
+  const separator = crossesMidnight ? ' → ' : ' - '
+  const endLabel =
+    endMinutes === null ? 'agora' : formatDayMinutes(endMinutes)
 
-  return `${start} - ${end}`
+  return `${formatDayMinutes(startMinutes)}${separator}${endLabel}`
 }
 
 export function formatCurrentTime(date = new Date()): string {
