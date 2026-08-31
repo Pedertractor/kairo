@@ -275,7 +275,12 @@ export function CreateUserDialog({
                     onValueChange={(value) => setTeamId(value ?? '')}
                   >
                     <SelectTrigger id="user-team" className="w-full">
-                      <SelectValue placeholder="Selecione a equipe" />
+                      <SelectValue placeholder="Selecione a equipe">
+                        {(value) =>
+                          ownedTeams.find((team) => team.id === value)?.name ??
+                          'Selecione a equipe'
+                        }
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {ownedTeams.map((team) => (

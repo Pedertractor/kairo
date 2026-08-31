@@ -21,9 +21,16 @@ const memberInclude = {
 export class TeamRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  findMembershipsByUserId(userId: string) {
+  findMembershipsByUserId(
+    userId: string,
+    options: { active: boolean; adminOnly?: boolean },
+  ) {
     return this.prisma.teamMember.findMany({
-      where: { userId },
+      where: {
+        userId,
+        ...(options.adminOnly ? { role: 'ADMIN' } : {}),
+        team: { active: options.active },
+      },
       include: {
         team: {
           include: memberInclude,
@@ -91,6 +98,13 @@ export class TeamRepository {
         teamId_userId: { teamId, userId },
       },
       data: { role: 'MEMBER' },
+    });
+  }
+
+  setActive(teamId: string, active: boolean) {
+    return this.prisma.team.update({
+      where: { id: teamId },
+      data: { active },
     });
   }
 

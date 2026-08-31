@@ -4,6 +4,7 @@ import { TeamRepository } from '../repositories/team.repository.js';
 import type { TagSummary } from '../types/tag.types.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
+import { assertTeamMembership } from '../utils/team-access.js';
 
 function toTagSummary(tag: Tag): TagSummary {
   return {
@@ -27,10 +28,7 @@ export class TagService {
       teamId,
       userId,
     );
-
-    if (!membership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
+    assertTeamMembership(membership);
   }
 
   async list(teamId: string, userId: string): Promise<TagSummary[]> {

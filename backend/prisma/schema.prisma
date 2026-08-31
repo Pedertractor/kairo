@@ -140,6 +140,7 @@ model Team {
   id          String  @id @default(cuid())
   name        String
   description String?
+  active      Boolean @default(true)
 
   createdById String
   createdBy   User   @relation("TeamCreator", fields: [createdById], references: [id])
@@ -154,6 +155,7 @@ model Team {
   costCenters TeamCostCenter[]
   documents   TeamDocument[]
 
+  @@index([active])
   @@map("teams")
 }
 

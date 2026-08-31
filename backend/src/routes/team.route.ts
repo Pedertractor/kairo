@@ -35,6 +35,16 @@ export async function teamRoutes(app: FastifyInstance) {
   app.get('/teams', { preHandler: [app.authenticate] }, controller.list);
   app.get('/teams/:id', { preHandler: [app.authenticate] }, controller.getById);
   app.patch('/teams/:id', { preHandler: [app.authenticate] }, controller.update);
+  app.patch(
+    '/teams/:id/deactivate',
+    { preHandler: [app.authenticate] },
+    controller.deactivate,
+  );
+  app.patch(
+    '/teams/:id/reactivate',
+    { preHandler: [app.authenticate] },
+    controller.reactivate,
+  );
   app.get(
     '/teams/:id/cost-centers',
     { preHandler: [app.authenticate] },

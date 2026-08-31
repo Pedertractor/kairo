@@ -14,6 +14,7 @@ const COLUMN_GAP_PX = 4;
 
 interface TeamTimelineBlockProps {
   block: TeamDayTimelineBlock;
+  selectedDate: string;
   top: number;
   height: number;
   column: number;
@@ -23,6 +24,7 @@ interface TeamTimelineBlockProps {
 
 export function TeamTimelineBlock({
   block,
+  selectedDate,
   top,
   height,
   column,
@@ -31,7 +33,11 @@ export function TeamTimelineBlock({
 }: TeamTimelineBlockProps) {
   const showTitle = height >= INLINE_TITLE_MIN_HEIGHT;
   const showTime = height >= INLINE_TIME_MIN_HEIGHT;
-  const timeRange = formatTimeRange(block.startedAt, block.endedAt);
+  const timeRange = formatTimeRange(
+    block.startedAt,
+    block.endedAt,
+    selectedDate,
+  );
   const widthPercent = 100 / totalColumns;
   const leftPercent = column * widthPercent;
 

@@ -18,6 +18,7 @@ import type {
 } from '../types/document.types.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
+import { assertTeamMembership } from '../utils/team-access.js';
 
 type DocumentRecord = Awaited<
   ReturnType<DocumentRepository['findByIdAndTeamId']>
@@ -51,11 +52,7 @@ export class DocumentService {
       userId,
     );
 
-    if (!membership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
-
-    return membership;
+    return assertTeamMembership(membership);
   }
 
   async list(teamId: string, userId: string): Promise<DocumentSummary[]> {

@@ -21,8 +21,14 @@ import type {
   TimeEntrySummary,
   UserTimeEntrySummary,
 } from '../types/time-entry.types.js';
+import {
+  formatDateKey,
+  parseDayBounds,
+  shiftDateKey,
+} from '../utils/app-timezone.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
+import { assertTeamMembership } from '../utils/team-access.js';
 import { getEntryDurationSeconds } from '../utils/time-entry-duration.js';
 import { AbsenceService } from './absence.service.js';
 import { releaseActivityIfIdle } from './card-status-sync.js';
@@ -141,20 +147,30 @@ function toTaskTimeEntrySummary(
   };
 }
 
-function parseDayBounds(date: string): { dayStart: Date; dayEnd: Date } {
-  const dayStart = new Date(`${date}T00:00:00.000`);
-  const dayEnd = new Date(dayStart);
-  dayEnd.setDate(dayEnd.getDate() + 1);
+function getClippedBlockTimes(
+  entry: { startedAt: Date; endedAt: Date | null },
+  dayStart: Date,
+  dayEnd: Date,
+  now: Date,
+): { startedAt: string; endedAt: string | null; isActive: boolean } | null {
+  const entryEnd = entry.endedAt ?? now;
+  const overlapStart = new Date(
+    Math.max(entry.startedAt.getTime(), dayStart.getTime()),
+  );
+  const overlapEnd = new Date(Math.min(entryEnd.getTime(), dayEnd.getTime()));
 
-  return { dayStart, dayEnd };
-}
+  if (overlapStart >= overlapEnd) {
+    return null;
+  }
 
-function formatDateKey(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+  const continuesAfterDay = entryEnd.getTime() > dayEnd.getTime();
+  const isLiveOnThisDay = entry.endedAt === null && !continuesAfterDay;
 
-  return `${year}-${month}-${day}`;
+  return {
+    startedAt: overlapStart.toISOString(),
+    endedAt: isLiveOnThisDay ? null : overlapEnd.toISOString(),
+    isActive: isLiveOnThisDay,
+  };
 }
 
 function getOverlapSeconds(
@@ -175,13 +191,9 @@ function mapDayEntryToBlock(
   dayEnd: Date,
   now: Date,
 ): DayTimelineBlock | null {
-  const entryEnd = entry.endedAt ?? now;
-  const overlapStart = new Date(
-    Math.max(entry.startedAt.getTime(), dayStart.getTime()),
-  );
-  const overlapEnd = new Date(Math.min(entryEnd.getTime(), dayEnd.getTime()));
+  const clipped = getClippedBlockTimes(entry, dayStart, dayEnd, now);
 
-  if (overlapStart >= overlapEnd) {
+  if (!clipped) {
     return null;
   }
 
@@ -197,9 +209,9 @@ function mapDayEntryToBlock(
       title: `${parentCard.title} · ${entry.task.title}`,
       kind: 'TASK',
       teamId: parentCard.teamId,
-      startedAt: overlapStart.toISOString(),
-      endedAt: entry.endedAt ? overlapEnd.toISOString() : null,
-      isActive: entry.endedAt === null,
+      startedAt: clipped.startedAt,
+      endedAt: clipped.endedAt,
+      isActive: clipped.isActive,
     };
   }
 
@@ -218,9 +230,9 @@ function mapDayEntryToBlock(
     title: entry.card.title,
     kind,
     teamId: entry.card.teamId,
-    startedAt: overlapStart.toISOString(),
-    endedAt: entry.endedAt ? overlapEnd.toISOString() : null,
-    isActive: entry.endedAt === null,
+    startedAt: clipped.startedAt,
+    endedAt: clipped.endedAt,
+    isActive: clipped.isActive,
   };
 }
 
@@ -413,6 +425,15 @@ export class TimeEntryService {
     );
   }
 
+  private async assertTeamMember(teamId: string, userId: string) {
+    const membership = await this.teamRepository.findMembershipByTeamAndUser(
+      teamId,
+      userId,
+    );
+    assertTeamMembership(membership);
+    return membership;
+  }
+
   private async assertUserPresent(userId: string): Promise<void> {
     const user = await this.userRepository.findById(userId);
 
@@ -431,15 +452,7 @@ export class TimeEntryService {
     userId: string,
   ): Promise<ActiveTimer> {
     await this.assertUserPresent(userId);
-
-    const membership = await this.teamRepository.findMembershipByTeamAndUser(
-      teamId,
-      userId,
-    );
-
-    if (!membership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
+    await this.assertTeamMember(teamId, userId);
 
     const card = await this.cardRepository.findActivityById(activityId);
 
@@ -516,14 +529,7 @@ export class TimeEntryService {
       throw new AppError(400, MENSAGENS.TAREFA_TIMER_STATUS_INVALIDO);
     }
 
-    const membership = await this.teamRepository.findMembershipByTeamAndUser(
-      task.card.teamId,
-      userId,
-    );
-
-    if (!membership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
+    await this.assertTeamMember(task.card.teamId, userId);
 
     const activeEntry =
       await this.timeEntryRepository.findActiveByUserId(userId);
@@ -609,14 +615,7 @@ export class TimeEntryService {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
     }
 
-    const membership = await this.teamRepository.findMembershipByTeamAndUser(
-      task.card.teamId,
-      userId,
-    );
-
-    if (!membership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
+    await this.assertTeamMember(task.card.teamId, userId);
 
     const skip = (options.page - 1) * options.pageSize;
 
@@ -648,14 +647,7 @@ export class TimeEntryService {
     userId: string,
     options: { date?: string; page: number; pageSize: number },
   ): Promise<PaginatedTaskTimeEntries> {
-    const membership = await this.teamRepository.findMembershipByTeamAndUser(
-      teamId,
-      userId,
-    );
-
-    if (!membership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
+    await this.assertTeamMember(teamId, userId);
 
     const card = await this.cardRepository.findActivityById(activityId);
 
@@ -717,14 +709,7 @@ export class TimeEntryService {
       throw new AppError(403, MENSAGENS.PROIBIDO);
     }
 
-    const membership = await this.teamRepository.findMembershipByTeamAndUser(
-      entry.task.card.teamId,
-      userId,
-    );
-
-    if (!membership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
+    await this.assertTeamMember(entry.task.card.teamId, userId);
 
     const startedAtDate = new Date(startedAt);
     const endedAtDate = endedAt ? new Date(endedAt) : null;
@@ -766,14 +751,7 @@ export class TimeEntryService {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
     }
 
-    const membership = await this.teamRepository.findMembershipByTeamAndUser(
-      teamId,
-      userId,
-    );
-
-    if (!membership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
+    await this.assertTeamMember(teamId, userId);
 
     const startedAtDate = new Date(startedAt);
     const endedAtDate = endedAt ? new Date(endedAt) : null;
@@ -844,14 +822,7 @@ export class TimeEntryService {
     userId: string,
     options: { date?: string; page: number; pageSize: number },
   ): Promise<PaginatedTeamTimeEntries> {
-    const membership = await this.teamRepository.findMembershipByTeamAndUser(
-      teamId,
-      userId,
-    );
-
-    if (!membership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
+    await this.assertTeamMember(teamId, userId);
 
     const skip = (options.page - 1) * options.pageSize;
 
@@ -916,9 +887,7 @@ export class TimeEntryService {
     const { dayStart, dayEnd } = parseDayBounds(targetDate);
     const now = new Date();
 
-    const previousDay = new Date(dayStart);
-    previousDay.setDate(previousDay.getDate() - 1);
-    const previousDate = formatDateKey(previousDay);
+    const previousDate = shiftDateKey(targetDate, -1);
     const { dayStart: prevStart, dayEnd: prevEnd } =
       parseDayBounds(previousDate);
 
@@ -986,22 +955,13 @@ export class TimeEntryService {
     userId: string,
     date?: string,
   ): Promise<TeamDayDashboard> {
-    const membership = await this.teamRepository.findMembershipByTeamAndUser(
-      teamId,
-      userId,
-    );
-
-    if (!membership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
+    await this.assertTeamMember(teamId, userId);
 
     const targetDate = date ?? formatDateKey(new Date());
     const { dayStart, dayEnd } = parseDayBounds(targetDate);
     const now = new Date();
 
-    const previousDay = new Date(dayStart);
-    previousDay.setDate(previousDay.getDate() - 1);
-    const previousDate = formatDateKey(previousDay);
+    const previousDate = shiftDateKey(targetDate, -1);
     const { dayStart: prevStart, dayEnd: prevEnd } =
       parseDayBounds(previousDate);
 

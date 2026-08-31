@@ -26,6 +26,9 @@ export const MENSAGENS = {
   SENHAS_NAO_COINCIDEM: 'As senhas não coincidem',
   EQUIPE_CRIADA_SUCESSO: 'Equipe criada com sucesso',
   EQUIPE_ATUALIZADA_SUCESSO: 'Equipe atualizada com sucesso',
+  EQUIPE_INATIVADA_SUCESSO: 'Equipe inativada com sucesso',
+  EQUIPE_REATIVADA_SUCESSO: 'Equipe reativada com sucesso',
+  EQUIPE_INATIVA: 'Esta equipe está inativa',
   CENTROS_CUSTO_SINCRONIZADOS_SUCESSO:
     'Centros de custo sincronizados com sucesso',
   CENTROS_CUSTO_ATUALIZADOS_SUCESSO:

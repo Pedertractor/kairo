@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { format } from 'date-fns'
 import { ptBR as dateFnsPtBR } from 'date-fns/locale'
 import { CalendarIcon } from 'lucide-react'
@@ -25,6 +25,12 @@ interface DateRangePickerProps {
   numberOfMonths?: number
 }
 
+function isCompleteRange(
+  nextRange: DateRange | undefined,
+): nextRange is DateRange & { from: Date; to: Date } {
+  return Boolean(nextRange?.from && nextRange.to)
+}
+
 export function DateRangePicker({
   id,
   range,
@@ -36,22 +42,53 @@ export function DateRangePicker({
   numberOfMonths = 2,
 }: DateRangePickerProps) {
   const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState<DateRange | undefined>(range)
+  const draftRef = useRef(draft)
+  draftRef.current = draft
 
-  function handleOpenChange(nextOpen: boolean) {
-    const scrollY = window.scrollY
-    setOpen(nextOpen)
+  useEffect(() => {
+    if (!open) {
+      setDraft(range)
+    }
+  }, [open, range])
 
-    // Prevent focus management from jumping the page when the popover opens/closes.
+  function restoreScroll(scrollY: number) {
     requestAnimationFrame(() => {
       window.scrollTo({ top: scrollY })
     })
   }
 
+  function handleOpenChange(
+    nextOpen: boolean,
+    eventDetails: { reason: string; cancel: () => void },
+  ) {
+    // Day buttons remount/refocus while picking a range; don't dismiss on that focus shift.
+    if (!nextOpen && eventDetails.reason === 'focus-out') {
+      eventDetails.cancel()
+      return
+    }
+
+    const scrollY = window.scrollY
+
+    if (nextOpen) {
+      setDraft(range)
+    } else {
+      const pending = draftRef.current
+      if (pending?.from && !pending.to) {
+        onRangeChange({ from: pending.from, to: pending.from })
+      }
+    }
+
+    setOpen(nextOpen)
+    restoreScroll(scrollY)
+  }
+
+  const displayed = open ? draft : range
   const label =
-    range?.from && range.to
-      ? `${format(range.from, displayFormat, { locale: dateFnsPtBR })} – ${format(range.to, displayFormat, { locale: dateFnsPtBR })}`
-      : range?.from
-        ? format(range.from, displayFormat, { locale: dateFnsPtBR })
+    displayed?.from && displayed.to
+      ? `${format(displayed.from, displayFormat, { locale: dateFnsPtBR })} – ${format(displayed.to, displayFormat, { locale: dateFnsPtBR })}`
+      : displayed?.from
+        ? format(displayed.from, displayFormat, { locale: dateFnsPtBR })
         : placeholder
 
   return (
@@ -65,7 +102,7 @@ export function DateRangePicker({
             variant="outline"
             className={cn(
               'w-full justify-start text-left font-normal',
-              !range?.from && 'text-muted-foreground',
+              !displayed?.from && 'text-muted-foreground',
               className,
             )}
           />
@@ -82,12 +119,14 @@ export function DateRangePicker({
       >
         <Calendar
           mode="range"
-          selected={range}
+          selected={displayed}
+          defaultMonth={displayed?.from}
+          resetOnSelect
           onSelect={(nextRange) => {
+            draftRef.current = nextRange
+            setDraft(nextRange)
+            if (!isCompleteRange(nextRange)) return
             onRangeChange(nextRange)
-            if (nextRange?.from && nextRange.to) {
-              setOpen(false)
-            }
           }}
           numberOfMonths={numberOfMonths}
           locale={dayPickerPtBR}

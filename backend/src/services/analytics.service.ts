@@ -7,34 +7,26 @@ import type {
   ClientAnalytics,
   EmployeeDayAnalytics,
 } from '../types/analytics.types.js';
+import { formatDateKey, parseDayBounds } from '../utils/app-timezone.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 import { getEntryDurationSeconds } from '../utils/time-entry-duration.js';
 
 const DAILY_AVAILABILITY_SECONDS = 8 * 60 * 60 + 48 * 60;
 
-function formatDateKey(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-
-  return `${year}-${month}-${day}`;
-}
-
 function getPeriodBounds(
   startDate: string,
   endDate: string,
 ): { periodStart: Date; periodEnd: Date } {
-  const periodStart = new Date(`${startDate}T00:00:00.000`);
-  const periodEnd = new Date(`${endDate}T00:00:00.000`);
-  periodEnd.setDate(periodEnd.getDate() + 1);
+  const { dayStart: periodStart } = parseDayBounds(startDate);
+  const { dayEnd: periodEnd } = parseDayBounds(endDate);
 
   return { periodStart, periodEnd };
 }
 
 function getInclusiveDayCount(startDate: string, endDate: string): number {
-  const start = new Date(`${startDate}T00:00:00.000`);
-  const end = new Date(`${endDate}T00:00:00.000`);
+  const { dayStart: start } = parseDayBounds(startDate);
+  const { dayStart: end } = parseDayBounds(endDate);
   const diffMs = end.getTime() - start.getTime();
 
   return Math.floor(diffMs / (24 * 60 * 60 * 1000)) + 1;
@@ -54,7 +46,7 @@ function countAbsenceDaysInPeriod(
   periodEndExclusive: Date,
   now: Date,
 ): number {
-  const todayStart = new Date(`${formatDateKey(now)}T00:00:00.000`);
+  const todayStart = parseDayBounds(formatDateKey(now)).dayStart;
   const periodEndInclusive = new Date(periodEndExclusive);
   periodEndInclusive.setDate(periodEndInclusive.getDate() - 1);
 

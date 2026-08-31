@@ -9,6 +9,7 @@ export class AnalyticsRepository {
         members: {
           some: { userId, role: 'ADMIN' },
         },
+        active: true,
       },
       orderBy: { name: 'asc' },
       select: {

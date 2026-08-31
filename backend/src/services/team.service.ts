@@ -5,14 +5,17 @@ import { TeamRepository } from '../repositories/team.repository.js';
 import { UserRepository } from '../repositories/user.repository.js';
 import type { CostCenterSummary } from '../types/cost-center.types.js';
 import type { TeamMemberSummary, TeamSummary, TeamUserOption } from '../types/team.types.js';
+import { formatDateKey } from '../utils/app-timezone.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
+import { assertTeamMembership } from '../utils/team-access.js';
 import { AbsenceService } from './absence.service.js';
 
 type TeamWithMembers = {
   id: string;
   name: string;
   description: string | null;
+  active: boolean;
   createdById: string;
   createdAt: Date;
   _count: { members: number };
@@ -24,13 +27,6 @@ type TeamWithMembers = {
     costCenter: CostCenterSummary;
   }>;
 };
-
-function formatDateKey(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
 
 function toTeamMembers(
   members: TeamWithMembers['members'],
@@ -69,6 +65,7 @@ function toTeamSummary(
     members: toTeamMembers(team.members, absenceStartedAtByUserId),
     costCenters: toTeamCostCenters(team.costCenters),
     role,
+    active: team.active,
     createdAt: team.createdAt.toISOString(),
   };
 }
@@ -99,8 +96,32 @@ export class TeamService {
     return map;
   }
 
-  async listUserTeams(userId: string): Promise<TeamSummary[]> {
-    const memberships = await this.teamRepository.findMembershipsByUserId(userId);
+  private async requireTeamAdmin(
+    teamId: string,
+    actorUserId: string,
+    options?: { forWrite?: boolean; allowInactiveAdmin?: boolean },
+  ) {
+    const membership = await this.teamRepository.findMembershipByTeamAndUser(
+      teamId,
+      actorUserId,
+    );
+    const actorMembership = assertTeamMembership(membership, options);
+
+    if (actorMembership.role !== TeamRole.ADMIN) {
+      throw new AppError(403, MENSAGENS.PROIBIDO);
+    }
+
+    return actorMembership;
+  }
+
+  async listUserTeams(
+    userId: string,
+    active = true,
+  ): Promise<TeamSummary[]> {
+    const memberships = await this.teamRepository.findMembershipsByUserId(
+      userId,
+      { active, adminOnly: !active },
+    );
     const memberIds = [
       ...new Set(
         memberships.flatMap((membership) =>
@@ -122,19 +143,37 @@ export class TeamService {
       userId,
     );
 
-    if (!membership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
+    const allowed = assertTeamMembership(membership, {
+      allowInactiveAdmin: true,
+    });
 
     const absenceStartedAtByUserId = await this.loadAbsenceStartedAtByUserIds(
-      membership.team.members.map((member) => member.user.id),
+      allowed.team.members.map((member) => member.user.id),
     );
 
     return toTeamSummary(
-      membership.team,
-      membership.role,
+      allowed.team,
+      allowed.role,
       absenceStartedAtByUserId,
     );
+  }
+
+  async setTeamActive(
+    teamId: string,
+    actorUserId: string,
+    active: boolean,
+  ): Promise<TeamSummary> {
+    const actorMembership = await this.requireTeamAdmin(teamId, actorUserId, {
+      allowInactiveAdmin: true,
+    });
+
+    if (actorMembership.team.active === active) {
+      throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+    }
+
+    await this.teamRepository.setActive(teamId, active);
+
+    return this.getTeamForMember(teamId, actorUserId);
   }
 
   async removeMember(
@@ -142,18 +181,7 @@ export class TeamService {
     actorUserId: string,
     targetUserId: string,
   ): Promise<TeamSummary> {
-    const actorMembership = await this.teamRepository.findMembershipByTeamAndUser(
-      teamId,
-      actorUserId,
-    );
-
-    if (!actorMembership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
-
-    if (actorMembership.role !== TeamRole.ADMIN) {
-      throw new AppError(403, MENSAGENS.PROIBIDO);
-    }
+    await this.requireTeamAdmin(teamId, actorUserId, { forWrite: true });
 
     const targetMembership = await this.teamRepository.findMembershipByTeamAndUser(
       teamId,
@@ -186,18 +214,7 @@ export class TeamService {
       throw new AppError(400, MENSAGENS.NAO_PODE_PROMOVER_SI_MESMO);
     }
 
-    const actorMembership = await this.teamRepository.findMembershipByTeamAndUser(
-      teamId,
-      actorUserId,
-    );
-
-    if (!actorMembership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
-
-    if (actorMembership.role !== TeamRole.ADMIN) {
-      throw new AppError(403, MENSAGENS.PROIBIDO);
-    }
+    await this.requireTeamAdmin(teamId, actorUserId, { forWrite: true });
 
     const targetMembership = await this.teamRepository.findMembershipByTeamAndUser(
       teamId,
@@ -222,18 +239,7 @@ export class TeamService {
     actorUserId: string,
     targetUserId: string,
   ): Promise<TeamSummary> {
-    const actorMembership = await this.teamRepository.findMembershipByTeamAndUser(
-      teamId,
-      actorUserId,
-    );
-
-    if (!actorMembership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
-
-    if (actorMembership.role !== TeamRole.ADMIN) {
-      throw new AppError(403, MENSAGENS.PROIBIDO);
-    }
+    await this.requireTeamAdmin(teamId, actorUserId, { forWrite: true });
 
     const targetMembership = await this.teamRepository.findMembershipByTeamAndUser(
       teamId,
@@ -264,18 +270,7 @@ export class TeamService {
     actorUserId: string,
     targetUserId: string,
   ): Promise<TeamSummary> {
-    const actorMembership = await this.teamRepository.findMembershipByTeamAndUser(
-      teamId,
-      actorUserId,
-    );
-
-    if (!actorMembership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
-
-    if (actorMembership.role !== TeamRole.ADMIN) {
-      throw new AppError(403, MENSAGENS.PROIBIDO);
-    }
+    await this.requireTeamAdmin(teamId, actorUserId, { forWrite: true });
 
     const targetUser = await this.userRepository.findById(targetUserId);
 
@@ -305,18 +300,7 @@ export class TeamService {
     absent: boolean,
     options?: { startDate?: string; endDate?: string | null },
   ): Promise<TeamSummary> {
-    const actorMembership = await this.teamRepository.findMembershipByTeamAndUser(
-      teamId,
-      actorUserId,
-    );
-
-    if (!actorMembership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
-
-    if (actorMembership.role !== TeamRole.ADMIN) {
-      throw new AppError(403, MENSAGENS.PROIBIDO);
-    }
+    await this.requireTeamAdmin(teamId, actorUserId, { forWrite: true });
 
     const targetMembership =
       await this.teamRepository.findMembershipByTeamAndUser(
@@ -341,18 +325,7 @@ export class TeamService {
     teamId: string,
     actorUserId: string,
   ): Promise<TeamUserOption[]> {
-    const actorMembership = await this.teamRepository.findMembershipByTeamAndUser(
-      teamId,
-      actorUserId,
-    );
-
-    if (!actorMembership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
-
-    if (actorMembership.role !== TeamRole.ADMIN) {
-      throw new AppError(403, MENSAGENS.PROIBIDO);
-    }
+    await this.requireTeamAdmin(teamId, actorUserId, { forWrite: true });
 
     return this.userRepository.findAvailableForTeam(teamId);
   }
@@ -380,18 +353,7 @@ export class TeamService {
       description?: string | null;
     },
   ): Promise<TeamSummary> {
-    const actorMembership = await this.teamRepository.findMembershipByTeamAndUser(
-      teamId,
-      actorUserId,
-    );
-
-    if (!actorMembership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
-
-    if (actorMembership.role !== TeamRole.ADMIN) {
-      throw new AppError(403, MENSAGENS.PROIBIDO);
-    }
+    await this.requireTeamAdmin(teamId, actorUserId, { forWrite: true });
 
     await this.teamRepository.updateTeam(teamId, data);
 
@@ -411,18 +373,7 @@ export class TeamService {
     actorUserId: string,
     costCenterIds: string[],
   ): Promise<TeamSummary> {
-    const actorMembership = await this.teamRepository.findMembershipByTeamAndUser(
-      teamId,
-      actorUserId,
-    );
-
-    if (!actorMembership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
-
-    if (actorMembership.role !== TeamRole.ADMIN) {
-      throw new AppError(403, MENSAGENS.PROIBIDO);
-    }
+    await this.requireTeamAdmin(teamId, actorUserId, { forWrite: true });
 
     const uniqueIds = [...new Set(costCenterIds)];
 

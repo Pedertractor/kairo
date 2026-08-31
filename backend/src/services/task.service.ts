@@ -12,6 +12,7 @@ import type {
 } from '../types/task.types.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
+import { assertTeamMembership } from '../utils/team-access.js';
 
 type TaskWithRelations = Task & {
   assignedTo: { id: string; name: string } | null;
@@ -84,10 +85,7 @@ export class TaskService {
       card.teamId,
       userId,
     );
-
-    if (!membership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
+    assertTeamMembership(membership);
 
     return card;
   }

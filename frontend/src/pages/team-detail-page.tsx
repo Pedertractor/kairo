@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, Pencil } from 'lucide-react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { EditTeamDialog } from '@/components/edit-team-dialog';
+import { ReactivateTeamDialog } from '@/components/reactivate-team-dialog';
 import { TeamActivitiesSection } from '@/components/team-activities-section';
 import { TeamDocumentsSection } from '@/components/team-documents-section';
 import { TeamMembersSection } from '@/components/team-members-section';
@@ -11,6 +12,7 @@ import { TeamTimelineSection } from '@/components/team-timeline-section';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/lib/api-handler';
 import type { TeamResponse } from '@/types/team';
 
@@ -41,6 +43,7 @@ function parseTeamTab(value: string | null): TeamTab | null {
 
 export function TeamDetailPage() {
   const { teamId } = useParams<{ teamId: string }>();
+  const { refreshUser } = useAuth();
   const [searchParams] = useSearchParams();
   const tabFromUrl = parseTeamTab(searchParams.get('tab'));
   const dateFromUrl = searchParams.get('date') ?? undefined;
@@ -48,6 +51,7 @@ export function TeamDetailPage() {
   const [team, setTeam] = useState<TeamResponse['team'] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isReactivateDialogOpen, setIsReactivateDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TeamTab>(
     tabFromUrl ?? 'atividades',
   );
@@ -110,7 +114,7 @@ export function TeamDetailPage() {
           <div className='flex flex-col gap-2'>
             <div className='flex min-w-0 items-center gap-2'>
               <h1 className='text-2xl font-bold'>{team.name}</h1>
-              {team.role === 'ADMIN' ? (
+              {team.role === 'ADMIN' && team.active ? (
                 <Button
                   type='button'
                   variant='ghost'
@@ -124,6 +128,23 @@ export function TeamDetailPage() {
             </div>
             {team.description ? (
               <p className='text-muted-foreground'>{team.description}</p>
+            ) : null}
+            {!team.active ? (
+              <div className='flex flex-col gap-3 rounded-lg border bg-muted/40 p-4'>
+                <p className='text-sm text-muted-foreground'>
+                  Esta equipe está inativa. Ela não aparece nas listagens nem no
+                  analytics. Reative-a para voltar a usá-la.
+                </p>
+                {team.role === 'ADMIN' ? (
+                  <Button
+                    type='button'
+                    className='w-fit'
+                    onClick={() => setIsReactivateDialogOpen(true)}
+                  >
+                    Reativar equipe
+                  </Button>
+                ) : null}
+              </div>
             ) : null}
             {(team.costCenters ?? []).length > 0 ? (
               <ul className='flex flex-wrap gap-1.5'>
@@ -147,7 +168,17 @@ export function TeamDetailPage() {
             onOpenChange={setIsEditDialogOpen}
             onUpdated={setTeam}
           />
+          <ReactivateTeamDialog
+            team={team}
+            open={isReactivateDialogOpen}
+            onOpenChange={setIsReactivateDialogOpen}
+            onUpdated={(updated) => {
+              setTeam(updated);
+              void refreshUser();
+            }}
+          />
 
+          {team.active ? (
           <Tabs
             value={activeTab}
             onValueChange={(value) => setActiveTab(value as TeamTab)}
@@ -228,6 +259,7 @@ export function TeamDetailPage() {
               />
             </TabsContent>
           </Tabs>
+          ) : null}
         </>
       ) : (
         <p className='text-sm text-muted-foreground'>Equipe não encontrada.</p>

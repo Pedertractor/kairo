@@ -25,5 +25,6 @@ export interface TeamSummary {
   members: TeamMemberSummary[];
   costCenters: CostCenterSummary[];
   role: TeamRole;
+  active: boolean;
   createdAt: string;
 }

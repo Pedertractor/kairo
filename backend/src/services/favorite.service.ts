@@ -8,6 +8,7 @@ import type {
 } from '../types/favorite.types.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
+import { assertTeamMembership } from '../utils/team-access.js';
 
 export class FavoriteService {
   constructor(
@@ -22,10 +23,7 @@ export class FavoriteService {
       teamId,
       userId,
     );
-
-    if (!membership) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
+    assertTeamMembership(membership);
   }
 
   async listFavorites(userId: string): Promise<FavoriteWorkItem[]> {
