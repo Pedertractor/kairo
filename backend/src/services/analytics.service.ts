@@ -1,6 +1,9 @@
+import type { CardStatus } from '../generated/client.js';
 import { AbsenceRepository } from '../repositories/absence.repository.js';
 import { AnalyticsRepository } from '../repositories/analytics.repository.js';
 import type {
+  ActivityOverview,
+  ActivityStatusCount,
   ActivityTypeAnalytics,
   AnalyticsDashboard,
   AnalyticsEmployeeOption,
@@ -13,6 +16,27 @@ import { MENSAGENS } from '../utils/response.js';
 import { getEntryDurationSeconds } from '../utils/time-entry-duration.js';
 
 const DAILY_AVAILABILITY_SECONDS = 8 * 60 * 60 + 48 * 60;
+const CARD_STATUSES: CardStatus[] = [
+  'TODO',
+  'IN_PROGRESS',
+  'PAUSED',
+  'DONE',
+  'CANCELED',
+];
+const NONE_TAG_KEY = '__none__';
+
+function emptyStatusCounts(): Map<CardStatus, number> {
+  return new Map(CARD_STATUSES.map((status) => [status, 0]));
+}
+
+function toStatusCounts(
+  counts: Map<CardStatus, number>,
+): ActivityStatusCount[] {
+  return CARD_STATUSES.map((status) => ({
+    status,
+    count: counts.get(status) ?? 0,
+  }));
+}
 
 function getPeriodBounds(
   startDate: string,
@@ -268,7 +292,6 @@ export class AnalyticsService {
       totalsByEmployee.set(entry.userId, current);
     }
 
-    const NONE_TAG_KEY = '__none__';
     const activityBuckets = new Map<
       string,
       {
@@ -397,13 +420,69 @@ export class AnalyticsService {
       return bucket;
     }
 
+    const overviewStatusCounts = emptyStatusCounts();
+    const overviewTagBuckets = new Map<
+      string,
+      {
+        tagId: string | null;
+        tagName: string;
+        tagColor: string | null;
+        count: number;
+        statusCounts: Map<CardStatus, number>;
+      }
+    >();
+
     for (const activity of clientActivities) {
       const bucket = ensureClientBucket(
         activity.clientId,
         activity.client?.name,
       );
       bucket.activityCount += 1;
+
+      overviewStatusCounts.set(
+        activity.status,
+        (overviewStatusCounts.get(activity.status) ?? 0) + 1,
+      );
+
+      const tagKey = activity.tagId ?? NONE_TAG_KEY;
+      const tagBucket = overviewTagBuckets.get(tagKey) ?? {
+        tagId: activity.tagId,
+        tagName: activity.tag?.name ?? 'Sem etiqueta',
+        tagColor: activity.tag?.color ?? null,
+        count: 0,
+        statusCounts: emptyStatusCounts(),
+      };
+      tagBucket.count += 1;
+      tagBucket.statusCounts.set(
+        activity.status,
+        (tagBucket.statusCounts.get(activity.status) ?? 0) + 1,
+      );
+      overviewTagBuckets.set(tagKey, tagBucket);
     }
+
+    const activityOverview: ActivityOverview = {
+      total: clientActivities.length,
+      byStatus: toStatusCounts(overviewStatusCounts),
+      byTag: [...overviewTagBuckets.entries()]
+        .map(([key, bucket]) => ({
+          tagId: bucket.tagId,
+          tagName: bucket.tagName,
+          tagColor: bucket.tagColor,
+          count: bucket.count,
+          byStatus: toStatusCounts(bucket.statusCounts),
+          _isNone: key === NONE_TAG_KEY,
+        }))
+        .sort((a, b) => {
+          if (a._isNone !== b._isNone) {
+            return a._isNone ? 1 : -1;
+          }
+          if (b.count !== a.count) {
+            return b.count - a.count;
+          }
+          return a.tagName.localeCompare(b.tagName);
+        })
+        .map(({ _isNone: _, ...row }) => row),
+    };
 
     for (const task of clientTasks) {
       const bucket = ensureClientBucket(
@@ -594,6 +673,7 @@ export class AnalyticsService {
       rows,
       activityTypes,
       clients,
+      activityOverview,
     };
   }
 }

@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 
 import { AppLayout } from '@/components/app-layout'
 import { useAuth } from '@/hooks/use-auth'
+import { AdminDashboardPage } from '@/pages/admin-dashboard-page'
 import { AnalyticsPage } from '@/pages/analytics-page'
 import { ChangePasswordPage } from '@/pages/change-password-page'
 import { HomePage } from '@/pages/home-page'
@@ -129,6 +130,14 @@ function App() {
         element={
           <ProtectedRoute key="apontamentos" title="Apontamentos">
             <ApontamentosPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/painel"
+        element={
+          <ProtectedRoute key="painel" title="Painel" requireAdmin>
+            <AdminDashboardPage />
           </ProtectedRoute>
         }
       />

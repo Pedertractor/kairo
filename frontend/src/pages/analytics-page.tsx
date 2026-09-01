@@ -14,6 +14,7 @@ import {
   FolderKanban,
   Gauge,
   List,
+  PieChart,
   Sparkles,
   Tags,
   TimerReset,
@@ -21,10 +22,12 @@ import {
   X,
 } from 'lucide-react';
 
+import { AnalyticsActivityOverview } from '@/components/analytics-activity-overview';
 import { DatePicker } from '@/components/date-picker';
 import { DateRangePicker } from '@/components/date-range-picker';
 import { TeamDayTimeline } from '@/components/team-day-timeline';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Collapsible,
   CollapsibleContent,
@@ -76,6 +79,7 @@ type ClientFilterOption = {
 };
 
 type ClientViewMode = 'list' | 'chart';
+type AnalyticsTab = 'usuarios' | 'atividades';
 
 function utilizationColor(percent: number) {
   if (percent >= 100) return 'from-fuchsia-500 to-pink-500';
@@ -218,9 +222,11 @@ export function AnalyticsPage() {
   );
   const [isLoadingTimeline, setIsLoadingTimeline] = useState(false);
   const [availabilityOpen, setAvailabilityOpen] = useState(true);
+  const [overviewOpen, setOverviewOpen] = useState(true);
   const [tagsOpen, setTagsOpen] = useState(true);
   const [clientsOpen, setClientsOpen] = useState(true);
   const [clientViewMode, setClientViewMode] = useState<ClientViewMode>('list');
+  const [analyticsTab, setAnalyticsTab] = useState<AnalyticsTab>('usuarios');
   const timelineSectionRef = useRef<HTMLElement>(null);
 
   const loadDashboard = useCallback(async () => {
@@ -238,6 +244,11 @@ export function AnalyticsPage() {
         projects: data.projects ?? [],
         activityTypes: data.activityTypes ?? [],
         clients: data.clients ?? [],
+        activityOverview: data.activityOverview ?? {
+          total: 0,
+          byStatus: [],
+          byTag: [],
+        },
         selectedProject: data.selectedProject
           ? {
               ...data.selectedProject,
@@ -345,6 +356,7 @@ export function AnalyticsPage() {
     }
 
     setTimelineDate(endDate);
+    setAnalyticsTab('usuarios');
     setSelectedTimeline({
       employeeId: nextEmployeeId,
       employeeName,
@@ -358,6 +370,7 @@ export function AnalyticsPage() {
   const periodDayCount = getInclusiveDayCount(startDate, endDate);
   const activityTypes = dashboard?.activityTypes ?? [];
   const clients = dashboard?.clients ?? [];
+  const activityOverview = dashboard?.activityOverview ?? null;
   const tagOptions = useMemo<TagFilterOption[]>(
     () =>
       activityTypes.map((activityType) => ({
@@ -397,7 +410,7 @@ export function AnalyticsPage() {
             </div>
             <h1 className='text-3xl font-bold tracking-tight'>Analytics</h1>
             <p className='mt-1 max-w-xl text-sm text-white/80'>
-              Disponibilidade e apontamentos das suas equipes por período.
+              Disponibilidade dos usuários e visão das atividades por período.
             </p>
           </div>
 
@@ -513,6 +526,16 @@ export function AnalyticsPage() {
         </div>
       </section>
 
+      <Tabs
+        value={analyticsTab}
+        onValueChange={(value) => setAnalyticsTab(value as AnalyticsTab)}
+      >
+        <TabsList>
+          <TabsTrigger value='usuarios'>Usuários</TabsTrigger>
+          <TabsTrigger value='atividades'>Atividades</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value='usuarios' className='gap-6'>
       {isLoading || !summary ? (
         <div className='grid gap-4 sm:grid-cols-2 xl:grid-cols-4'>
           {Array.from({ length: 4 }).map((_, index) => (
@@ -774,6 +797,72 @@ export function AnalyticsPage() {
             })}
           </div>
         )}
+      </AnalyticsSection>
+
+      {selectedTimeline ? (
+        <section ref={timelineSectionRef} className='flex flex-col gap-3'>
+          <div className='flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between'>
+            <div>
+              <h2 className='text-lg font-semibold'>
+                Timeline de {selectedTimeline.employeeName}
+              </h2>
+              <p className='text-sm text-muted-foreground'>
+                Apenas os apontamentos deste funcionário no dia selecionado.
+              </p>
+            </div>
+
+            <div className='flex flex-col gap-2 sm:flex-row sm:items-end'>
+              <div className='flex flex-col gap-1.5 sm:w-44'>
+                <Label htmlFor='timeline-date'>Dia</Label>
+                <DatePicker
+                  id='timeline-date'
+                  date={fromDateKey(timelineDate)}
+                  displayFormat='dd-MM-yy'
+                  onDateChange={(nextDate) => {
+                    if (nextDate) setTimelineDate(toDateKey(nextDate));
+                  }}
+                />
+              </div>
+              <Button
+                type='button'
+                variant='outline'
+                size='sm'
+                className='sm:mb-0.5'
+                onClick={() => setSelectedTimeline(null)}
+              >
+                <X className='size-4' />
+                Fechar
+              </Button>
+            </div>
+          </div>
+
+          <TeamDayTimeline
+            blocks={timelineBlocks}
+            selectedDate={timelineDate}
+            onDateChange={setTimelineDate}
+            isLoading={isLoadingTimeline}
+            showDateOptions={false}
+          />
+        </section>
+      ) : null}
+        </TabsContent>
+
+        <TabsContent value='atividades' className='gap-6'>
+      <AnalyticsSection
+        open={overviewOpen}
+        onOpenChange={setOverviewOpen}
+        icon={
+          <div className='flex size-10 items-center justify-center rounded-xl bg-linear-to-br from-violet-400 to-indigo-600 text-white'>
+            <PieChart className='size-5' />
+          </div>
+        }
+        title='Atividades por tipo e status'
+        description='Quantidade de atividades criadas no período por etiqueta e status atual.'
+      >
+        <AnalyticsActivityOverview
+          overview={activityOverview}
+          isLoading={isLoading}
+        />
       </AnalyticsSection>
 
       <AnalyticsSection
@@ -1062,53 +1151,8 @@ export function AnalyticsPage() {
           </div>
         )}
       </AnalyticsSection>
-
-      {selectedTimeline ? (
-        <section ref={timelineSectionRef} className='flex flex-col gap-3'>
-          <div className='flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between'>
-            <div>
-              <h2 className='text-lg font-semibold'>
-                Timeline de {selectedTimeline.employeeName}
-              </h2>
-              <p className='text-sm text-muted-foreground'>
-                Apenas os apontamentos deste funcionário no dia selecionado.
-              </p>
-            </div>
-
-            <div className='flex flex-col gap-2 sm:flex-row sm:items-end'>
-              <div className='flex flex-col gap-1.5 sm:w-44'>
-                <Label htmlFor='timeline-date'>Dia</Label>
-                <DatePicker
-                  id='timeline-date'
-                  date={fromDateKey(timelineDate)}
-                  displayFormat='dd-MM-yy'
-                  onDateChange={(nextDate) => {
-                    if (nextDate) setTimelineDate(toDateKey(nextDate));
-                  }}
-                />
-              </div>
-              <Button
-                type='button'
-                variant='outline'
-                size='sm'
-                className='sm:mb-0.5'
-                onClick={() => setSelectedTimeline(null)}
-              >
-                <X className='size-4' />
-                Fechar
-              </Button>
-            </div>
-          </div>
-
-          <TeamDayTimeline
-            blocks={timelineBlocks}
-            selectedDate={timelineDate}
-            onDateChange={setTimelineDate}
-            isLoading={isLoadingTimeline}
-            showDateOptions={false}
-          />
-        </section>
-      ) : null}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
