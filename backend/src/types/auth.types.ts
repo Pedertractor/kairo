@@ -11,6 +11,7 @@ export interface SafeUser {
   firstLogin: boolean;
   absent: boolean;
   hasOwnedTeams: boolean;
+  hasTeams: boolean;
 }
 
 export interface LoginInput {

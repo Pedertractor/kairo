@@ -191,10 +191,6 @@ export function CreateUserDialog({
       return
     }
 
-    if (isLeader && !teamId) {
-      return
-    }
-
     setIsSubmitting(true)
 
     try {
@@ -202,7 +198,7 @@ export function CreateUserDialog({
         cardNumber: cardNumber.trim(),
         unit,
         role,
-        ...(isLeader ? { teamId } : {}),
+        ...(isLeader && teamId ? { teamId } : {}),
       }
 
       const data = await api<UserResponse>('/users', {
@@ -218,10 +214,7 @@ export function CreateUserDialog({
     }
   }
 
-  const canCreate =
-    Boolean(employeeName) &&
-    !isLookingUp &&
-    (!isLeader || Boolean(teamId))
+  const canCreate = Boolean(employeeName) && !isLookingUp
 
   return (
     <Dialog
@@ -295,7 +288,7 @@ export function CreateUserDialog({
               </div>
             </Field>
 
-            {isLeader ? (
+            {isLeader && (isLoadingTeams || ownedTeams.length > 0) ? (
               <Field>
                 <FieldLabel htmlFor="user-team">Equipe</FieldLabel>
                 {isLoadingTeams ? (
@@ -303,21 +296,16 @@ export function CreateUserDialog({
                     <Loader2 className="size-4 animate-spin" />
                     Carregando equipes...
                   </div>
-                ) : ownedTeams.length === 0 ? (
-                  <p className="text-sm text-destructive">
-                    Você precisa ser administrador de uma equipe para criar
-                    usuários.
-                  </p>
                 ) : (
                   <Select
                     value={teamId}
                     onValueChange={(value) => setTeamId(value ?? '')}
                   >
                     <SelectTrigger id="user-team" className="w-full">
-                      <SelectValue placeholder="Selecione a equipe">
+                      <SelectValue placeholder="Opcional">
                         {(value) =>
                           ownedTeams.find((team) => team.id === value)?.name ??
-                          'Selecione a equipe'
+                          'Opcional'
                         }
                       </SelectValue>
                     </SelectTrigger>

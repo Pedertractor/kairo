@@ -26,6 +26,15 @@ export class UserRepository {
     return ownedMembership !== null;
   }
 
+  async hasTeams(userId: string): Promise<boolean> {
+    const membership = await this.prisma.teamMember.findFirst({
+      where: { userId, team: { active: true } },
+      select: { id: true },
+    });
+
+    return membership !== null;
+  }
+
   findAvailableForTeam(teamId: string) {
     return this.prisma.user.findMany({
       where: {

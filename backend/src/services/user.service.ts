@@ -116,11 +116,7 @@ export class UserService {
       throw new AppError(403, MENSAGENS.PROIBIDO);
     }
 
-    if (actor.role === UserRole.LEADER) {
-      if (!teamId) {
-        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
-      }
-
+    if (actor.role === UserRole.LEADER && teamId) {
       const membership = await this.teamRepository.findMembershipByTeamAndUser(
         teamId,
         actorUserId,

@@ -12,6 +12,7 @@ export interface User {
   firstLogin: boolean
   absent: boolean
   hasOwnedTeams: boolean
+  hasTeams: boolean
 }
 
 export interface AuthResponse {
