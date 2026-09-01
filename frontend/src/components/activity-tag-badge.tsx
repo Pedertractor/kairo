@@ -32,7 +32,7 @@ export function ActivityTagBadge({
         className={sharedClassName}
         style={style}
         title={tag.name}
-        aria-label={ariaLabel ?? `Alterar tag ${tag.name}`}
+        aria-label={ariaLabel ?? `Alterar etiqueta ${tag.name}`}
         onClick={onClick}
       >
         {tag.name}

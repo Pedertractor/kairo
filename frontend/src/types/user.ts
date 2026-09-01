@@ -15,6 +15,7 @@ export interface UpdateUserRoleInput {
 export interface CreateUserInput {
   cardNumber: string
   unit: UnitType
+  role: UserRole
   teamId?: string
 }
 

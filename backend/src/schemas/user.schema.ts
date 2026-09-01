@@ -13,6 +13,7 @@ export const createUserSchema = z.object({
   cardNumber: z.string().min(1),
   unit: z.enum(['PEDERTRACTOR', 'TRACTOR']),
   teamId: z.string().min(1).optional(),
+  role: z.enum(['ADMIN', 'LEADER', 'USER']).default('USER'),
 });
 
 export const updateUserRoleSchema = z.object({

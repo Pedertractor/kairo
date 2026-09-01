@@ -149,17 +149,17 @@ export function ActivityDetailPage() {
                 <ActivityTagBadge
                   tag={activity.tag}
                   className="text-sm"
-                  aria-label={`Alterar tag de ${activity.title}`}
+                  aria-label={`Alterar etiqueta de ${activity.title}`}
                   onClick={() => setIsEditTagDialogOpen(true)}
                 />
               ) : (
-                <span className="text-sm text-muted-foreground">Sem tag</span>
+                <span className="text-sm text-muted-foreground">Sem etiqueta</span>
               )}
               <Button
                 type="button"
                 variant="ghost"
                 size="icon-sm"
-                aria-label="Editar tag"
+                aria-label="Editar etiqueta"
                 onClick={() => setIsEditTagDialogOpen(true)}
               >
                 <Pencil />

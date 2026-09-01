@@ -17,13 +17,22 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar'
+import { InstallAppDialog } from '@/components/install-app-dialog'
 import { useAuth } from '@/hooks/use-auth'
+import { usePwaInstall } from '@/hooks/use-pwa-install'
 import { getInitials } from '@/lib/initials'
-import { ChevronsUpDownIcon, LogOutIcon } from 'lucide-react'
+import { ChevronsUpDownIcon, LogOutIcon, SmartphoneIcon } from 'lucide-react'
 
 export function NavUser() {
   const { user, logout } = useAuth()
   const { isMobile } = useSidebar()
+  const {
+    canInstall,
+    isIos,
+    promptInstall,
+    instructionsOpen,
+    setInstructionsOpen,
+  } = usePwaInstall()
 
   if (!user) {
     return null
@@ -50,7 +59,7 @@ export function NavUser() {
             <ChevronsUpDownIcon className="ml-auto size-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-fit"
+            className="w-fit min-w-52"
             side={isMobile ? 'bottom' : 'right'}
             align="end"
             sideOffset={4}
@@ -69,12 +78,31 @@ export function NavUser() {
               </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => void logout()}>
-              <LogOutIcon />
-              Sair
-            </DropdownMenuItem>
+            <div className="flex items-stretch gap-1">
+              {canInstall ? (
+                <DropdownMenuItem
+                  className="min-w-0 flex-1 justify-center"
+                  onClick={() => void promptInstall()}
+                >
+                  <SmartphoneIcon />
+                  Instalar
+                </DropdownMenuItem>
+              ) : null}
+              <DropdownMenuItem
+                className={canInstall ? 'min-w-0 flex-1 justify-center' : undefined}
+                onClick={() => void logout()}
+              >
+                <LogOutIcon />
+                Sair
+              </DropdownMenuItem>
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
+        <InstallAppDialog
+          open={instructionsOpen}
+          onOpenChange={setInstructionsOpen}
+          isIos={isIos}
+        />
       </SidebarMenuItem>
     </SidebarMenu>
   )

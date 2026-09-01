@@ -104,9 +104,17 @@ export class UserService {
     actorUserId: string,
     cardNumber: string,
     unit: EmployeeLookupResult['unit'],
+    role: UserRole,
     teamId?: string,
   ): Promise<SafeUser> {
     const actor = await this.getActorOrThrow(actorUserId);
+
+    if (
+      actor.role === UserRole.LEADER &&
+      (role === UserRole.ADMIN || role === UserRole.LEADER)
+    ) {
+      throw new AppError(403, MENSAGENS.PROIBIDO);
+    }
 
     if (actor.role === UserRole.LEADER) {
       if (!teamId) {
@@ -149,7 +157,7 @@ export class UserService {
       unit: employee.unit,
       cardNumber: employee.cardNumber,
       passwordHash,
-      role: UserRole.USER,
+      role,
     };
 
     if (actor.role === UserRole.LEADER && teamId) {

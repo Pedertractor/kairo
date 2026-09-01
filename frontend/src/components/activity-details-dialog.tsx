@@ -338,23 +338,23 @@ export function ActivityDetailsDialog({
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="activity-details-tag">Tag</FieldLabel>
+              <FieldLabel htmlFor="activity-details-tag">Etiqueta</FieldLabel>
               <Select
                 value={tagId}
                 onValueChange={(value) => setTagId(value ?? NO_TAG)}
                 disabled={isSubmitting || isLoadingOptions || !activity}
               >
                 <SelectTrigger id="activity-details-tag" className="w-full">
-                  <SelectValue placeholder="Sem tag">
+                  <SelectValue placeholder="Sem etiqueta">
                     {(selectedValue) => {
                       const value = String(selectedValue ?? NO_TAG)
                       if (value === NO_TAG) {
-                        return 'Sem tag'
+                        return 'Sem etiqueta'
                       }
 
                       const tag = tags.find((item) => item.id === value)
                       if (!tag) {
-                        return 'Tag'
+                        return 'Etiqueta'
                       }
 
                       return (
@@ -366,7 +366,7 @@ export function ActivityDetailsDialog({
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={NO_TAG}>Sem tag</SelectItem>
+                  <SelectItem value={NO_TAG}>Sem etiqueta</SelectItem>
                   {tags.map((tag) => (
                     <SelectItem key={tag.id} value={tag.id}>
                       <span className="flex items-center gap-2">
