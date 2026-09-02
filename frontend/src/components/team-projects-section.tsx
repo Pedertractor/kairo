@@ -32,9 +32,13 @@ const VISIBILITY_ALL = 'all'
 
 interface TeamProjectsSectionProps {
   teamId: string
+  canCreate: boolean
 }
 
-export function TeamProjectsSection({ teamId }: TeamProjectsSectionProps) {
+export function TeamProjectsSection({
+  teamId,
+  canCreate,
+}: TeamProjectsSectionProps) {
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
@@ -84,9 +88,11 @@ export function TeamProjectsSection({ teamId }: TeamProjectsSectionProps) {
             Gerencie os projetos desta equipe.
           </p>
         </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
-          Criar novo projeto
-        </Button>
+        {canCreate ? (
+          <Button onClick={() => setIsCreateDialogOpen(true)}>
+            Criar novo projeto
+          </Button>
+        ) : null}
       </div>
 
       <CreateProjectDialog

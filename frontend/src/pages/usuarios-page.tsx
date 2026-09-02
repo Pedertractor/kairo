@@ -306,7 +306,7 @@ export function UsuariosPage() {
                                   }
                                 >
                                   <KeyRound />
-                                  Repor senha
+                                  Resetar senha
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem

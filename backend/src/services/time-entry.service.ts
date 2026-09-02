@@ -28,7 +28,10 @@ import {
 } from '../utils/app-timezone.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
-import { assertTeamMembership } from '../utils/team-access.js';
+import {
+  assertTeamAdminOrFlag,
+  assertTeamMembership,
+} from '../utils/team-access.js';
 import { getEntryDurationSeconds } from '../utils/time-entry-duration.js';
 import { AbsenceService } from './absence.service.js';
 import { releaseActivityIfIdle } from './card-status-sync.js';
@@ -430,8 +433,7 @@ export class TimeEntryService {
       teamId,
       userId,
     );
-    assertTeamMembership(membership);
-    return membership;
+    return assertTeamMembership(membership);
   }
 
   private async assertUserPresent(userId: string): Promise<void> {
@@ -955,7 +957,11 @@ export class TimeEntryService {
     userId: string,
     date?: string,
   ): Promise<TeamDayDashboard> {
-    await this.assertTeamMember(teamId, userId);
+    const membership = await this.assertTeamMember(teamId, userId);
+    assertTeamAdminOrFlag(
+      membership.role,
+      membership.team.membersCanViewTimeline,
+    );
 
     const targetDate = date ?? formatDateKey(new Date());
     const { dayStart, dayEnd } = parseDayBounds(targetDate);

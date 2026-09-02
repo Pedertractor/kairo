@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/lib/api-handler'
+import { canCreateTeamProjects } from '@/lib/team-permissions'
 import type { CreateProjectInput, ProjectResponse } from '@/types/card'
 import type { TeamSummary, TeamsListResponse } from '@/types/team'
 
@@ -58,7 +59,7 @@ export function CreateProjectDialog({
       try {
         const data = await api<TeamsListResponse>('/teams')
         if (!cancelled) {
-          setTeams(data.teams)
+          setTeams(data.teams.filter(canCreateTeamProjects))
         }
       } finally {
         if (!cancelled) {

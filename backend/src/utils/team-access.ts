@@ -32,3 +32,11 @@ export function assertTeamMembership<T extends TeamMembershipAccess>(
 
   throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
 }
+
+export function assertTeamAdminOrFlag(role: TeamRole, flag: boolean) {
+  if (role === TeamRole.ADMIN || flag) {
+    return;
+  }
+
+  throw new AppError(403, MENSAGENS.PROIBIDO);
+}

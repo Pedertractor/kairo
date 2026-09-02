@@ -7,6 +7,7 @@ import { TeamActivitiesSection } from '@/components/team-activities-section';
 import { TeamDocumentsSection } from '@/components/team-documents-section';
 import { TeamMembersSection } from '@/components/team-members-section';
 import { TeamProjectsSection } from '@/components/team-projects-section';
+import { TeamSettingsSection } from '@/components/team-settings-section';
 import { TeamTimeEntriesSection } from '@/components/team-time-entries-section';
 import { TeamTimelineSection } from '@/components/team-timeline-section';
 import { Button } from '@/components/ui/button';
@@ -14,7 +15,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/lib/api-handler';
-import type { TeamResponse } from '@/types/team';
+import { canCreateTeamActivities, canCreateTeamProjects, canViewTeamTimeline } from '@/lib/team-permissions';
+import type { TeamResponse, TeamSummary } from '@/types/team';
 
 type TeamTab =
   | 'atividades'
@@ -22,7 +24,8 @@ type TeamTab =
   | 'membros'
   | 'apontamentos'
   | 'timeline'
-  | 'documentos';
+  | 'documentos'
+  | 'configuracoes';
 
 const TEAM_TABS = new Set<TeamTab>([
   'atividades',
@@ -31,6 +34,7 @@ const TEAM_TABS = new Set<TeamTab>([
   'apontamentos',
   'timeline',
   'documentos',
+  'configuracoes',
 ]);
 
 function parseTeamTab(value: string | null): TeamTab | null {
@@ -39,6 +43,20 @@ function parseTeamTab(value: string | null): TeamTab | null {
   }
 
   return value as TeamTab;
+}
+
+function resolveTeamTab(tab: TeamTab | null, team: TeamSummary): TeamTab {
+  const requested = tab ?? 'atividades';
+
+  if (requested === 'configuracoes' && team.role !== 'ADMIN') {
+    return 'atividades';
+  }
+
+  if (requested === 'timeline' && !canViewTeamTimeline(team)) {
+    return 'atividades';
+  }
+
+  return requested;
 }
 
 export function TeamDetailPage() {
@@ -57,10 +75,15 @@ export function TeamDetailPage() {
   );
 
   useEffect(() => {
-    if (tabFromUrl) {
-      setActiveTab(tabFromUrl);
+    if (!team) {
+      if (tabFromUrl) {
+        setActiveTab(tabFromUrl);
+      }
+      return;
     }
-  }, [tabFromUrl]);
+
+    setActiveTab((current) => resolveTeamTab(tabFromUrl ?? current, team));
+  }, [tabFromUrl, team]);
 
   useEffect(() => {
     if (!teamId) {
@@ -209,18 +232,28 @@ export function TeamDetailPage() {
               >
                 Apontamentos
               </TabsTrigger>
-              <TabsTrigger
-                value='timeline'
-                className='data-[state=active]:border-sidebar-primary data-[state=active]:text-sidebar-primary'
-              >
-                Timeline
-              </TabsTrigger>
+              {canViewTeamTimeline(team) ? (
+                <TabsTrigger
+                  value='timeline'
+                  className='data-[state=active]:border-sidebar-primary data-[state=active]:text-sidebar-primary'
+                >
+                  Timeline
+                </TabsTrigger>
+              ) : null}
               <TabsTrigger
                 value='documentos'
                 className='data-[state=active]:border-sidebar-primary data-[state=active]:text-sidebar-primary'
               >
                 Documentos
               </TabsTrigger>
+              {team.role === 'ADMIN' ? (
+                <TabsTrigger
+                  value='configuracoes'
+                  className='data-[state=active]:border-sidebar-primary data-[state=active]:text-sidebar-primary'
+                >
+                  Configurações
+                </TabsTrigger>
+              ) : null}
             </TabsList>
 
             <TabsContent value='membros'>
@@ -233,24 +266,32 @@ export function TeamDetailPage() {
             </TabsContent>
 
             <TabsContent value='atividades'>
-              <TeamActivitiesSection teamId={team.id} />
+              <TeamActivitiesSection
+                teamId={team.id}
+                canCreate={canCreateTeamActivities(team)}
+              />
             </TabsContent>
 
             <TabsContent value='projetos'>
-              <TeamProjectsSection teamId={team.id} />
+              <TeamProjectsSection
+                teamId={team.id}
+                canCreate={canCreateTeamProjects(team)}
+              />
             </TabsContent>
 
             <TabsContent value='apontamentos'>
               <TeamTimeEntriesSection teamId={team.id} />
             </TabsContent>
 
-            <TabsContent value='timeline'>
-              <TeamTimelineSection
-                teamId={team.id}
-                initialDate={dateFromUrl}
-                userId={userIdFromUrl}
-              />
-            </TabsContent>
+            {canViewTeamTimeline(team) ? (
+              <TabsContent value='timeline'>
+                <TeamTimelineSection
+                  teamId={team.id}
+                  initialDate={dateFromUrl}
+                  userId={userIdFromUrl}
+                />
+              </TabsContent>
+            ) : null}
 
             <TabsContent value='documentos'>
               <TeamDocumentsSection
@@ -258,6 +299,12 @@ export function TeamDetailPage() {
                 canDelete={team.role === 'ADMIN'}
               />
             </TabsContent>
+
+            {team.role === 'ADMIN' ? (
+              <TabsContent value='configuracoes'>
+                <TeamSettingsSection team={team} onTeamUpdated={setTeam} />
+              </TabsContent>
+            ) : null}
           </Tabs>
           ) : null}
         </>

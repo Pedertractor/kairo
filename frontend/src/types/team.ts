@@ -21,6 +21,9 @@ export interface TeamSummary {
   costCenters: CostCenterSummary[]
   role: TeamRole
   active: boolean
+  membersCanCreateActivities: boolean
+  membersCanCreateProjects: boolean
+  membersCanViewTimeline: boolean
   createdAt: string
 }
 
@@ -40,6 +43,9 @@ export interface CreateTeamInput {
 export interface UpdateTeamInput {
   name?: string
   description?: string | null
+  membersCanCreateActivities?: boolean
+  membersCanCreateProjects?: boolean
+  membersCanViewTimeline?: boolean
 }
 
 export interface AddTeamMemberInput {

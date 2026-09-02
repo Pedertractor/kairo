@@ -26,8 +26,10 @@ import {
   isFinishedStatus,
   STATUS_LABELS,
 } from '@/lib/card-status'
+import { canCreateTeamProjects } from '@/lib/team-permissions'
 import { cn } from '@/lib/utils'
 import type { CardStatus, ProjectSummary, ProjectsListResponse } from '@/types/card'
+import type { TeamsListResponse } from '@/types/team'
 
 const ALL_STATUSES = 'ALL' as const
 type StatusFilter = CardStatus | typeof ALL_STATUSES
@@ -54,13 +56,18 @@ export function ProjetosPage() {
   const [nameFilter, setNameFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(ALL_STATUSES)
   const [visibilityFilter, setVisibilityFilter] = useState(VISIBILITY_ACTIVE)
+  const [canCreateProject, setCanCreateProject] = useState(false)
 
   const loadProjects = useCallback(async () => {
     setIsLoading(true)
 
     try {
-      const data = await api<ProjectsListResponse>('/projects')
-      setProjects(data.projects)
+      const [projectsData, teamsData] = await Promise.all([
+        api<ProjectsListResponse>('/projects'),
+        api<TeamsListResponse>('/teams'),
+      ])
+      setProjects(projectsData.projects)
+      setCanCreateProject(teamsData.teams.some(canCreateTeamProjects))
     } finally {
       setIsLoading(false)
     }
@@ -106,9 +113,11 @@ export function ProjetosPage() {
             Projetos das suas equipes.
           </p>
         </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
-          Criar novo projeto
-        </Button>
+        {canCreateProject ? (
+          <Button onClick={() => setIsCreateDialogOpen(true)}>
+            Criar novo projeto
+          </Button>
+        ) : null}
       </div>
 
       <CreateProjectDialog

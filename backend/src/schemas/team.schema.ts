@@ -9,6 +9,9 @@ export const updateTeamSchema = z
   .object({
     name: z.string().trim().min(1, 'Nome é obrigatório').optional(),
     description: z.string().trim().nullable().optional(),
+    membersCanCreateActivities: z.boolean().optional(),
+    membersCanCreateProjects: z.boolean().optional(),
+    membersCanViewTimeline: z.boolean().optional(),
   })
   .refine(
     (data) => Object.values(data).some((value) => value !== undefined),

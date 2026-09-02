@@ -26,5 +26,8 @@ export interface TeamSummary {
   costCenters: CostCenterSummary[];
   role: TeamRole;
   active: boolean;
+  membersCanCreateActivities: boolean;
+  membersCanCreateProjects: boolean;
+  membersCanViewTimeline: boolean;
   createdAt: string;
 }

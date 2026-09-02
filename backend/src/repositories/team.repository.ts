@@ -113,6 +113,9 @@ export class TeamRepository {
     data: {
       name?: string;
       description?: string | null;
+      membersCanCreateActivities?: boolean;
+      membersCanCreateProjects?: boolean;
+      membersCanViewTimeline?: boolean;
     },
   ) {
     return this.prisma.team.update({
@@ -121,6 +124,15 @@ export class TeamRepository {
         ...(data.name !== undefined ? { name: data.name } : {}),
         ...(data.description !== undefined
           ? { description: data.description }
+          : {}),
+        ...(data.membersCanCreateActivities !== undefined
+          ? { membersCanCreateActivities: data.membersCanCreateActivities }
+          : {}),
+        ...(data.membersCanCreateProjects !== undefined
+          ? { membersCanCreateProjects: data.membersCanCreateProjects }
+          : {}),
+        ...(data.membersCanViewTimeline !== undefined
+          ? { membersCanViewTimeline: data.membersCanViewTimeline }
           : {}),
       },
       include: memberInclude,
