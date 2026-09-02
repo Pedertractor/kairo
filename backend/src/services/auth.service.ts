@@ -28,8 +28,11 @@ export class AuthService {
   ) {}
 
   private async toAuthenticatedUser(user: User) {
-    const hasOwnedTeams = await this.userRepository.hasOwnedTeams(user.id);
-    return toSafeUser(user, hasOwnedTeams);
+    const [hasOwnedTeams, hasTeams] = await Promise.all([
+      this.userRepository.hasOwnedTeams(user.id),
+      this.userRepository.hasTeams(user.id),
+    ]);
+    return toSafeUser(user, hasOwnedTeams, hasTeams);
   }
 
   async login({ cardNumber, unit, password }: LoginInput) {

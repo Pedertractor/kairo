@@ -169,6 +169,9 @@ export class AnalyticsRepository {
       },
       select: {
         id: true,
+        status: true,
+        tagId: true,
+        tag: { select: { name: true, color: true } },
         clientId: true,
         client: { select: { id: true, name: true } },
       },

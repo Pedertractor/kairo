@@ -8,6 +8,7 @@ export function toEmployeeId(unit: UnitType, cardNumber: string): string {
 export function toSafeUser(
   user: User,
   hasOwnedTeams = false,
+  hasTeams = false,
 ): SafeUser {
   return {
     id: user.id,
@@ -20,5 +21,6 @@ export function toSafeUser(
     firstLogin: user.firstLogin,
     absent: user.absent,
     hasOwnedTeams,
+    hasTeams,
   };
 }

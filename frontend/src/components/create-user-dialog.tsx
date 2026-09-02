@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Loader2, UserRound } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/select'
 import { useAuth } from '@/hooks/use-auth'
 import { api } from '@/lib/api-handler'
-import type { UnitType } from '@/types/auth'
+import type { UnitType, UserRole } from '@/types/auth'
 import type { TeamSummary, TeamsListResponse } from '@/types/team'
 import type {
   CreateUserInput,
@@ -31,6 +31,12 @@ import type {
 
 const UNITS: UnitType[] = ['PEDERTRACTOR', 'TRACTOR']
 const LOOKUP_DEBOUNCE_MS = 500
+
+const ROLE_LABELS: Record<UserRole, string> = {
+  ADMIN: 'Administrador',
+  LEADER: 'Líder',
+  USER: 'Usuário',
+}
 
 interface CreateUserDialogProps {
   open: boolean
@@ -48,6 +54,7 @@ export function CreateUserDialog({
   const defaultUnit = currentUser?.unit ?? 'PEDERTRACTOR'
   const [cardNumber, setCardNumber] = useState('')
   const [unit, setUnit] = useState<UnitType>(defaultUnit)
+  const [role, setRole] = useState<UserRole>('USER')
   const [teamId, setTeamId] = useState('')
   const [ownedTeams, setOwnedTeams] = useState<TeamSummary[]>([])
   const [isLoadingTeams, setIsLoadingTeams] = useState(false)
@@ -56,9 +63,18 @@ export function CreateUserDialog({
   const [isLookingUp, setIsLookingUp] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  const availableRoles = useMemo(() => {
+    if (currentUser?.role === 'ADMIN') {
+      return Object.keys(ROLE_LABELS) as UserRole[]
+    }
+
+    return ['USER'] as UserRole[]
+  }, [currentUser?.role])
+
   function resetForm() {
     setCardNumber('')
     setUnit(defaultUnit)
+    setRole('USER')
     setTeamId('')
     setEmployeeName(null)
     setLookupError(null)
@@ -175,17 +191,14 @@ export function CreateUserDialog({
       return
     }
 
-    if (isLeader && !teamId) {
-      return
-    }
-
     setIsSubmitting(true)
 
     try {
       const payload: CreateUserInput = {
         cardNumber: cardNumber.trim(),
         unit,
-        ...(isLeader ? { teamId } : {}),
+        role,
+        ...(isLeader && teamId ? { teamId } : {}),
       }
 
       const data = await api<UserResponse>('/users', {
@@ -201,10 +214,7 @@ export function CreateUserDialog({
     }
   }
 
-  const canCreate =
-    Boolean(employeeName) &&
-    !isLookingUp &&
-    (!isLeader || Boolean(teamId))
+  const canCreate = Boolean(employeeName) && !isLookingUp
 
   return (
     <Dialog
@@ -240,6 +250,28 @@ export function CreateUserDialog({
             </Field>
 
             <Field>
+              <FieldLabel htmlFor="user-role">Função</FieldLabel>
+              <Select
+                value={role}
+                onValueChange={(value) => setRole(value as UserRole)}
+                disabled={isSubmitting}
+              >
+                <SelectTrigger id="user-role" className="w-full">
+                  <SelectValue>
+                    {(selectedValue) => ROLE_LABELS[selectedValue as UserRole]}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {availableRoles.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {ROLE_LABELS[option]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+
+            <Field>
               <FieldLabel>Unidade</FieldLabel>
               <div className="grid grid-cols-2 gap-2">
                 {UNITS.map((option) => (
@@ -256,7 +288,7 @@ export function CreateUserDialog({
               </div>
             </Field>
 
-            {isLeader ? (
+            {isLeader && (isLoadingTeams || ownedTeams.length > 0) ? (
               <Field>
                 <FieldLabel htmlFor="user-team">Equipe</FieldLabel>
                 {isLoadingTeams ? (
@@ -264,21 +296,16 @@ export function CreateUserDialog({
                     <Loader2 className="size-4 animate-spin" />
                     Carregando equipes...
                   </div>
-                ) : ownedTeams.length === 0 ? (
-                  <p className="text-sm text-destructive">
-                    Você precisa ser administrador de uma equipe para criar
-                    usuários.
-                  </p>
                 ) : (
                   <Select
                     value={teamId}
                     onValueChange={(value) => setTeamId(value ?? '')}
                   >
                     <SelectTrigger id="user-team" className="w-full">
-                      <SelectValue placeholder="Selecione a equipe">
+                      <SelectValue placeholder="Opcional">
                         {(value) =>
                           ownedTeams.find((team) => team.id === value)?.name ??
-                          'Selecione a equipe'
+                          'Opcional'
                         }
                       </SelectValue>
                     </SelectTrigger>

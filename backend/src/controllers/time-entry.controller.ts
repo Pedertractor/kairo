@@ -46,6 +46,8 @@ export class TimeEntryController {
         request.user.sub,
       );
 
+      void this.notifyActivityStarted(request.user.sub, parsed.data);
+
       return sendSuccess(
         reply,
         { activeTimer },
@@ -294,6 +296,33 @@ export class TimeEntryController {
       return handleControllerError(error, reply);
     }
   };
+
+  private async notifyActivityStarted(
+    userId: string,
+    params: { teamId: string; activityId: string },
+  ): Promise<void> {
+    try {
+      const user = await this.userRepository.findById(userId);
+
+      if (!user) {
+        return;
+      }
+
+      await notifyOrion({
+        userId: user.id,
+        userName: user.name,
+        cardNumberUser: user.cardNumber,
+        metadata: {
+          action: 'start_activity',
+          module: 'activities',
+          activityId: params.activityId,
+          teamId: params.teamId,
+        },
+      });
+    } catch (error) {
+      console.error('[orion]', error);
+    }
+  }
 
   private async notifyTaskStarted(
     userId: string,

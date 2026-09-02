@@ -43,7 +43,7 @@ function TagColorPicker({
   disabled?: boolean
 }) {
   return (
-    <div className="flex flex-wrap gap-2" role="listbox" aria-label="Cor da tag">
+    <div className="flex flex-wrap gap-2" role="listbox" aria-label="Cor da etiqueta">
       {TAG_COLOR_SWATCHES.map((swatch) => {
         const isSelected = color === swatch
 
@@ -226,9 +226,9 @@ export function ManageTagsDialog({
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Tags</DialogTitle>
+            <DialogTitle>Etiquetas</DialogTitle>
             <DialogDescription>
-              Crie, edite ou exclua tags para organizar as atividades desta
+              Crie, edite ou exclua etiquetas para organizar as atividades desta
               equipe.
             </DialogDescription>
           </DialogHeader>
@@ -236,12 +236,12 @@ export function ManageTagsDialog({
           <form onSubmit={handleCreate}>
             <FieldGroup className="py-2">
               <Field>
-                <FieldLabel htmlFor="new-tag-name">Nova tag</FieldLabel>
+                <FieldLabel htmlFor="new-tag-name">Nova etiqueta</FieldLabel>
                 <Input
                   id="new-tag-name"
                   value={name}
                   onChange={(event) => setName(event.target.value)}
-                  placeholder="Nome da tag"
+                  placeholder="Nome da etiqueta"
                   required
                   disabled={isBusy}
                 />
@@ -258,16 +258,16 @@ export function ManageTagsDialog({
             <div className="flex justify-end pt-1">
               <Button type="submit" disabled={isBusy || !name.trim()}>
                 <Plus />
-                {isCreating ? 'Criando...' : 'Criar tag'}
+                {isCreating ? 'Criando...' : 'Criar etiqueta'}
               </Button>
             </div>
           </form>
 
           <div className="flex flex-col gap-2">
-            <p className="text-sm font-medium">Tags criadas</p>
+            <p className="text-sm font-medium">Etiquetas criadas</p>
             {tags.length === 0 ? (
               <p className="rounded-lg border border-dashed bg-muted/30 px-3 py-6 text-center text-sm text-muted-foreground">
-                Nenhuma tag ainda. Crie a primeira acima.
+                Nenhuma etiqueta ainda. Crie a primeira acima.
               </p>
             ) : (
               <ul className="max-h-64 space-y-2 overflow-y-auto pr-1">
@@ -284,10 +284,10 @@ export function ManageTagsDialog({
                           <Input
                             value={editName}
                             onChange={(event) => setEditName(event.target.value)}
-                            placeholder="Nome da tag"
+                            placeholder="Nome da etiqueta"
                             required
                             disabled={isBusy}
-                            aria-label={`Editar nome da tag ${tag.name}`}
+                            aria-label={`Editar nome da etiqueta ${tag.name}`}
                           />
                           <TagColorPicker
                             color={editColor}
@@ -326,7 +326,7 @@ export function ManageTagsDialog({
                           type="button"
                           variant="ghost"
                           size="icon-sm"
-                          aria-label={`Editar tag ${tag.name}`}
+                          aria-label={`Editar etiqueta ${tag.name}`}
                           disabled={isBusy}
                           onClick={() => startEditing(tag)}
                         >
@@ -336,7 +336,7 @@ export function ManageTagsDialog({
                           type="button"
                           variant="ghost"
                           size="icon-sm"
-                          aria-label={`Excluir tag ${tag.name}`}
+                          aria-label={`Excluir etiqueta ${tag.name}`}
                           disabled={isBusy}
                           onClick={() => setTagToDelete(tag)}
                         >
@@ -362,18 +362,18 @@ export function ManageTagsDialog({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Excluir tag</DialogTitle>
+            <DialogTitle>Excluir etiqueta</DialogTitle>
             <DialogDescription>
               {tagToDelete ? (
                 <>
-                  Tem certeza que deseja excluir a tag{' '}
+                  Tem certeza que deseja excluir a etiqueta{' '}
                   <span className="font-medium text-foreground">
                     {tagToDelete.name}
                   </span>
                   ? Ela será removida das atividades que a utilizam.
                 </>
               ) : (
-                'Tem certeza que deseja excluir esta tag?'
+                'Tem certeza que deseja excluir esta etiqueta?'
               )}
             </DialogDescription>
           </DialogHeader>

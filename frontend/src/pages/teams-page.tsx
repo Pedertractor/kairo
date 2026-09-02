@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { CreateTeamDialog } from '@/components/create-team-dialog'
+import { NoTeamMessage } from '@/components/no-team-message'
 import { TeamCard } from '@/components/team-card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -57,10 +58,6 @@ export function TeamsPage() {
   )
 
   const canCreateTeam = user?.role === 'ADMIN' || user?.role === 'LEADER'
-  const emptyMessage =
-    filter === 'inativas'
-      ? 'Nenhuma equipe inativa.'
-      : 'Você ainda não faz parte de nenhuma equipe.'
 
   return (
     <div className="flex flex-1 flex-col gap-6">
@@ -90,7 +87,13 @@ export function TeamsPage() {
               ))}
             </div>
           ) : teams.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+            filter === 'ativas' ? (
+              <NoTeamMessage />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Nenhuma equipe inativa.
+              </p>
+            )
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {teams.map((team) => (

@@ -71,6 +71,32 @@ export interface ClientAnalytics {
   loggedSeconds: number;
 }
 
+export type AnalyticsCardStatus =
+  | 'TODO'
+  | 'IN_PROGRESS'
+  | 'PAUSED'
+  | 'DONE'
+  | 'CANCELED';
+
+export interface ActivityStatusCount {
+  status: AnalyticsCardStatus;
+  count: number;
+}
+
+export interface ActivityTagOverview {
+  tagId: string | null;
+  tagName: string;
+  tagColor: string | null;
+  count: number;
+  byStatus: ActivityStatusCount[];
+}
+
+export interface ActivityOverview {
+  total: number;
+  byStatus: ActivityStatusCount[];
+  byTag: ActivityTagOverview[];
+}
+
 export interface AnalyticsDashboard {
   startDate: string;
   endDate: string;
@@ -88,4 +114,5 @@ export interface AnalyticsDashboard {
   rows: EmployeeDayAnalytics[];
   activityTypes: ActivityTypeAnalytics[];
   clients: ClientAnalytics[];
+  activityOverview: ActivityOverview;
 }

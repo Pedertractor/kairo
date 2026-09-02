@@ -18,6 +18,7 @@ import {
   ClockIcon,
   FolderKanbanIcon,
   HomeIcon,
+  LayoutDashboardIcon,
   UserCogIcon,
   UsersIcon,
 } from 'lucide-react';
@@ -58,7 +59,15 @@ const teamOwnerNavItems = [
   },
 ];
 
-const adminNavItems = [
+const adminDashboardNavItems = [
+  {
+    title: 'Painel',
+    url: '/painel',
+    icon: <LayoutDashboardIcon />,
+  },
+];
+
+const userManagementNavItems = [
   {
     title: 'Usuários',
     url: '/usuarios',
@@ -72,9 +81,10 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
 
   const navItems = [
     ...baseNavItems,
+    ...(user?.role === 'ADMIN' ? adminDashboardNavItems : []),
     ...(user?.hasOwnedTeams ? teamOwnerNavItems : []),
     ...(user?.role === 'ADMIN' || user?.role === 'LEADER'
-      ? adminNavItems
+      ? userManagementNavItems
       : []),
   ];
 

@@ -52,6 +52,7 @@ export class UserController {
         request.user.sub,
         parsed.data.cardNumber,
         parsed.data.unit,
+        parsed.data.role,
         parsed.data.teamId,
       );
 

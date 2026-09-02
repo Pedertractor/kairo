@@ -116,11 +116,11 @@ export function EditActivityTagDialog({
 
   function getTagLabel(value: string) {
     if (value === NO_TAG) {
-      return 'Sem tag'
+      return 'Sem etiqueta'
     }
 
     const tag = tags.find((item) => item.id === value)
-    return tag?.name ?? 'Tag'
+    return tag?.name ?? 'Etiqueta'
   }
 
   return (
@@ -128,28 +128,28 @@ export function EditActivityTagDialog({
       <DialogContent>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Alterar tag</DialogTitle>
+            <DialogTitle>Alterar etiqueta</DialogTitle>
             <DialogDescription>
               {activity
-                ? `Selecione a tag para "${activity.title}".`
-                : 'Selecione a tag da atividade.'}
+                ? `Selecione a etiqueta para "${activity.title}".`
+                : 'Selecione a etiqueta da atividade.'}
             </DialogDescription>
           </DialogHeader>
 
           <FieldGroup className="py-4">
             <Field>
-              <FieldLabel htmlFor="activity-tag">Tag</FieldLabel>
+              <FieldLabel htmlFor="activity-tag">Etiqueta</FieldLabel>
               <Select
                 value={selectedTagId}
                 onValueChange={(value) => setSelectedTagId(value ?? NO_TAG)}
                 disabled={isSubmitting || isLoadingTags || !activity}
               >
                 <SelectTrigger id="activity-tag" className="w-full">
-                  <SelectValue placeholder="Selecione uma tag">
+                  <SelectValue placeholder="Selecione uma etiqueta">
                     {(selectedValue) => {
                       const value = String(selectedValue ?? NO_TAG)
                       if (value === NO_TAG) {
-                        return 'Sem tag'
+                        return 'Sem etiqueta'
                       }
 
                       const tag = tags.find((item) => item.id === value)
@@ -166,7 +166,7 @@ export function EditActivityTagDialog({
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={NO_TAG}>Sem tag</SelectItem>
+                  <SelectItem value={NO_TAG}>Sem etiqueta</SelectItem>
                   {tags.map((tag) => (
                     <SelectItem key={tag.id} value={tag.id}>
                       <span className="flex items-center gap-2">

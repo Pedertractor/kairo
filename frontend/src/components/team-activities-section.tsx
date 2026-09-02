@@ -130,10 +130,10 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
 
   function getTagFilterLabel(value: string) {
     if (value === ALL_TAGS) {
-      return 'Todas as tags';
+      return 'Todas as etiquetas';
     }
 
-    return tags.find((tag) => tag.id === value)?.name ?? 'Tag';
+    return tags.find((tag) => tag.id === value)?.name ?? 'Etiqueta';
   }
 
   return (
@@ -282,12 +282,12 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
                   value={tagFilter}
                   onValueChange={(value) => setTagFilter(value ?? ALL_TAGS)}
                 >
-                  <SelectTrigger className='w-full' aria-label='Filtrar por tag'>
-                    <SelectValue placeholder='Filtrar por tag'>
+                  <SelectTrigger className='w-full' aria-label='Filtrar por etiqueta'>
+                    <SelectValue placeholder='Filtrar por etiqueta'>
                       {(selectedValue) => {
                         const value = String(selectedValue ?? ALL_TAGS);
                         if (value === ALL_TAGS) {
-                          return 'Todas as tags';
+                          return 'Todas as etiquetas';
                         }
 
                         const tag = tags.find((item) => item.id === value);
@@ -309,7 +309,7 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={ALL_TAGS}>Todas as tags</SelectItem>
+                    <SelectItem value={ALL_TAGS}>Todas as etiquetas</SelectItem>
                     {tags.map((tag) => (
                       <SelectItem key={tag.id} value={tag.id}>
                         <span className='flex items-center gap-2'>
@@ -356,7 +356,7 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
             onClick={() => setIsManageTagsDialogOpen(true)}
           >
             <Tags />
-            Tags
+            Etiquetas
           </Button>
         </div>
       ) : null}
@@ -448,7 +448,7 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
                     <ActivityTagBadge
                       tag={activity.tag}
                       className='pointer-events-auto max-w-28'
-                      aria-label={`Alterar tag de ${activity.title}`}
+                      aria-label={`Alterar etiqueta de ${activity.title}`}
                       onClick={() => setActivityToEditTag(activity)}
                     />
                   ) : null}
