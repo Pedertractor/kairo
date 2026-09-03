@@ -127,7 +127,16 @@ export class AuthController {
       const parsed = changePasswordSchema.safeParse(request.body);
 
       if (!parsed.success) {
-        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+        const senhasNaoCoincidem = parsed.error.issues.some(
+          (issue) => issue.message === MENSAGENS.SENHAS_NAO_COINCIDEM,
+        );
+
+        throw new AppError(
+          400,
+          senhasNaoCoincidem
+            ? MENSAGENS.SENHAS_NAO_COINCIDEM
+            : MENSAGENS.REQUISICAO_INVALIDA,
+        );
       }
 
       const { user, passwordChanged } = await this.service.changePassword(parsed.data);

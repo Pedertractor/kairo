@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -7,7 +8,7 @@ import {
   FieldGroup,
   FieldLabel,
 } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/password-input'
 import { useAuth } from '@/hooks/use-auth'
 import { cn } from '@/lib/utils'
 
@@ -23,6 +24,12 @@ export function ChangePasswordForm({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+
+    if (newPassword !== confirmPassword) {
+      toast.error('As senhas não coincidem')
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
@@ -50,10 +57,9 @@ export function ChangePasswordForm({
         </div>
         <Field>
           <FieldLabel htmlFor="newPassword">Nova senha</FieldLabel>
-          <Input
+          <PasswordInput
             id="newPassword"
             name="newPassword"
-            type="password"
             autoComplete="new-password"
             value={newPassword}
             onChange={(event) => setNewPassword(event.target.value)}
@@ -62,10 +68,9 @@ export function ChangePasswordForm({
         </Field>
         <Field>
           <FieldLabel htmlFor="confirmPassword">Confirmar senha</FieldLabel>
-          <Input
+          <PasswordInput
             id="confirmPassword"
             name="confirmPassword"
-            type="password"
             autoComplete="new-password"
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.target.value)}
