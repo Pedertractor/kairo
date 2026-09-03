@@ -210,7 +210,7 @@ export function TeamProjectsSection({ teamId }: TeamProjectsSectionProps) {
                   </div>
                 </div>
                 {project.description ? (
-                  <p className="line-clamp-2 text-xs text-muted-foreground">
+                  <p className="line-clamp-2 whitespace-pre-wrap text-xs text-muted-foreground">
                     {project.description}
                   </p>
                 ) : null}

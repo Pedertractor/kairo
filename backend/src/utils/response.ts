@@ -104,6 +104,10 @@ export const MENSAGENS = {
   DOCUMENTO_TAMANHO_INVALIDO: 'O ficheiro não pode ultrapassar 10 MB',
   DOCUMENTO_ENVIADO_SUCESSO: 'Documento enviado com sucesso',
   DOCUMENTO_REMOVIDO_SUCESSO: 'Documento excluído com sucesso',
+  CHAVE_API_CRIADA_SUCESSO: 'Chave de API criada com sucesso',
+  CHAVE_API_REVOGADA_SUCESSO: 'Chave de API revogada com sucesso',
+  CHAVE_API_NAO_ENCONTRADA: 'Chave de API não encontrada',
+  CHAVE_API_INVALIDA: 'Chave de API inválida ou revogada',
 } as const;
 
 export function sendError(
