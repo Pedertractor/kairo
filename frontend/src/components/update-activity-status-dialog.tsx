@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useActiveTimer } from '@/contexts/active-timer-context'
 import { api } from '@/lib/api-handler'
 import { CARD_STATUSES, STATUS_LABELS } from '@/lib/card-status'
 import type { ActivityResponse, ActivitySummary, CardStatus } from '@/types/card'
@@ -38,6 +39,10 @@ export function UpdateActivityStatusDialog({
 }: UpdateActivityStatusDialogProps) {
   const [status, setStatus] = useState<CardStatus | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const { isActivityActive } = useActiveTimer()
+  const hasOwnOpenTimer = activity ? isActivityActive(activity.id) : false
+  const isClosingStatus = status === 'DONE' || status === 'CANCELED'
+  const isBlockedByOpenTimer = hasOwnOpenTimer && isClosingStatus
 
   useEffect(() => {
     if (open && activity) {
@@ -50,6 +55,10 @@ export function UpdateActivityStatusDialog({
 
     if (!activity || !status || status === activity.status) {
       onOpenChange(false)
+      return
+    }
+
+    if (hasOwnOpenTimer && (status === 'DONE' || status === 'CANCELED')) {
       return
     }
 
@@ -108,6 +117,13 @@ export function UpdateActivityStatusDialog({
                 </SelectContent>
               </Select>
             </Field>
+            {isClosingStatus ? (
+              <p className="text-sm text-muted-foreground">
+                {hasOwnOpenTimer
+                  ? 'Pause o timer desta atividade antes de concluir ou cancelar.'
+                  : 'Não é possível concluir ou cancelar enquanto alguém tiver um apontamento em aberto.'}
+              </p>
+            ) : null}
           </FieldGroup>
 
           <DialogFooter>
@@ -119,7 +135,10 @@ export function UpdateActivityStatusDialog({
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmitting || !status}>
+            <Button
+              type="submit"
+              disabled={isSubmitting || !status || isBlockedByOpenTimer}
+            >
               {isSubmitting ? 'Salvando...' : 'Salvar'}
             </Button>
           </DialogFooter>

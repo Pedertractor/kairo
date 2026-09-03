@@ -328,12 +328,11 @@ export class CardService {
       (data.status === 'DONE' || data.status === 'CANCELED') &&
       card.status !== data.status
     ) {
-      const activeEntries =
-        await this.timeEntryRepository.findActiveManyByCardId(activityId);
-      const endedAt = new Date();
+      const activeCount =
+        await this.timeEntryRepository.countActiveByCardId(activityId);
 
-      for (const entry of activeEntries) {
-        await this.timeEntryRepository.stopEntry(entry, endedAt);
+      if (activeCount > 0) {
+        throw new AppError(400, MENSAGENS.ATIVIDADE_COM_APONTAMENTO_ABERTO);
       }
     }
 

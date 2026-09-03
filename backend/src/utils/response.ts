@@ -72,6 +72,8 @@ export const MENSAGENS = {
     'Não é possível iniciar o timer de uma tarefa concluída ou cancelada',
   ATIVIDADE_TIMER_STATUS_INVALIDO:
     'Não é possível iniciar o timer de uma atividade concluída ou cancelada',
+  ATIVIDADE_COM_APONTAMENTO_ABERTO:
+    'Não é possível finalizar ou cancelar esta atividade enquanto houver um apontamento em aberto',
   TIMER_INICIADO_SUCESSO: 'Timer iniciado com sucesso',
   TIMER_JA_ATIVO: 'Você já tem um timer ativo para este item',
   TIMER_PAUSADO_SUCESSO: 'Timer pausado com sucesso',
