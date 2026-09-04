@@ -45,9 +45,13 @@ const VISIBILITY_ALL = 'all';
 
 interface TeamActivitiesSectionProps {
   teamId: string;
+  canCreate: boolean;
 }
 
-export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
+export function TeamActivitiesSection({
+  teamId,
+  canCreate,
+}: TeamActivitiesSectionProps) {
   const { isActivityCurrent } = useActiveTimer();
   const [activities, setActivities] = useState<ActivitySummary[]>([]);
   const [tags, setTags] = useState<TagSummary[]>([]);
@@ -145,9 +149,11 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
             Gerencie as atividades desta equipe.
           </p>
         </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
-          Criar nova atividade
-        </Button>
+        {canCreate ? (
+          <Button onClick={() => setIsCreateDialogOpen(true)}>
+            Criar nova atividade
+          </Button>
+        ) : null}
       </div>
 
       <CreateActivityDialog

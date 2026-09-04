@@ -16,6 +16,9 @@ type TeamWithMembers = {
   name: string;
   description: string | null;
   active: boolean;
+  membersCanCreateActivities: boolean;
+  membersCanCreateProjects: boolean;
+  membersCanViewTimeline: boolean;
   createdById: string;
   createdAt: Date;
   _count: { members: number };
@@ -66,6 +69,9 @@ function toTeamSummary(
     costCenters: toTeamCostCenters(team.costCenters),
     role,
     active: team.active,
+    membersCanCreateActivities: team.membersCanCreateActivities,
+    membersCanCreateProjects: team.membersCanCreateProjects,
+    membersCanViewTimeline: team.membersCanViewTimeline,
     createdAt: team.createdAt.toISOString(),
   };
 }
@@ -351,6 +357,9 @@ export class TeamService {
     data: {
       name?: string;
       description?: string | null;
+      membersCanCreateActivities?: boolean;
+      membersCanCreateProjects?: boolean;
+      membersCanViewTimeline?: boolean;
     },
   ): Promise<TeamSummary> {
     await this.requireTeamAdmin(teamId, actorUserId, { forWrite: true });

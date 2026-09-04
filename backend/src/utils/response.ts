@@ -72,6 +72,8 @@ export const MENSAGENS = {
     'Não é possível iniciar o timer de uma tarefa concluída ou cancelada',
   ATIVIDADE_TIMER_STATUS_INVALIDO:
     'Não é possível iniciar o timer de uma atividade concluída ou cancelada',
+  ATIVIDADE_COM_APONTAMENTO_ABERTO:
+    'Não é possível finalizar ou cancelar esta atividade enquanto houver um apontamento em aberto',
   TIMER_INICIADO_SUCESSO: 'Timer iniciado com sucesso',
   TIMER_JA_ATIVO: 'Você já tem um timer ativo para este item',
   TIMER_PAUSADO_SUCESSO: 'Timer pausado com sucesso',
@@ -88,7 +90,7 @@ export const MENSAGENS = {
     'A data de fim deve ser igual ou posterior à data de início',
   APONTAMENTO_ATUALIZADO_SUCESSO: 'Apontamento atualizado com sucesso',
   USUARIO_ROLE_ATUALIZADO_SUCESSO: 'Função do usuário atualizada com sucesso',
-  USUARIO_SENHA_REPOSTA_SUCESSO: 'Senha reposta com sucesso',
+  USUARIO_SENHA_REPOSTA_SUCESSO: 'Senha resetada com sucesso',
   USUARIO_DESATIVADO_SUCESSO: 'Usuário removido da aplicação com sucesso',
   USUARIO_REATIVADO_SUCESSO: 'Usuário reativado com sucesso',
   ULTIMO_ADMIN_NAO_PODE_SER_ALTERADO:

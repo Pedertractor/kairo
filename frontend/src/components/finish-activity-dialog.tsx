@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { useActiveTimer } from '@/contexts/active-timer-context'
 import { api } from '@/lib/api-handler'
 import type { ActivityResponse, ActivitySummary } from '@/types/card'
 
@@ -28,9 +29,11 @@ export function FinishActivityDialog({
   onFinished,
 }: FinishActivityDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const { isActivityActive } = useActiveTimer()
+  const hasOwnOpenTimer = activity ? isActivityActive(activity.id) : false
 
   async function handleConfirm() {
-    if (!activity) {
+    if (!activity || hasOwnOpenTimer) {
       return
     }
 
@@ -71,6 +74,12 @@ export function FinishActivityDialog({
           </DialogDescription>
         </DialogHeader>
 
+        <p className="text-sm text-muted-foreground">
+          {hasOwnOpenTimer
+            ? 'Pause o timer desta atividade antes de finalizá-la.'
+            : 'Não é possível finalizar enquanto alguém tiver um apontamento em aberto nesta atividade.'}
+        </p>
+
         <DialogFooter>
           <Button
             type="button"
@@ -82,7 +91,7 @@ export function FinishActivityDialog({
           </Button>
           <Button
             type="button"
-            disabled={isSubmitting || !activity}
+            disabled={isSubmitting || !activity || hasOwnOpenTimer}
             onClick={() => void handleConfirm()}
           >
             {isSubmitting ? 'Finalizando...' : 'Finalizar'}

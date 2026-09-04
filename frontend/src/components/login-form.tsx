@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { PasswordInput } from '@/components/password-input';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
@@ -62,10 +63,9 @@ export function LoginForm({
         </Field>
         <Field>
           <FieldLabel htmlFor='password'>Senha</FieldLabel>
-          <Input
+          <PasswordInput
             id='password'
             name='password'
-            type='password'
             autoComplete='current-password'
             value={password}
             onChange={(event) => setPassword(event.target.value)}

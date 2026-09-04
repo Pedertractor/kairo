@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { MENSAGENS } from '../utils/response.js';
+
 export const loginSchema = z.object({
   cardNumber: z.string().trim().min(1, 'Número do cartão é obrigatório'),
   unit: z.enum(['PEDERTRACTOR', 'TRACTOR']),
@@ -15,7 +17,7 @@ export const changePasswordSchema = z
     confirmPassword: z.string().min(1, 'Confirmação de senha é obrigatória'),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
-    message: 'As senhas não coincidem',
+    message: MENSAGENS.SENHAS_NAO_COINCIDEM,
     path: ['confirmPassword'],
   });
 

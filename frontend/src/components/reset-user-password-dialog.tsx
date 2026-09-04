@@ -51,12 +51,12 @@ export function ResetUserPasswordDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Repor senha</DialogTitle>
+          <DialogTitle>Resetar senha</DialogTitle>
           <DialogDescription>
-            A senha de{' '}
-            <span className="font-medium text-foreground">{user?.name}</span>{' '}
-            será reposta para a senha padrão. O usuário deverá definir uma nova
-            senha no próximo login.
+            Tem certeza que deseja resetar a senha de{' '}
+            <span className="font-medium text-foreground">{user?.name}</span>? A
+            senha passará a ser 123 e o usuário deverá definir uma nova senha no
+            próximo login.
           </DialogDescription>
         </DialogHeader>
 
@@ -74,7 +74,7 @@ export function ResetUserPasswordDialog({
             disabled={isSubmitting || !user}
             onClick={() => void handleConfirm()}
           >
-            {isSubmitting ? 'Repondo...' : 'Repor senha'}
+            {isSubmitting ? 'Resetando...' : 'Resetar senha'}
           </Button>
         </DialogFooter>
       </DialogContent>

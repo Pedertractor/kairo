@@ -163,6 +163,10 @@ model Team {
   description String?
   active      Boolean @default(true)
 
+  membersCanCreateActivities Boolean @default(true)
+  membersCanCreateProjects   Boolean @default(true)
+  membersCanViewTimeline     Boolean @default(false)
+
   createdById String
   createdBy   User   @relation("TeamCreator", fields: [createdById], references: [id])
 

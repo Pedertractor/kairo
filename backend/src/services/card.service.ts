@@ -17,7 +17,10 @@ import type {
 } from '../types/card.types.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
-import { assertTeamMembership } from '../utils/team-access.js';
+import {
+  assertTeamAdminOrFlag,
+  assertTeamMembership,
+} from '../utils/team-access.js';
 
 type CardWithRelations = Card & {
   tag?: ActivityTagSummary | null;
@@ -244,7 +247,11 @@ export class CardService {
     machineId?: string,
     complexityLevel?: ComplexityLevel,
   ): Promise<ActivitySummary> {
-    await this.assertTeamMember(teamId, userId);
+    const membership = await this.assertTeamMember(teamId, userId);
+    assertTeamAdminOrFlag(
+      membership.role,
+      membership.team.membersCanCreateActivities,
+    );
 
     if (tagId) {
       await this.assertTeamTag(teamId, tagId);
@@ -321,12 +328,11 @@ export class CardService {
       (data.status === 'DONE' || data.status === 'CANCELED') &&
       card.status !== data.status
     ) {
-      const activeEntries =
-        await this.timeEntryRepository.findActiveManyByCardId(activityId);
-      const endedAt = new Date();
+      const activeCount =
+        await this.timeEntryRepository.countActiveByCardId(activityId);
 
-      for (const entry of activeEntries) {
-        await this.timeEntryRepository.stopEntry(entry, endedAt);
+      if (activeCount > 0) {
+        throw new AppError(400, MENSAGENS.ATIVIDADE_COM_APONTAMENTO_ABERTO);
       }
     }
 
@@ -429,7 +435,11 @@ export class CardService {
     description?: string,
     estimatedHours?: number,
   ): Promise<ProjectSummary> {
-    await this.assertTeamMember(teamId, userId);
+    const membership = await this.assertTeamMember(teamId, userId);
+    assertTeamAdminOrFlag(
+      membership.role,
+      membership.team.membersCanCreateProjects,
+    );
 
     const card = await this.cardRepository.createProject({
       teamId,
