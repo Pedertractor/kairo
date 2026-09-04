@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   Avatar,
   AvatarFallback,
@@ -17,15 +18,22 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar'
+import { ApiKeysDialog } from '@/components/api-keys-dialog'
 import { InstallAppDialog } from '@/components/install-app-dialog'
 import { useAuth } from '@/hooks/use-auth'
 import { usePwaInstall } from '@/hooks/use-pwa-install'
 import { getInitials } from '@/lib/initials'
-import { ChevronsUpDownIcon, LogOutIcon, SmartphoneIcon } from 'lucide-react'
+import {
+  ChevronsUpDownIcon,
+  LogOutIcon,
+  SmartphoneIcon,
+  UnplugIcon,
+} from 'lucide-react'
 
 export function NavUser() {
   const { user, logout } = useAuth()
   const { isMobile } = useSidebar()
+  const [integrationsOpen, setIntegrationsOpen] = useState(false)
   const {
     canInstall,
     isIos,
@@ -78,6 +86,11 @@ export function NavUser() {
               </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setIntegrationsOpen(true)}>
+              <UnplugIcon />
+              Integrações
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <div className="flex items-stretch gap-1">
               {canInstall ? (
                 <DropdownMenuItem
@@ -98,6 +111,10 @@ export function NavUser() {
             </div>
           </DropdownMenuContent>
         </DropdownMenu>
+        <ApiKeysDialog
+          open={integrationsOpen}
+          onOpenChange={setIntegrationsOpen}
+        />
         <InstallAppDialog
           open={instructionsOpen}
           onOpenChange={setInstructionsOpen}

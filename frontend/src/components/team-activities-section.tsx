@@ -465,7 +465,7 @@ export function TeamActivitiesSection({ teamId }: TeamActivitiesSectionProps) {
                   </button>
                 </div>
                 {activity.description ? (
-                  <p className='pointer-events-none relative z-10 line-clamp-2 text-xs text-muted-foreground'>
+                  <p className='pointer-events-none relative z-10 line-clamp-2 whitespace-pre-wrap text-xs text-muted-foreground'>
                     {activity.description}
                   </p>
                 ) : null}

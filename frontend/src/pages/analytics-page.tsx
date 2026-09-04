@@ -368,8 +368,14 @@ export function AnalyticsPage() {
   const selectedProject = dashboard?.selectedProject;
   const selectedProjectTeamId = selectedProject?.teamId ?? '';
   const periodDayCount = getInclusiveDayCount(startDate, endDate);
-  const activityTypes = dashboard?.activityTypes ?? [];
-  const clients = dashboard?.clients ?? [];
+  const activityTypes = useMemo(
+    () => dashboard?.activityTypes ?? [],
+    [dashboard?.activityTypes],
+  );
+  const clients = useMemo(
+    () => dashboard?.clients ?? [],
+    [dashboard?.clients],
+  );
   const activityOverview = dashboard?.activityOverview ?? null;
   const tagOptions = useMemo<TagFilterOption[]>(
     () =>

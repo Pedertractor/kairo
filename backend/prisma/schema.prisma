@@ -98,8 +98,29 @@ model User {
   absencePeriods UserAbsencePeriod[] @relation("UserAbsencePeriods")
   createdAbsences UserAbsencePeriod[] @relation("AbsenceCreatedBy")
 
+  apiKeys ApiKey[]
+
   @@unique([unit, cardNumber])
   @@map("users")
+}
+
+model ApiKey {
+  id        String @id @default(cuid())
+  userId    String
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name      String
+  keyPrefix String
+  keyHash   String @unique
+
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([keyHash])
+  @@map("api_keys")
 }
 
 model UserAbsencePeriod {
