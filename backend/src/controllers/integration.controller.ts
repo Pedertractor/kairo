@@ -1,8 +1,8 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import {
   activityParamSchema,
-  createActivitySchema,
-  createProjectSchema,
+  createIntegrationActivitySchema,
+  createIntegrationProjectSchema,
   projectParamSchema,
   teamIdParamSchema,
 } from '../schemas/card.schema.js';
@@ -66,7 +66,7 @@ export class IntegrationController {
         throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
       }
 
-      const activity = await this.cardService.getActivity(
+      const activity = await this.cardService.getActivityIncludingDeleted(
         parsed.data.teamId,
         parsed.data.activityId,
         request.user.sub,
@@ -81,7 +81,7 @@ export class IntegrationController {
   createActivity = async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const params = teamIdParamSchema.safeParse(request.params);
-      const body = createActivitySchema.safeParse(request.body);
+      const body = createIntegrationActivitySchema.safeParse(request.body);
 
       if (!params.success || !body.success) {
         throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
@@ -97,6 +97,8 @@ export class IntegrationController {
         body.data.clientId,
         body.data.machineId,
         body.data.complexityLevel,
+        body.data.assignedToId,
+        body.data.integrationSource,
       );
 
       return sendSuccess(
@@ -104,6 +106,31 @@ export class IntegrationController {
         { activity },
         201,
         MENSAGENS.ATIVIDADE_CRIADA_SUCESSO,
+      );
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  deleteActivity = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const parsed = activityParamSchema.safeParse(request.params);
+
+      if (!parsed.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const activity = await this.cardService.deleteActivity(
+        parsed.data.teamId,
+        parsed.data.activityId,
+        request.user.sub,
+      );
+
+      return sendSuccess(
+        reply,
+        { activity },
+        200,
+        MENSAGENS.ATIVIDADE_REMOVIDA_SUCESSO,
       );
     } catch (error) {
       return handleControllerError(error, reply);
@@ -118,7 +145,7 @@ export class IntegrationController {
         throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
       }
 
-      const project = await this.cardService.getProject(
+      const project = await this.cardService.getProjectIncludingDeleted(
         parsed.data.teamId,
         parsed.data.projectId,
         request.user.sub,
@@ -133,7 +160,7 @@ export class IntegrationController {
   createProject = async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const params = teamIdParamSchema.safeParse(request.params);
-      const body = createProjectSchema.safeParse(request.body);
+      const body = createIntegrationProjectSchema.safeParse(request.body);
 
       if (!params.success || !body.success) {
         throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
@@ -145,6 +172,7 @@ export class IntegrationController {
         body.data.title,
         body.data.description,
         body.data.estimatedHours,
+        body.data.integrationSource,
       );
 
       return sendSuccess(
@@ -152,6 +180,31 @@ export class IntegrationController {
         { project },
         201,
         MENSAGENS.PROJETO_CRIADO_SUCESSO,
+      );
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  deleteProject = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const parsed = projectParamSchema.safeParse(request.params);
+
+      if (!parsed.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const project = await this.cardService.deleteProject(
+        parsed.data.teamId,
+        parsed.data.projectId,
+        request.user.sub,
+      );
+
+      return sendSuccess(
+        reply,
+        { project },
+        200,
+        MENSAGENS.PROJETO_REMOVIDO_SUCESSO,
       );
     } catch (error) {
       return handleControllerError(error, reply);

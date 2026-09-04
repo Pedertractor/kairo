@@ -19,6 +19,7 @@ import { subscribeActivityDataInvalidation } from '@/lib/activity-data-invalidat
 import { api } from '@/lib/api-handler'
 import { CardTimeBudget } from '@/components/card-time-budget'
 import { canFinishStatus } from '@/lib/card-status'
+import { getIntegrationSourceLabel } from '@/lib/integration-source'
 import type { ActivityResponse, ActivitySummary } from '@/types/card'
 
 export function ActivityDetailPage() {
@@ -175,6 +176,14 @@ export function ActivityDetailPage() {
                 Criado por{' '}
                 <span className="font-medium text-foreground">
                   {activity.createdByName}
+                </span>
+              </p>
+            ) : null}
+            {getIntegrationSourceLabel(activity.integrationSource) ? (
+              <p className="text-sm text-muted-foreground">
+                Origem:{' '}
+                <span className="font-medium text-foreground">
+                  {getIntegrationSourceLabel(activity.integrationSource)}
                 </span>
               </p>
             ) : null}

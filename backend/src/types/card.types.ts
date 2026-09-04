@@ -34,6 +34,9 @@ export interface ActivitySummary {
   assignedToName: string | null;
   createdById: string;
   createdByName: string | null;
+  integrationSource: string | null;
+  deletedAt: string | null;
+  deletedByName: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -48,6 +51,9 @@ export interface ProjectSummary {
   estimatedHours: string | null;
   loggedSeconds: number;
   createdById: string;
+  integrationSource: string | null;
+  deletedAt: string | null;
+  deletedByName: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -16,6 +16,7 @@ import { useCanEditEstimatedHours } from '@/hooks/use-can-edit-estimated-hours'
 import { api } from '@/lib/api-handler'
 import { CardTimeBudget } from '@/components/card-time-budget'
 import { canFinishStatus } from '@/lib/card-status'
+import { getIntegrationSourceLabel } from '@/lib/integration-source'
 import type { ProjectResponse, ProjectSummary } from '@/types/card'
 
 export function ProjectDetailPage() {
@@ -132,6 +133,14 @@ export function ProjectDetailPage() {
             {project.description ? (
               <p className="whitespace-pre-wrap text-muted-foreground">
                 {project.description}
+              </p>
+            ) : null}
+            {getIntegrationSourceLabel(project.integrationSource) ? (
+              <p className="text-sm text-muted-foreground">
+                Origem:{' '}
+                <span className="font-medium text-foreground">
+                  {getIntegrationSourceLabel(project.integrationSource)}
+                </span>
               </p>
             ) : null}
             <CardTimeBudget

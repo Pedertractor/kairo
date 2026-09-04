@@ -45,6 +45,7 @@ import {
   NO_COMPLEXITY,
   isComplexityLevel,
 } from '@/lib/complexity-level'
+import { getIntegrationSourceLabel } from '@/lib/integration-source'
 import type {
   ActivityResponse,
   ActivitySummary,
@@ -609,6 +610,22 @@ export function ActivityDetailsDialog({
                 disabled
               />
             </Field>
+
+            {getIntegrationSourceLabel(activity?.integrationSource) ? (
+              <Field>
+                <FieldLabel htmlFor="activity-details-integration-source">
+                  Origem
+                </FieldLabel>
+                <Input
+                  id="activity-details-integration-source"
+                  value={
+                    getIntegrationSourceLabel(activity?.integrationSource) ?? ''
+                  }
+                  readOnly
+                  disabled
+                />
+              </Field>
+            ) : null}
 
             {activity ? (
               <>

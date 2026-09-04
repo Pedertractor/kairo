@@ -84,6 +84,7 @@ model User {
 
   createdCards   Card[] @relation("CardCreator")
   assignedCards  Card[] @relation("CardAssignee")
+  deletedCards   Card[] @relation("CardDeletedBy")
   createdTasks   Task[] @relation("TaskCreator")
   assignedTasks  Task[] @relation("TaskAssignee")
 
@@ -349,7 +350,11 @@ model Card {
 
   estimatedHours Decimal? @db.Decimal(10, 2)
 
-  deletedAt DateTime?
+  integrationSource String?
+
+  deletedAt   DateTime?
+  deletedById String?
+  deletedBy   User?     @relation("CardDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -365,6 +370,7 @@ model Card {
   @@index([clientId])
   @@index([machineId])
   @@index([deletedAt])
+  @@index([deletedById])
   @@map("cards")
 }
 

@@ -77,6 +77,11 @@ export async function integrationRoutes(app: FastifyInstance) {
     auth,
     controller.createActivity,
   );
+  app.delete(
+    '/integrations/v1/teams/:teamId/activities/:activityId',
+    auth,
+    controller.deleteActivity,
+  );
   app.get(
     '/integrations/v1/teams/:teamId/projects/:projectId',
     auth,
@@ -86,5 +91,10 @@ export async function integrationRoutes(app: FastifyInstance) {
     '/integrations/v1/teams/:teamId/projects',
     auth,
     controller.createProject,
+  );
+  app.delete(
+    '/integrations/v1/teams/:teamId/projects/:projectId',
+    auth,
+    controller.deleteProject,
   );
 }

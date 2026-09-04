@@ -72,6 +72,10 @@ export const createActivitySchema = z.object({
   complexityLevel: complexityLevelSchema.optional(),
 });
 
+export const createIntegrationActivitySchema = createActivitySchema.extend({
+  integrationSource: z.string().trim().min(1).max(100).optional(),
+});
+
 export const createProjectSchema = z.object({
   title: z.string().trim().min(1, 'Título é obrigatório'),
   description: z.string().trim().optional(),
@@ -79,6 +83,10 @@ export const createProjectSchema = z.object({
     .number()
     .positive('Horas estimadas deve ser um valor positivo')
     .optional(),
+});
+
+export const createIntegrationProjectSchema = createProjectSchema.extend({
+  integrationSource: z.string().trim().min(1).max(100).optional(),
 });
 
 export const updateProjectStatusSchema = updateActivityStatusSchema;
