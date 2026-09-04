@@ -4,6 +4,14 @@ import type {
   TaskStatus,
 } from '../generated/client.js';
 
+const taskSummaryInclude = {
+  assignedTo: { select: { id: true, name: true } },
+  createdBy: { select: { id: true, name: true } },
+  machine: {
+    select: { id: true, name: true, costCenter: true },
+  },
+} as const;
+
 export class TaskRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
@@ -11,10 +19,7 @@ export class TaskRepository {
     return this.prisma.task.findFirst({
       where: { id: taskId, deletedAt: null },
       include: {
-        assignedTo: { select: { id: true, name: true } },
-        machine: {
-          select: { id: true, name: true, costCenter: true },
-        },
+        ...taskSummaryInclude,
         card: {
           select: {
             id: true,
@@ -61,12 +66,7 @@ export class TaskRepository {
           ? { estimatedHours: data.estimatedHours }
           : {}),
       },
-      include: {
-        assignedTo: { select: { id: true, name: true } },
-        machine: {
-          select: { id: true, name: true, costCenter: true },
-        },
-      },
+      include: taskSummaryInclude,
     });
   }
 
@@ -85,12 +85,7 @@ export class TaskRepository {
   findByProjectId(projectId: string) {
     return this.prisma.task.findMany({
       where: { cardId: projectId, deletedAt: null },
-      include: {
-        assignedTo: { select: { id: true, name: true } },
-        machine: {
-          select: { id: true, name: true, costCenter: true },
-        },
-      },
+      include: taskSummaryInclude,
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
     });
   }
@@ -123,12 +118,7 @@ export class TaskRepository {
         complexityLevel: data.complexityLevel ?? null,
         sortOrder: data.sortOrder,
       },
-      include: {
-        assignedTo: { select: { id: true, name: true } },
-        machine: {
-          select: { id: true, name: true, costCenter: true },
-        },
-      },
+      include: taskSummaryInclude,
     });
   }
 
@@ -136,12 +126,7 @@ export class TaskRepository {
     return this.prisma.task.update({
       where: { id: taskId },
       data: { deletedAt: new Date() },
-      include: {
-        assignedTo: { select: { id: true, name: true } },
-        machine: {
-          select: { id: true, name: true, costCenter: true },
-        },
-      },
+      include: taskSummaryInclude,
     });
   }
 

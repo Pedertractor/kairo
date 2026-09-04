@@ -25,7 +25,10 @@ export interface ActivitySummary {
   tag: ActivityTag | null
   client: ClientSummary | null
   machine: MachineSummary | null
+  assignedToId: string | null
+  assignedToName: string | null
   createdById: string
+  createdByName: string | null
   createdAt: string
   updatedAt: string
 }
@@ -45,6 +48,7 @@ export interface CreateActivityInput {
   tagId?: string
   clientId?: string
   machineId?: string
+  assignedToId?: string
   complexityLevel?: ComplexityLevel
 }
 
@@ -60,6 +64,7 @@ export interface UpdateActivityInput {
   estimatedHours?: number | null
   clientId?: string | null
   machineId?: string | null
+  assignedToId?: string | null
   complexityLevel?: ComplexityLevel | null
 }
 

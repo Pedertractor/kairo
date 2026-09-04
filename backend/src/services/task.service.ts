@@ -16,6 +16,7 @@ import { assertTeamMembership } from '../utils/team-access.js';
 
 type TaskWithRelations = Task & {
   assignedTo: { id: string; name: string } | null;
+  createdBy?: { id: string; name: string } | null;
   machine?: TaskMachineSummary | null;
 };
 
@@ -51,6 +52,7 @@ function toTaskSummary(
     sortOrder: task.sortOrder,
     isFavorite,
     createdById: task.createdById,
+    createdByName: task.createdBy?.name ?? null,
     createdAt: task.createdAt.toISOString(),
     updatedAt: task.updatedAt.toISOString(),
   };

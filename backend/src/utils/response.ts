@@ -60,6 +60,7 @@ export const MENSAGENS = {
   TAG_NAO_ENCONTRADA: 'Etiqueta não encontrada',
   CLIENTE_NAO_ENCONTRADO: 'Cliente não encontrado',
   MAQUINA_NAO_ENCONTRADA: 'Máquina não encontrada',
+  RESPONSAVEL_NAO_E_MEMBRO: 'O responsável deve ser um membro da equipe',
   PROJETO_CRIADO_SUCESSO: 'Projeto criado com sucesso',
   PROJETO_ATUALIZADO_SUCESSO: 'Projeto atualizado com sucesso',
   HORAS_ESTIMADAS_SEM_PERMISSAO:

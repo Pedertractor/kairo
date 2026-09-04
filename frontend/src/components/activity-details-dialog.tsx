@@ -54,6 +54,7 @@ import type {
 import type { ClientSummary, ClientsListResponse } from '@/types/client'
 import type { MachineSummary, MachinesListResponse } from '@/types/machine'
 import type { TagSummary, TagsListResponse } from '@/types/tag'
+import type { TeamMemberSummary, TeamResponse } from '@/types/team'
 
 const NO_TAG = '__none__'
 
@@ -63,6 +64,11 @@ type ClientComboboxOption = {
 }
 
 type MachineComboboxOption = {
+  value: string
+  label: string
+}
+
+type MemberComboboxOption = {
   value: string
   label: string
 }
@@ -86,6 +92,13 @@ function toMachineOption(machine: MachineSummary): MachineComboboxOption {
   return {
     value: machine.id,
     label: `${machine.name} · CC ${machine.costCenter}`,
+  }
+}
+
+function toMemberOption(member: TeamMemberSummary): MemberComboboxOption {
+  return {
+    value: member.id,
+    label: member.name,
   }
 }
 
@@ -122,9 +135,12 @@ export function ActivityDetailsDialog({
     useState<ClientComboboxOption | null>(null)
   const [selectedMachine, setSelectedMachine] =
     useState<MachineComboboxOption | null>(null)
+  const [selectedAssignee, setSelectedAssignee] =
+    useState<MemberComboboxOption | null>(null)
   const [tags, setTags] = useState<TagSummary[]>([])
   const [clients, setClients] = useState<ClientSummary[]>([])
   const [machines, setMachines] = useState<MachineSummary[]>([])
+  const [members, setMembers] = useState<TeamMemberSummary[]>([])
   const [isLoadingOptions, setIsLoadingOptions] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -141,6 +157,22 @@ export function ActivityDetailsDialog({
 
     return options
   }, [machines, activity?.machine])
+  const memberOptions = useMemo(() => {
+    const options = members.map(toMemberOption)
+
+    if (
+      activity?.assignedToId &&
+      activity.assignedToName &&
+      !options.some((option) => option.value === activity.assignedToId)
+    ) {
+      options.unshift({
+        value: activity.assignedToId,
+        label: activity.assignedToName,
+      })
+    }
+
+    return options
+  }, [members, activity?.assignedToId, activity?.assignedToName])
 
   useEffect(() => {
     if (!open || !activity) {
@@ -157,6 +189,11 @@ export function ActivityDetailsDialog({
     setSelectedMachine(
       activity.machine ? toMachineOption(activity.machine) : null,
     )
+    setSelectedAssignee(
+      activity.assignedToId && activity.assignedToName
+        ? { value: activity.assignedToId, label: activity.assignedToName }
+        : null,
+    )
   }, [open, activity])
 
   useEffect(() => {
@@ -170,7 +207,7 @@ export function ActivityDetailsDialog({
       setIsLoadingOptions(true)
 
       try {
-        const [tagsData, clientsData, machinesData] = await Promise.all([
+        const [tagsData, clientsData, machinesData, teamData] = await Promise.all([
           api<TagsListResponse>(`/teams/${teamId}/tags`),
           api<ClientsListResponse>('/clients', { toastOnError: false }).catch(
             () => ({ clients: [] }) as ClientsListResponse,
@@ -181,12 +218,16 @@ export function ActivityDetailsDialog({
               toastOnError: false,
             },
           ).catch(() => ({ machines: [] }) as MachinesListResponse),
+          api<TeamResponse>(`/teams/${teamId}`, { toastOnError: false }).catch(
+            () => ({ team: { members: [] } }) as TeamResponse,
+          ),
         ])
 
         if (!cancelled) {
           setTags(tagsData.tags)
           setClients(clientsData.clients)
           setMachines(machinesData.machines)
+          setMembers(teamData.team.members)
         }
       } finally {
         if (!cancelled) {
@@ -238,6 +279,11 @@ export function ActivityDetailsDialog({
     const nextMachineId = selectedMachine?.value ?? null
     if (nextMachineId !== (activity.machine?.id ?? null)) {
       payload.machineId = nextMachineId
+    }
+
+    const nextAssignedToId = selectedAssignee?.value ?? null
+    if (nextAssignedToId !== (activity.assignedToId ?? null)) {
+      payload.assignedToId = nextAssignedToId
     }
 
     const nextComplexity = isComplexityLevel(complexityLevel)
@@ -458,6 +504,45 @@ export function ActivityDetailsDialog({
             </Field>
 
             <Field>
+              <FieldLabel htmlFor="activity-details-assignee">
+                Responsável
+              </FieldLabel>
+              {isLoadingOptions ? (
+                <div className="flex h-8 items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin" />
+                  Carregando membros...
+                </div>
+              ) : (
+                <Combobox
+                  items={memberOptions}
+                  value={selectedAssignee}
+                  onValueChange={setSelectedAssignee}
+                  itemToStringLabel={(item) => item.label}
+                  isItemEqualToValue={(a, b) => a.value === b.value}
+                  disabled={isSubmitting || !activity}
+                >
+                  <ComboboxInput
+                    id="activity-details-assignee"
+                    className="w-full"
+                    placeholder="Buscar responsável..."
+                    showClear
+                    disabled={isSubmitting || !activity}
+                  />
+                  <ComboboxContent>
+                    <ComboboxEmpty>Nenhum membro encontrado.</ComboboxEmpty>
+                    <ComboboxList>
+                      {(item) => (
+                        <ComboboxItem key={item.value} value={item}>
+                          {item.label}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              )}
+            </Field>
+
+            <Field>
               <FieldLabel htmlFor="activity-details-complexity">
                 Nível de complexidade
               </FieldLabel>
@@ -511,6 +596,18 @@ export function ActivityDetailsDialog({
               <FieldDescription>
                 Deixe em branco para tempo indefinido.
               </FieldDescription>
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="activity-details-created-by">
+                Criado por
+              </FieldLabel>
+              <Input
+                id="activity-details-created-by"
+                value={activity?.createdByName ?? ''}
+                readOnly
+                disabled
+              />
             </Field>
 
             {activity ? (
