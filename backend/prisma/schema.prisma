@@ -102,6 +102,7 @@ model User {
   apiKeys ApiKey[]
 
   @@unique([unit, cardNumber])
+  @@index([active])
   @@map("users")
 }
 
@@ -365,6 +366,9 @@ model Card {
   @@index([clientId])
   @@index([machineId])
   @@index([deletedAt])
+  @@index([deletedAt, type, status])
+  @@index([deletedAt, teamId, type])
+  @@index([deletedAt, createdAt])
   @@map("cards")
 }
 
@@ -405,9 +409,12 @@ model Task {
   favorites   UserFavorite[]
 
   @@index([cardId])
+  @@index([createdById])
   @@index([assignedToId])
   @@index([machineId])
   @@index([deletedAt])
+  @@index([deletedAt, status])
+  @@index([deletedAt, createdAt])
   @@map("tasks")
 }
 
@@ -438,7 +445,9 @@ model TimeEntry {
   @@index([cardId])
   @@index([taskId])
   @@index([userId])
-  @@index([startedAt])
+  @@index([startedAt, endedAt])
+  @@index([userId, startedAt])
+  @@index([endedAt, type])
   @@map("time_entries")
 }
 

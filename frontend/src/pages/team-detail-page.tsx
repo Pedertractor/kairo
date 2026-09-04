@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Pencil } from 'lucide-react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Pencil } from 'lucide-react';
+import { useParams, useSearchParams } from 'react-router-dom';
+import { BackButton } from '@/components/back-button';
 import { EditTeamDialog } from '@/components/edit-team-dialog';
 import { ReactivateTeamDialog } from '@/components/reactivate-team-dialog';
 import { TeamActivitiesSection } from '@/components/team-activities-section';
@@ -62,7 +63,7 @@ function resolveTeamTab(tab: TeamTab | null, team: TeamSummary): TeamTab {
 export function TeamDetailPage() {
   const { teamId } = useParams<{ teamId: string }>();
   const { refreshUser } = useAuth();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = parseTeamTab(searchParams.get('tab'));
   const dateFromUrl = searchParams.get('date') ?? undefined;
   const userIdFromUrl = searchParams.get('userId') ?? undefined;
@@ -118,10 +119,7 @@ export function TeamDetailPage() {
   return (
     <div className='flex min-w-0 flex-1 flex-col gap-6'>
       <div>
-        <Button variant='ghost' size='sm' render={<Link to='/equipes' />}>
-          <ArrowLeft />
-          Voltar para equipe
-        </Button>
+        <BackButton fallbackTo='/equipes' fallbackLabel='Voltar para equipes' />
       </div>
 
       {isLoading ? (
@@ -204,7 +202,20 @@ export function TeamDetailPage() {
           {team.active ? (
           <Tabs
             value={activeTab}
-            onValueChange={(value) => setActiveTab(value as TeamTab)}
+            onValueChange={(value) => {
+              const tab = value as TeamTab;
+              setActiveTab(tab);
+              // Mantem a aba na URL para que o botao voltar de paginas
+              // internas (projeto, atividade) retorne para a aba correta.
+              setSearchParams(
+                (current) => {
+                  const next = new URLSearchParams(current);
+                  next.set('tab', tab);
+                  return next;
+                },
+                { replace: true },
+              );
+            }}
             className='min-w-0 flex-1'
           >
             <TabsList className='border-sidebar-border'>

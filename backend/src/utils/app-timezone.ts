@@ -6,7 +6,15 @@ export function isDateKey(value: string): boolean {
   return DATE_KEY_REGEX.test(value);
 }
 
-function getZonedParts(instant: Date, timeZone = APP_TIME_ZONE) {
+const formatterCache = new Map<string, Intl.DateTimeFormat>();
+
+function getFormatter(timeZone: string): Intl.DateTimeFormat {
+  const cached = formatterCache.get(timeZone);
+
+  if (cached) {
+    return cached;
+  }
+
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone,
     year: 'numeric',
@@ -18,18 +26,29 @@ function getZonedParts(instant: Date, timeZone = APP_TIME_ZONE) {
     hourCycle: 'h23',
   });
 
-  const parts = formatter.formatToParts(instant);
-  const get = (type: Intl.DateTimeFormatPartTypes) =>
-    Number(parts.find((part) => part.type === type)?.value ?? '0');
+  formatterCache.set(timeZone, formatter);
 
-  return {
-    year: get('year'),
-    month: get('month'),
-    day: get('day'),
-    hour: get('hour'),
-    minute: get('minute'),
-    second: get('second'),
+  return formatter;
+}
+
+function getZonedParts(instant: Date, timeZone = APP_TIME_ZONE) {
+  const parts = getFormatter(timeZone).formatToParts(instant);
+  const values = {
+    year: 0,
+    month: 0,
+    day: 0,
+    hour: 0,
+    minute: 0,
+    second: 0,
   };
+
+  for (const part of parts) {
+    if (part.type in values) {
+      values[part.type as keyof typeof values] = Number(part.value);
+    }
+  }
+
+  return values;
 }
 
 function getTimeZoneOffsetMs(instant: Date, timeZone = APP_TIME_ZONE): number {
@@ -79,12 +98,38 @@ export function shiftDateKey(dateKey: string, days: number): string {
   return shifted.toISOString().slice(0, 10);
 }
 
+const MAX_CACHED_DAY_STARTS = 4096;
+
+const dayStartCache = new Map<string, number>();
+
+/**
+ * Midnight for a given day is fixed, so the timezone conversion is memoized:
+ * dashboards resolve the same day boundaries thousands of times per request.
+ */
+function getDayStartMs(dateKey: string): number {
+  const cached = dayStartCache.get(dateKey);
+
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  const dayStart = zonedDateTimeToUtc(dateKey).getTime();
+
+  if (dayStartCache.size >= MAX_CACHED_DAY_STARTS) {
+    dayStartCache.clear();
+  }
+
+  dayStartCache.set(dateKey, dayStart);
+
+  return dayStart;
+}
+
 export function parseDayBounds(dateKey: string): {
   dayStart: Date;
   dayEnd: Date;
 } {
-  const dayStart = zonedDateTimeToUtc(dateKey);
-  const dayEnd = zonedDateTimeToUtc(shiftDateKey(dateKey, 1));
-
-  return { dayStart, dayEnd };
+  return {
+    dayStart: new Date(getDayStartMs(dateKey)),
+    dayEnd: new Date(getDayStartMs(shiftDateKey(dateKey, 1))),
+  };
 }

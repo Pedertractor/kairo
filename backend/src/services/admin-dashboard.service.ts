@@ -56,40 +56,94 @@ function listDateKeys(startDate: string, endDate: string): string[] {
   return keys;
 }
 
-function allocateEntryToDays(
+export interface DayBucket {
+  start: number;
+  end: number;
+  usage: AdminDailyUsage;
+  users: Set<string>;
+}
+
+/**
+ * Day boundaries are resolved once per request instead of per entry, so the
+ * per-entry allocation is plain arithmetic over a sorted, contiguous array.
+ */
+export function buildDayBuckets(
+  startDate: string,
+  endDate: string,
+): DayBucket[] {
+  return listDateKeys(startDate, endDate).map((date) => {
+    const { dayStart, dayEnd } = parseDayBounds(date);
+
+    return {
+      start: dayStart.getTime(),
+      end: dayEnd.getTime(),
+      usage: { date, loggedSeconds: 0, entryCount: 0, activeUserCount: 0 },
+      users: new Set<string>(),
+    };
+  });
+}
+
+function findDayBucketIndex(buckets: DayBucket[], timestamp: number): number {
+  let low = 0;
+  let high = buckets.length - 1;
+
+  while (low <= high) {
+    const middle = (low + high) >> 1;
+    const bucket = buckets[middle];
+
+    if (timestamp < bucket.start) {
+      high = middle - 1;
+    } else if (timestamp >= bucket.end) {
+      low = middle + 1;
+    } else {
+      return middle;
+    }
+  }
+
+  return -1;
+}
+
+export function allocateEntryToDays(
   startedAt: Date,
   endedAt: Date | null,
   periodStart: Date,
   periodEnd: Date,
   now: Date,
   userId: string,
-  daily: Map<string, AdminDailyUsage>,
-  usersByDay: Map<string, Set<string>>,
+  buckets: DayBucket[],
 ) {
   let cursor = Math.max(startedAt.getTime(), periodStart.getTime());
   const end = Math.min((endedAt ?? now).getTime(), periodEnd.getTime());
+
+  if (cursor >= end) {
+    return;
+  }
+
+  let index = findDayBucketIndex(buckets, cursor);
+
+  if (index < 0) {
+    return;
+  }
+
   let countedEntry = false;
 
-  while (cursor < end) {
-    const dateKey = formatDateKey(new Date(cursor));
-    const { dayEnd } = parseDayBounds(dateKey);
-    const sliceEnd = Math.min(dayEnd.getTime(), end);
+  while (index < buckets.length && cursor < end) {
+    const bucket = buckets[index];
+    const sliceEnd = Math.min(bucket.end, end);
     const seconds = Math.max(0, Math.floor((sliceEnd - cursor) / 1000));
-    const bucket = daily.get(dateKey);
 
-    if (bucket && seconds > 0) {
-      bucket.loggedSeconds += seconds;
+    if (seconds > 0) {
+      bucket.usage.loggedSeconds += seconds;
       if (!countedEntry) {
-        bucket.entryCount += 1;
+        bucket.usage.entryCount += 1;
         countedEntry = true;
       }
 
-      const set = usersByDay.get(dateKey) ?? new Set<string>();
-      set.add(userId);
-      usersByDay.set(dateKey, set);
+      bucket.users.add(userId);
     }
 
     cursor = sliceEnd;
+    index += 1;
   }
 }
 
@@ -118,7 +172,36 @@ export class AdminDashboardService {
     const { periodStart, periodEnd } = getPeriodBounds(startDate, endDate);
     const now = new Date();
 
-    const users = await this.repository.findUsers();
+    const [
+      users,
+      teams,
+      teamCardGroups,
+      clientCount,
+      cardGroups,
+      taskGroups,
+      createdCardGroups,
+      createdTasks,
+      entries,
+      runningTimers,
+      absences,
+    ] = await Promise.all([
+      this.repository.findUsers(),
+      this.repository.findTeams(),
+      this.repository.groupCardsByTeamAndType(),
+      this.repository.countClients(),
+      this.repository.groupCardsByTypeAndStatus(options.userId),
+      this.repository.groupTasksByStatus(options.userId),
+      this.repository.groupCreatedCardsByType(
+        periodStart,
+        periodEnd,
+        options.userId,
+      ),
+      this.repository.countCreatedTasks(periodStart, periodEnd, options.userId),
+      this.repository.findTimeEntries(periodStart, periodEnd, options.userId),
+      this.repository.findRunningTimers(options.userId),
+      this.repository.findAbsences(periodStart, periodEnd, options.userId),
+    ]);
+
     const selectedUser = options.userId
       ? (users.find((user) => user.id === options.userId) ?? null)
       : null;
@@ -130,44 +213,6 @@ export class AdminDashboardService {
     const scopedUserIds = selectedUser
       ? [selectedUser.id]
       : users.filter((user) => user.active).map((user) => user.id);
-
-    const [
-      teams,
-      clientCount,
-      cardGroups,
-      taskGroups,
-      createdProjects,
-      createdActivities,
-      createdTasks,
-      entries,
-      runningTimers,
-      absences,
-    ] = await Promise.all([
-      this.repository.findTeams(),
-      this.repository.countClients(),
-      this.repository.groupCardsByTypeAndStatus(selectedUser?.id),
-      this.repository.groupTasksByStatus(selectedUser?.id),
-      this.repository.countCreatedCards(
-        periodStart,
-        periodEnd,
-        'PROJECT',
-        selectedUser?.id,
-      ),
-      this.repository.countCreatedCards(
-        periodStart,
-        periodEnd,
-        'ACTIVITY',
-        selectedUser?.id,
-      ),
-      this.repository.countCreatedTasks(
-        periodStart,
-        periodEnd,
-        selectedUser?.id,
-      ),
-      this.repository.findTimeEntries(periodStart, periodEnd, selectedUser?.id),
-      this.repository.findRunningTimers(selectedUser?.id),
-      this.repository.findAbsences(scopedUserIds, periodStart, periodEnd),
-    ]);
 
     const absencesByUser = new Map<
       string,
@@ -206,13 +251,7 @@ export class AdminDashboardService {
       TIMER: { type: 'TIMER' as const, count: 0, loggedSeconds: 0 },
       MANUAL: { type: 'MANUAL' as const, count: 0, loggedSeconds: 0 },
     };
-    const daily = new Map<string, AdminDailyUsage>(
-      listDateKeys(startDate, endDate).map((date) => [
-        date,
-        { date, loggedSeconds: 0, entryCount: 0, activeUserCount: 0 },
-      ]),
-    );
-    const usersByDay = new Map<string, Set<string>>();
+    const dayBuckets = buildDayBuckets(startDate, endDate);
 
     let loggedSeconds = 0;
 
@@ -254,13 +293,12 @@ export class AdminDashboardService {
         periodEnd,
         now,
         entry.userId,
-        daily,
-        usersByDay,
+        dayBuckets,
       );
     }
 
-    for (const [date, bucket] of daily) {
-      bucket.activeUserCount = usersByDay.get(date)?.size ?? 0;
+    for (const bucket of dayBuckets) {
+      bucket.usage.activeUserCount = bucket.users.size;
     }
 
     const projectStatusCounts = new Map<string, number>();
@@ -284,6 +322,37 @@ export class AdminDashboardService {
     for (const group of taskGroups) {
       taskCount += group._count._all;
       taskStatusCounts.set(group.status, group._count._all);
+    }
+
+    let createdProjects = 0;
+    let createdActivities = 0;
+
+    for (const group of createdCardGroups) {
+      if (group.type === 'PROJECT') {
+        createdProjects += group._count._all;
+      } else {
+        createdActivities += group._count._all;
+      }
+    }
+
+    const teamCardCounts = new Map<
+      string,
+      { projectCount: number; activityCount: number }
+    >();
+
+    for (const group of teamCardGroups) {
+      const counts = teamCardCounts.get(group.teamId) ?? {
+        projectCount: 0,
+        activityCount: 0,
+      };
+
+      if (group.type === 'PROJECT') {
+        counts.projectCount += group._count._all;
+      } else {
+        counts.activityCount += group._count._all;
+      }
+
+      teamCardCounts.set(group.teamId, counts);
     }
 
     const scopedUsers = selectedUser ? [selectedUser] : users;
@@ -349,19 +418,15 @@ export class AdminDashboardService {
           loggedSeconds: 0,
           timeEntryCount: 0,
         };
-        const projectCards = team.cards.filter((card) => card.type === 'PROJECT')
-          .length;
-        const activityCards = team.cards.filter(
-          (card) => card.type === 'ACTIVITY',
-        ).length;
+        const cardCounts = teamCardCounts.get(team.id);
 
         return {
           teamId: team.id,
           name: team.name,
           active: team.active,
           memberCount: team._count.members,
-          projectCount: projectCards,
-          activityCount: activityCards,
+          projectCount: cardCounts?.projectCount ?? 0,
+          activityCount: cardCounts?.activityCount ?? 0,
           loggedSeconds: totals.loggedSeconds,
           timeEntryCount: totals.timeEntryCount,
         };
@@ -435,7 +500,7 @@ export class AdminDashboardService {
       projectStatus: fillStatusCounts(CARD_STATUSES, projectStatusCounts),
       activityStatus: fillStatusCounts(CARD_STATUSES, activityStatusCounts),
       taskStatus: fillStatusCounts(CARD_STATUSES, taskStatusCounts),
-      daily: [...daily.values()],
+      daily: dayBuckets.map((bucket) => bucket.usage),
       topUsers: userUsage.slice(0, 12),
       teams: teamUsage,
       entryTypes: [entryTypes.TIMER, entryTypes.MANUAL],

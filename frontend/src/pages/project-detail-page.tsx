@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Pencil } from 'lucide-react'
+import { Pencil } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
+import { BackButton } from '@/components/back-button'
 import { DeleteProjectDialog } from '@/components/delete-project-dialog'
 import { EditEstimatedHoursDialog } from '@/components/edit-estimated-hours-dialog'
 import { EditProjectDialog } from '@/components/edit-project-dialog'
@@ -76,10 +77,10 @@ export function ProjectDetailPage() {
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-6">
       <div>
-        <Button variant="ghost" size="sm" render={<Link to="/projetos" />}>
-          <ArrowLeft />
-          Voltar para projetos
-        </Button>
+        <BackButton
+          fallbackTo="/projetos"
+          fallbackLabel="Voltar para projetos"
+        />
       </div>
 
       {isLoading ? (
@@ -208,7 +209,7 @@ export function ProjectDetailPage() {
             project={project}
             open={isDeleteDialogOpen}
             onOpenChange={setIsDeleteDialogOpen}
-            onDeleted={() => navigate('/projetos')}
+            onDeleted={() => navigate('/projetos', { replace: true })}
           />
 
           <ProjectTasksSection
