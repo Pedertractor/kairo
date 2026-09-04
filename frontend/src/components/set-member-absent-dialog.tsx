@@ -67,8 +67,6 @@ export function SetMemberAbsentDialog({
       if (nextAbsent) {
         body.startDate = toDateKey(startDate ?? new Date())
         body.endDate = endDate ? toDateKey(endDate) : null
-      } else {
-        body.endDate = toDateKey(endDate ?? new Date())
       }
 
       const data = await api<TeamResponse>(
@@ -94,10 +92,9 @@ export function SetMemberAbsentDialog({
   const canSubmit =
     !isSubmitting &&
     Boolean(member) &&
-    (nextAbsent
-      ? Boolean(startDate) &&
-        (!endDate || toDateKey(endDate) >= toDateKey(startDate!))
-      : Boolean(endDate))
+    (!nextAbsent ||
+      (Boolean(startDate) &&
+        (!endDate || toDateKey(endDate) >= toDateKey(startDate!))))
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -128,43 +125,31 @@ export function SetMemberAbsentDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className='space-y-3'>
-          {nextAbsent ? (
-            <>
-              <div className='space-y-1.5'>
-                <Label htmlFor='member-absence-start'>Data de início</Label>
-                <DatePicker
-                  id='member-absence-start'
-                  date={startDate}
-                  onDateChange={setStartDate}
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div className='space-y-1.5'>
-                <Label htmlFor='member-absence-end'>
-                  Data de fim (opcional)
-                </Label>
-                <DatePicker
-                  id='member-absence-end'
-                  date={endDate}
-                  onDateChange={setEndDate}
-                  disabled={isSubmitting}
-                  placeholder='Em aberto'
-                />
-              </div>
-            </>
-          ) : (
+        {nextAbsent ? (
+          <div className='space-y-3'>
             <div className='space-y-1.5'>
-              <Label htmlFor='member-absence-return'>Data de retorno</Label>
+              <Label htmlFor='member-absence-start'>Data de início</Label>
               <DatePicker
-                id='member-absence-return'
-                date={endDate}
-                onDateChange={setEndDate}
+                id='member-absence-start'
+                date={startDate}
+                onDateChange={setStartDate}
                 disabled={isSubmitting}
               />
             </div>
-          )}
-        </div>
+            <div className='space-y-1.5'>
+              <Label htmlFor='member-absence-end'>
+                Data de fim (opcional)
+              </Label>
+              <DatePicker
+                id='member-absence-end'
+                date={endDate}
+                onDateChange={setEndDate}
+                disabled={isSubmitting}
+                placeholder='Em aberto'
+              />
+            </div>
+          </div>
+        ) : null}
 
         <DialogFooter>
           <Button
