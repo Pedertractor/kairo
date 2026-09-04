@@ -50,12 +50,16 @@ export class AbsenceService {
   ) {}
 
   async isCurrentlyAbsent(userId: string): Promise<boolean> {
-    const open = await this.absenceRepository.findOpenByUserId(userId);
-    if (!open) {
+    const covering = await this.absenceRepository.findCoveringOn(userId);
+    if (!covering) {
       return false;
     }
 
-    return open.startedAt.getTime() <= startOfToday().getTime();
+    if (covering.endedAt === null) {
+      return true;
+    }
+
+    return covering.endedAt.getTime() > startOfToday().getTime();
   }
 
   async setAbsent(
@@ -73,7 +77,7 @@ export class AbsenceService {
       return this.openPeriod(user, options);
     }
 
-    return this.closePeriod(user, options);
+    return this.closePeriod(user);
   }
 
   private async openPeriod(
@@ -145,23 +149,19 @@ export class AbsenceService {
     return updated;
   }
 
-  private async closePeriod(
-    user: User,
-    options: SetAbsentOptions,
-  ): Promise<User> {
-    const endDate = options.endDate ?? formatDateKey(new Date());
-    const endedAt = parseDateKey(endDate);
+  private async closePeriod(user: User): Promise<User> {
+    const today = startOfToday();
+    const covering = await this.absenceRepository.findCoveringOn(
+      user.id,
+      today,
+    );
 
-    const open = await this.absenceRepository.findOpenByUserId(user.id);
-    if (!open) {
-      throw new AppError(400, MENSAGENS.AUSENCIA_NAO_ATIVA);
+    if (
+      covering &&
+      (covering.endedAt === null || covering.endedAt.getTime() > today.getTime())
+    ) {
+      await this.absenceRepository.close(covering.id, today);
     }
-
-    if (endedAt.getTime() < open.startedAt.getTime()) {
-      throw new AppError(400, MENSAGENS.AUSENCIA_FIM_ANTES_INICIO);
-    }
-
-    await this.absenceRepository.close(open.id, endedAt);
 
     return this.userRepository.setAbsent(user.id, false);
   }

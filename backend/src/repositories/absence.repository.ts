@@ -1,4 +1,16 @@
 import type { PrismaClient } from '../generated/client.js';
+import { formatDateKey, parseDayBounds } from '../utils/app-timezone.js';
+
+function startOfToday(): Date {
+  return parseDayBounds(formatDateKey(new Date())).dayStart;
+}
+
+function coveringOnWhere(on: Date) {
+  return {
+    startedAt: { lte: on },
+    OR: [{ endedAt: null }, { endedAt: { gte: on } }],
+  };
+}
 
 export class AbsenceRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -6,6 +18,13 @@ export class AbsenceRepository {
   findOpenByUserId(userId: string) {
     return this.prisma.userAbsencePeriod.findFirst({
       where: { userId, endedAt: null },
+      orderBy: { startedAt: 'desc' },
+    });
+  }
+
+  findCoveringOn(userId: string, on = startOfToday()) {
+    return this.prisma.userAbsencePeriod.findFirst({
+      where: { userId, ...coveringOnWhere(on) },
       orderBy: { startedAt: 'desc' },
     });
   }
@@ -74,10 +93,12 @@ export class AbsenceRepository {
       return Promise.resolve([]);
     }
 
+    const on = startOfToday();
+
     return this.prisma.userAbsencePeriod.findMany({
       where: {
         userId: { in: userIds },
-        endedAt: null,
+        ...coveringOnWhere(on),
       },
       select: {
         userId: true,
