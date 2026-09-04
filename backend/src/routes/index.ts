@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { adminDashboardRoutes } from './admin-dashboard.route.js';
 import { analyticsRoutes } from './analytics.route.js';
+import { apiKeyRoutes } from './api-key.route.js';
 import { authRoutes } from './auth.route.js';
 import { cardRoutes } from './card.route.js';
 import { clientRoutes } from './client.route.js';
@@ -10,6 +11,7 @@ import { favoriteRoutes } from './favorite.route.js';
 import { machineRoutes } from './machine.route.js';
 import { taskRoutes } from './task.route.js';
 import { healthRoutes } from './health.route.js';
+import { integrationRoutes } from './integration.route.js';
 import { tagRoutes } from './tag.route.js';
 import { teamRoutes } from './team.route.js';
 import { timeEntryRoutes } from './time-entry.route.js';
@@ -18,6 +20,8 @@ import { userRoutes } from './user.route.js';
 export async function registerRoutes(app: FastifyInstance) {
   await app.register(healthRoutes, { prefix: '/api' });
   await app.register(authRoutes, { prefix: '/api' });
+  await app.register(apiKeyRoutes, { prefix: '/api' });
+  await app.register(integrationRoutes, { prefix: '/api' });
   await app.register(analyticsRoutes, { prefix: '/api' });
   await app.register(adminDashboardRoutes, { prefix: '/api' });
   await app.register(teamRoutes, { prefix: '/api' });

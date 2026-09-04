@@ -130,7 +130,9 @@ export function ProjectDetailPage() {
               </p>
             ) : null}
             {project.description ? (
-              <p className="text-muted-foreground">{project.description}</p>
+              <p className="whitespace-pre-wrap text-muted-foreground">
+                {project.description}
+              </p>
             ) : null}
             <CardTimeBudget
               loggedSeconds={project.loggedSeconds}
