@@ -219,7 +219,7 @@ export function ActivityDetailsDialog({
             },
           ).catch(() => ({ machines: [] }) as MachinesListResponse),
           api<TeamResponse>(`/teams/${teamId}`, { toastOnError: false }).catch(
-            () => ({ team: { members: [] } }) as TeamResponse,
+            () => null,
           ),
         ])
 
@@ -227,7 +227,7 @@ export function ActivityDetailsDialog({
           setTags(tagsData.tags)
           setClients(clientsData.clients)
           setMachines(machinesData.machines)
-          setMembers(teamData.team.members)
+          setMembers(teamData?.team.members ?? [])
         }
       } finally {
         if (!cancelled) {
