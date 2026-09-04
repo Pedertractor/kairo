@@ -24,6 +24,7 @@ export interface TaskSummary {
   sortOrder: number
   isFavorite: boolean
   createdById: string
+  createdByName: string | null
   createdAt: string
   updatedAt: string
 }

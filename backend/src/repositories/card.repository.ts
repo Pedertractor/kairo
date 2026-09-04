@@ -26,6 +26,12 @@ const activityTagInclude = {
       costCenter: true,
     },
   },
+  createdBy: {
+    select: {
+      id: true,
+      name: true,
+    },
+  },
 } as const;
 
 export class CardRepository {

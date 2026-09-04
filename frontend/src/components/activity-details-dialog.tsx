@@ -513,6 +513,18 @@ export function ActivityDetailsDialog({
               </FieldDescription>
             </Field>
 
+            <Field>
+              <FieldLabel htmlFor="activity-details-created-by">
+                Criado por
+              </FieldLabel>
+              <Input
+                id="activity-details-created-by"
+                value={activity?.createdByName ?? ''}
+                readOnly
+                disabled
+              />
+            </Field>
+
             {activity ? (
               <>
                 <Separator />

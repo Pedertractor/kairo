@@ -31,6 +31,7 @@ export interface ActivitySummary {
   client: ActivityClientSummary | null;
   machine: ActivityMachineSummary | null;
   createdById: string;
+  createdByName: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -168,6 +168,14 @@ export function ActivityDetailPage() {
             {activity.description ? (
               <p className="text-muted-foreground">{activity.description}</p>
             ) : null}
+            {activity.createdByName ? (
+              <p className="text-sm text-muted-foreground">
+                Criado por{' '}
+                <span className="font-medium text-foreground">
+                  {activity.createdByName}
+                </span>
+              </p>
+            ) : null}
             {activity.complexityLevel ? (
               <ComplexityLevelMeter
                 level={activity.complexityLevel}

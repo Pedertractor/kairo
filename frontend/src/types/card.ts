@@ -26,6 +26,7 @@ export interface ActivitySummary {
   client: ClientSummary | null
   machine: MachineSummary | null
   createdById: string
+  createdByName: string | null
   createdAt: string
   updatedAt: string
 }

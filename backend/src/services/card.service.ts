@@ -26,6 +26,7 @@ type CardWithRelations = Card & {
   tag?: ActivityTagSummary | null;
   client?: ActivityClientSummary | null;
   machine?: ActivityMachineSummary | null;
+  createdBy?: { id: string; name: string } | null;
 };
 
 function toActivityTag(
@@ -88,6 +89,7 @@ function toActivitySummary(
     client: toActivityClient(card.client),
     machine: toActivityMachine(card.machine),
     createdById: card.createdById,
+    createdByName: card.createdBy?.name ?? null,
     createdAt: card.createdAt.toISOString(),
     updatedAt: card.updatedAt.toISOString(),
   };

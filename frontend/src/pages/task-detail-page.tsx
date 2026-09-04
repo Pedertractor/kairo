@@ -177,6 +177,14 @@ export function TaskDetailPage() {
                 </span>
               </p>
             ) : null}
+            {task.createdByName ? (
+              <p className="text-sm text-muted-foreground">
+                Criado por{' '}
+                <span className="font-medium text-foreground">
+                  {task.createdByName}
+                </span>
+              </p>
+            ) : null}
             {task.complexityLevel ? (
               <ComplexityLevelMeter
                 level={task.complexityLevel}
