@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { copyToClipboard } from '@/lib/clipboard'
 import { api } from '@/lib/api-handler'
 import type {
   ApiKeySummary,
@@ -91,9 +92,14 @@ export function ApiKeysDialog({
   }
 
   const copyKey = async (value: string) => {
-    await navigator.clipboard.writeText(value)
-    setKeyCopied(true)
-    toast.success('Chave copiada.')
+    try {
+      await copyToClipboard(value)
+      setKeyCopied(true)
+      window.setTimeout(() => setKeyCopied(false), 2000)
+      toast.success('Chave copiada.')
+    } catch {
+      toast.error('Não foi possível copiar a chave.')
+    }
   }
 
   return (
