@@ -18,7 +18,7 @@ export async function buildApp() {
   await app.register(cors, {
     origin: true,
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Api-Key'],
   });
 
   await app.register(multipart, {

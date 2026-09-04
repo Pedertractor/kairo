@@ -166,7 +166,9 @@ export function ActivityDetailPage() {
               </Button>
             </div>
             {activity.description ? (
-              <p className="text-muted-foreground">{activity.description}</p>
+              <p className="whitespace-pre-wrap text-muted-foreground">
+                {activity.description}
+              </p>
             ) : null}
             {activity.complexityLevel ? (
               <ComplexityLevelMeter
