@@ -82,9 +82,10 @@ model User {
   memberships  TeamMember[]
   createdTeams Team[]       @relation("TeamCreator")
 
-  createdCards  Card[] @relation("CardCreator")
-  createdTasks  Task[] @relation("TaskCreator")
-  assignedTasks Task[] @relation("TaskAssignee")
+  createdCards   Card[] @relation("CardCreator")
+  assignedCards  Card[] @relation("CardAssignee")
+  createdTasks   Task[] @relation("TaskCreator")
+  assignedTasks  Task[] @relation("TaskAssignee")
 
   timeEntries TimeEntry[]
   favorites   UserFavorite[]
@@ -326,6 +327,9 @@ model Card {
   createdById String
   createdBy   User   @relation("CardCreator", fields: [createdById], references: [id])
 
+  assignedToId String?
+  assignedTo   User?   @relation("CardAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+
   tagId String?
   tag   Tag?    @relation(fields: [tagId], references: [id], onDelete: SetNull)
 
@@ -356,6 +360,7 @@ model Card {
 
   @@index([teamId])
   @@index([createdById])
+  @@index([assignedToId])
   @@index([tagId])
   @@index([clientId])
   @@index([machineId])

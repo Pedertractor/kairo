@@ -32,6 +32,12 @@ const activityTagInclude = {
       name: true,
     },
   },
+  assignedTo: {
+    select: {
+      id: true,
+      name: true,
+    },
+  },
 } as const;
 
 export class CardRepository {
@@ -83,6 +89,7 @@ export class CardRepository {
       estimatedHours?: number | null;
       clientId?: string | null;
       machineId?: string | null;
+      assignedToId?: string | null;
       complexityLevel?: ComplexityLevel | null;
     },
   ) {
@@ -100,6 +107,9 @@ export class CardRepository {
           : {}),
         ...(data.clientId !== undefined ? { clientId: data.clientId } : {}),
         ...(data.machineId !== undefined ? { machineId: data.machineId } : {}),
+        ...(data.assignedToId !== undefined
+          ? { assignedToId: data.assignedToId }
+          : {}),
         ...(data.complexityLevel !== undefined
           ? { complexityLevel: data.complexityLevel }
           : {}),
@@ -118,6 +128,7 @@ export class CardRepository {
     tagId?: string;
     clientId?: string;
     machineId?: string;
+    assignedToId?: string;
     complexityLevel?: ComplexityLevel;
   }) {
     return this.prisma.card.create({
@@ -132,6 +143,7 @@ export class CardRepository {
         tagId: data.tagId ?? null,
         clientId: data.clientId ?? null,
         machineId: data.machineId ?? null,
+        assignedToId: data.assignedToId ?? null,
         complexityLevel: data.complexityLevel ?? null,
       },
       include: activityTagInclude,

@@ -475,6 +475,14 @@ export function TeamActivitiesSection({
                     {activity.description}
                   </p>
                 ) : null}
+                {activity.assignedToName ? (
+                  <p className='pointer-events-none relative z-10 truncate text-xs text-muted-foreground'>
+                    Responsável:{' '}
+                    <span className='font-medium text-foreground'>
+                      {activity.assignedToName}
+                    </span>
+                  </p>
+                ) : null}
                 {activity.complexityLevel ? (
                   <ComplexityLevelMeter
                     level={activity.complexityLevel}

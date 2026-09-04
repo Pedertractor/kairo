@@ -30,6 +30,8 @@ export interface ActivitySummary {
   tag: ActivityTagSummary | null;
   client: ActivityClientSummary | null;
   machine: ActivityMachineSummary | null;
+  assignedToId: string | null;
+  assignedToName: string | null;
   createdById: string;
   createdByName: string | null;
   createdAt: string;

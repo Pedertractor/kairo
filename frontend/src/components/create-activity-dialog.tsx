@@ -40,6 +40,7 @@ import type { ActivityResponse, CreateActivityInput } from '@/types/card'
 import type { ClientSummary, ClientsListResponse } from '@/types/client'
 import type { MachineSummary, MachinesListResponse } from '@/types/machine'
 import type { TagSummary } from '@/types/tag'
+import type { TeamMemberSummary, TeamResponse } from '@/types/team'
 
 const NO_TAG = '__none__'
 
@@ -49,6 +50,11 @@ type ClientComboboxOption = {
 }
 
 type MachineComboboxOption = {
+  value: string
+  label: string
+}
+
+type MemberComboboxOption = {
   value: string
   label: string
 }
@@ -75,6 +81,13 @@ function toMachineOption(machine: MachineSummary): MachineComboboxOption {
   }
 }
 
+function toMemberOption(member: TeamMemberSummary): MemberComboboxOption {
+  return {
+    value: member.id,
+    label: member.name,
+  }
+}
+
 export function CreateActivityDialog({
   teamId,
   open,
@@ -93,7 +106,10 @@ export function CreateActivityDialog({
   const [machines, setMachines] = useState<MachineSummary[]>([])
   const [selectedMachine, setSelectedMachine] =
     useState<MachineComboboxOption | null>(null)
+  const [selectedAssignee, setSelectedAssignee] =
+    useState<MemberComboboxOption | null>(null)
   const [complexityLevel, setComplexityLevel] = useState(NO_COMPLEXITY)
+  const [members, setMembers] = useState<TeamMemberSummary[]>([])
   const [isLoadingOptions, setIsLoadingOptions] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -101,6 +117,10 @@ export function CreateActivityDialog({
   const machineOptions = useMemo(
     () => machines.map(toMachineOption),
     [machines],
+  )
+  const memberOptions = useMemo(
+    () => members.map(toMemberOption),
+    [members],
   )
 
   function resetForm() {
@@ -111,6 +131,7 @@ export function CreateActivityDialog({
     setTagId(NO_TAG)
     setSelectedClient(null)
     setSelectedMachine(null)
+    setSelectedAssignee(null)
     setComplexityLevel(NO_COMPLEXITY)
   }
 
@@ -119,6 +140,7 @@ export function CreateActivityDialog({
       setTagId(NO_TAG)
       setSelectedClient(null)
       setSelectedMachine(null)
+      setSelectedAssignee(null)
       setComplexityLevel(NO_COMPLEXITY)
       setIsLoadingOptions(true)
     }
@@ -133,7 +155,7 @@ export function CreateActivityDialog({
 
     async function loadOptions() {
       try {
-        const [clientsData, machinesData] = await Promise.all([
+        const [clientsData, machinesData, teamData] = await Promise.all([
           api<ClientsListResponse>('/clients', { toastOnError: false }).catch(
             () => ({ clients: [] }) as ClientsListResponse,
           ),
@@ -143,11 +165,15 @@ export function CreateActivityDialog({
               toastOnError: false,
             },
           ).catch(() => ({ machines: [] }) as MachinesListResponse),
+          api<TeamResponse>(`/teams/${teamId}`, { toastOnError: false }).catch(
+            () => ({ team: { members: [] } }) as TeamResponse,
+          ),
         ])
 
         if (!cancelled) {
           setClients(clientsData.clients)
           setMachines(machinesData.machines)
+          setMembers(teamData.team.members)
         }
       } finally {
         if (!cancelled) {
@@ -193,6 +219,10 @@ export function CreateActivityDialog({
 
       if (selectedMachine) {
         payload.machineId = selectedMachine.value
+      }
+
+      if (selectedAssignee) {
+        payload.assignedToId = selectedAssignee.value
       }
 
       if (isComplexityLevel(complexityLevel)) {
@@ -363,6 +393,42 @@ export function CreateActivityDialog({
                   />
                   <ComboboxContent>
                     <ComboboxEmpty>Nenhuma máquina encontrada.</ComboboxEmpty>
+                    <ComboboxList>
+                      {(item) => (
+                        <ComboboxItem key={item.value} value={item}>
+                          {item.label}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              )}
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="activity-assignee">Responsável</FieldLabel>
+              {isLoadingOptions ? (
+                <div className="flex h-8 items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin" />
+                  Carregando membros...
+                </div>
+              ) : (
+                <Combobox
+                  items={memberOptions}
+                  value={selectedAssignee}
+                  onValueChange={setSelectedAssignee}
+                  itemToStringLabel={(item) => item.label}
+                  isItemEqualToValue={(a, b) => a.value === b.value}
+                  disabled={isSubmitting}
+                >
+                  <ComboboxInput
+                    id="activity-assignee"
+                    className="w-full"
+                    placeholder="Buscar responsável..."
+                    showClear
+                    disabled={isSubmitting}
+                  />
+                  <ComboboxContent>
+                    <ComboboxEmpty>Nenhum membro encontrado.</ComboboxEmpty>
                     <ComboboxList>
                       {(item) => (
                         <ComboboxItem key={item.value} value={item}>

@@ -50,6 +50,7 @@ export const updateActivitySchema = z
       .optional(),
     clientId: z.string().min(1).nullable().optional(),
     machineId: z.string().min(1).nullable().optional(),
+    assignedToId: z.string().min(1).nullable().optional(),
     complexityLevel: complexityLevelSchema.nullable().optional(),
   })
   .refine(
@@ -67,6 +68,7 @@ export const createActivitySchema = z.object({
   tagId: z.string().min(1).optional(),
   clientId: z.string().min(1).optional(),
   machineId: z.string().min(1).optional(),
+  assignedToId: z.string().min(1).optional(),
   complexityLevel: complexityLevelSchema.optional(),
 });
 

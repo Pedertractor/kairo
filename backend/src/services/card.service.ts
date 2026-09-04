@@ -27,6 +27,7 @@ type CardWithRelations = Card & {
   client?: ActivityClientSummary | null;
   machine?: ActivityMachineSummary | null;
   createdBy?: { id: string; name: string } | null;
+  assignedTo?: { id: string; name: string } | null;
 };
 
 function toActivityTag(
@@ -88,6 +89,8 @@ function toActivitySummary(
     tag: toActivityTag(card.tag),
     client: toActivityClient(card.client),
     machine: toActivityMachine(card.machine),
+    assignedToId: card.assignedToId,
+    assignedToName: card.assignedTo?.name ?? null,
     createdById: card.createdById,
     createdByName: card.createdBy?.name ?? null,
     createdAt: card.createdAt.toISOString(),
@@ -178,6 +181,17 @@ export class CardService {
     }
   }
 
+  private async assertAssigneeIsTeamMember(teamId: string, assignedToId: string) {
+    const membership = await this.teamRepository.findMembershipByTeamAndUser(
+      teamId,
+      assignedToId,
+    );
+
+    if (!membership) {
+      throw new AppError(400, MENSAGENS.RESPONSAVEL_NAO_E_MEMBRO);
+    }
+  }
+
   private async getFavoriteCardIdSet(userId: string, cardIds: string[]) {
     const favorites = await this.favoriteRepository.findFavoriteCardIds(
       userId,
@@ -248,6 +262,7 @@ export class CardService {
     clientId?: string,
     machineId?: string,
     complexityLevel?: ComplexityLevel,
+    assignedToId?: string,
   ): Promise<ActivitySummary> {
     const membership = await this.assertTeamMember(teamId, userId);
     assertTeamAdminOrFlag(
@@ -267,6 +282,10 @@ export class CardService {
       await this.assertMachine(machineId);
     }
 
+    if (assignedToId) {
+      await this.assertAssigneeIsTeamMember(teamId, assignedToId);
+    }
+
     const card = await this.cardRepository.createActivity({
       teamId,
       createdById: userId,
@@ -276,6 +295,7 @@ export class CardService {
       tagId,
       clientId,
       machineId,
+      assignedToId,
       complexityLevel,
     });
 
@@ -303,6 +323,7 @@ export class CardService {
       estimatedHours?: number | null;
       clientId?: string | null;
       machineId?: string | null;
+      assignedToId?: string | null;
       complexityLevel?: ComplexityLevel | null;
     },
   ): Promise<ActivitySummary> {
@@ -324,6 +345,10 @@ export class CardService {
 
     if (data.machineId) {
       await this.assertMachine(data.machineId);
+    }
+
+    if (data.assignedToId) {
+      await this.assertAssigneeIsTeamMember(teamId, data.assignedToId);
     }
 
     if (

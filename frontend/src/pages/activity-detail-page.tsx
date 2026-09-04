@@ -178,6 +178,14 @@ export function ActivityDetailPage() {
                 </span>
               </p>
             ) : null}
+            {activity.assignedToName ? (
+              <p className="text-sm text-muted-foreground">
+                Responsável:{' '}
+                <span className="font-medium text-foreground">
+                  {activity.assignedToName}
+                </span>
+              </p>
+            ) : null}
             {activity.complexityLevel ? (
               <ComplexityLevelMeter
                 level={activity.complexityLevel}

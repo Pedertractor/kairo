@@ -74,6 +74,7 @@ export class CardController {
         body.data.clientId,
         body.data.machineId,
         body.data.complexityLevel,
+        body.data.assignedToId,
       );
 
       return sendSuccess(
