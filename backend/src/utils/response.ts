@@ -86,9 +86,9 @@ export const MENSAGENS = {
   AUSENCIA_SOBREPOSTA:
     'O período informado se sobrepõe a outra ausência deste usuário',
   AUSENCIA_INICIO_FUTURO:
-    'A data de início da ausência não pode ser no futuro',
+    'A data e hora de início da ausência não podem ser no futuro',
   AUSENCIA_FIM_ANTES_INICIO:
-    'A data de fim deve ser igual ou posterior à data de início',
+    'A data e hora de fim devem ser posteriores ao início',
   APONTAMENTO_ATUALIZADO_SUCESSO: 'Apontamento atualizado com sucesso',
   USUARIO_ROLE_ATUALIZADO_SUCESSO: 'Função do usuário atualizada com sucesso',
   USUARIO_SENHA_REPOSTA_SUCESSO: 'Senha resetada com sucesso',

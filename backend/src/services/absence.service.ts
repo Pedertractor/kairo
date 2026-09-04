@@ -4,7 +4,6 @@ import { TaskRepository } from '../repositories/task.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
 import { UserRepository } from '../repositories/user.repository.js';
 import type { User } from '../generated/client.js';
-import { formatDateKey, isDateKey, parseDayBounds } from '../utils/app-timezone.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 import { releaseActivityIfIdle } from './card-status-sync.js';
@@ -16,28 +15,22 @@ export interface SetAbsentOptions {
   createdById: string;
 }
 
-function parseDateKey(dateKey: string): Date {
-  if (!isDateKey(dateKey)) {
+function parseDateTime(value: string): Date {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
     throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
   }
 
-  return parseDayBounds(dateKey).dayStart;
+  return date;
 }
 
-function startOfToday(): Date {
-  return parseDateKey(formatDateKey(new Date()));
-}
-
-function coversToday(startedAt: Date, endedAt: Date | null, today: Date): boolean {
-  if (startedAt.getTime() > today.getTime()) {
+function coversNow(startedAt: Date, endedAt: Date | null, now: Date): boolean {
+  if (startedAt.getTime() > now.getTime()) {
     return false;
   }
 
-  if (endedAt === null) {
-    return true;
-  }
-
-  return endedAt.getTime() >= today.getTime();
+  return endedAt === null || endedAt.getTime() > now.getTime();
 }
 
 export class AbsenceService {
@@ -49,17 +42,12 @@ export class AbsenceService {
     private readonly cardRepository: CardRepository,
   ) {}
 
+  getCurrentPeriod(userId: string, now = new Date()) {
+    return this.absenceRepository.findCoveringOn(userId, now);
+  }
+
   async isCurrentlyAbsent(userId: string): Promise<boolean> {
-    const covering = await this.absenceRepository.findCoveringOn(userId);
-    if (!covering) {
-      return false;
-    }
-
-    if (covering.endedAt === null) {
-      return true;
-    }
-
-    return covering.endedAt.getTime() > startOfToday().getTime();
+    return (await this.getCurrentPeriod(userId)) !== null;
   }
 
   async setAbsent(
@@ -84,18 +72,19 @@ export class AbsenceService {
     user: User,
     options: SetAbsentOptions,
   ): Promise<User> {
-    const today = startOfToday();
-    const startDate = options.startDate ?? formatDateKey(today);
-    const startedAt = parseDateKey(startDate);
+    const now = new Date();
+    const startedAt = options.startDate
+      ? parseDateTime(options.startDate)
+      : now;
 
-    if (startedAt.getTime() > today.getTime()) {
+    if (startedAt.getTime() > now.getTime()) {
       throw new AppError(400, MENSAGENS.AUSENCIA_INICIO_FUTURO);
     }
 
     let endedAt: Date | null = null;
     if (options.endDate !== undefined && options.endDate !== null) {
-      endedAt = parseDateKey(options.endDate);
-      if (endedAt.getTime() < startedAt.getTime()) {
+      endedAt = parseDateTime(options.endDate);
+      if (endedAt.getTime() <= startedAt.getTime()) {
         throw new AppError(400, MENSAGENS.AUSENCIA_FIM_ANTES_INICIO);
       }
     }
@@ -121,7 +110,7 @@ export class AbsenceService {
       createdById: options.createdById,
     });
 
-    const currentlyAbsent = coversToday(startedAt, endedAt, today);
+    const currentlyAbsent = coversNow(startedAt, endedAt, now);
     const updated = await this.userRepository.setAbsent(
       user.id,
       currentlyAbsent,
@@ -150,17 +139,11 @@ export class AbsenceService {
   }
 
   private async closePeriod(user: User): Promise<User> {
-    const today = startOfToday();
-    const covering = await this.absenceRepository.findCoveringOn(
-      user.id,
-      today,
-    );
+    const now = new Date();
+    const covering = await this.absenceRepository.findCoveringOn(user.id, now);
 
-    if (
-      covering &&
-      (covering.endedAt === null || covering.endedAt.getTime() > today.getTime())
-    ) {
-      await this.absenceRepository.close(covering.id, today);
+    if (covering) {
+      await this.absenceRepository.close(covering.id, now);
     }
 
     return this.userRepository.setAbsent(user.id, false);

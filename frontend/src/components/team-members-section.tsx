@@ -26,7 +26,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/hooks/use-auth';
-import { fromDateKey } from '@/lib/date';
 import { getInitials } from '@/lib/initials';
 import { cn } from '@/lib/utils';
 import type { TeamMemberSummary, TeamRole, TeamSummary } from '@/types/team';
@@ -175,7 +174,7 @@ export function TeamMembersSection({
                     {ROLE_LABELS[member.role]}
                     {member.absent
                       ? member.absenceStartedAt
-                        ? ` · Ausente desde ${format(fromDateKey(member.absenceStartedAt), 'P', { locale: dateFnsPtBR })}`
+                        ? ` · Ausente desde ${format(new Date(member.absenceStartedAt), 'Pp', { locale: dateFnsPtBR })}`
                         : ' · Ausente'
                       : ''}
                   </p>

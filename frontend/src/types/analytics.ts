@@ -97,6 +97,12 @@ export interface ActivityOverview {
   byTag: ActivityTagOverview[]
 }
 
+export interface AnalyticsAllTimeTotals {
+  activityCount: number
+  projectCount: number
+  taskCount: number
+}
+
 export interface AnalyticsDashboard {
   startDate: string
   endDate: string
@@ -115,4 +121,5 @@ export interface AnalyticsDashboard {
   activityTypes: ActivityTypeAnalytics[]
   clients: ClientAnalytics[]
   activityOverview: ActivityOverview
+  allTimeTotals: AnalyticsAllTimeTotals
 }

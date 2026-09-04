@@ -5,7 +5,6 @@ import { TeamRepository } from '../repositories/team.repository.js';
 import { UserRepository } from '../repositories/user.repository.js';
 import type { CostCenterSummary } from '../types/cost-center.types.js';
 import type { TeamMemberSummary, TeamSummary, TeamUserOption } from '../types/team.types.js';
-import { formatDateKey } from '../utils/app-timezone.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 import { assertTeamMembership } from '../utils/team-access.js';
@@ -31,17 +30,27 @@ type TeamWithMembers = {
   }>;
 };
 
+type CurrentAbsence = {
+  startedAt: string;
+  endedAt: string | null;
+};
+
 function toTeamMembers(
   members: TeamWithMembers['members'],
-  absenceStartedAtByUserId: Map<string, string>,
+  currentAbsenceByUserId: Map<string, CurrentAbsence>,
 ): TeamMemberSummary[] {
-  return members.map((member) => ({
-    id: member.user.id,
-    name: member.user.name,
-    role: member.role,
-    absent: member.user.absent,
-    absenceStartedAt: absenceStartedAtByUserId.get(member.user.id) ?? null,
-  }));
+  return members.map((member) => {
+    const absence = currentAbsenceByUserId.get(member.user.id);
+
+    return {
+      id: member.user.id,
+      name: member.user.name,
+      role: member.role,
+      absent: Boolean(absence),
+      absenceStartedAt: absence?.startedAt ?? null,
+      absenceEndedAt: absence?.endedAt ?? null,
+    };
+  });
 }
 
 function toTeamCostCenters(
@@ -57,7 +66,7 @@ function toTeamCostCenters(
 function toTeamSummary(
   team: TeamWithMembers,
   role: TeamRole,
-  absenceStartedAtByUserId: Map<string, string>,
+  currentAbsenceByUserId: Map<string, CurrentAbsence>,
 ): TeamSummary {
   return {
     id: team.id,
@@ -65,7 +74,7 @@ function toTeamSummary(
     description: team.description,
     createdById: team.createdById,
     memberCount: team._count.members,
-    members: toTeamMembers(team.members, absenceStartedAtByUserId),
+    members: toTeamMembers(team.members, currentAbsenceByUserId),
     costCenters: toTeamCostCenters(team.costCenters),
     role,
     active: team.active,
@@ -85,17 +94,20 @@ export class TeamService {
     private readonly costCenterRepository: CostCenterRepository,
   ) {}
 
-  private async loadAbsenceStartedAtByUserIds(
+  private async loadCurrentAbsenceByUserIds(
     userIds: string[],
-  ): Promise<Map<string, string>> {
+  ): Promise<Map<string, CurrentAbsence>> {
     const periods = await this.absenceRepository.findCurrentStartedAtByUserIds(
       userIds,
     );
-    const map = new Map<string, string>();
+    const map = new Map<string, CurrentAbsence>();
 
     for (const period of periods) {
       if (!map.has(period.userId)) {
-        map.set(period.userId, formatDateKey(period.startedAt));
+        map.set(period.userId, {
+          startedAt: period.startedAt.toISOString(),
+          endedAt: period.endedAt?.toISOString() ?? null,
+        });
       }
     }
 
@@ -135,11 +147,11 @@ export class TeamService {
         ),
       ),
     ];
-    const absenceStartedAtByUserId =
-      await this.loadAbsenceStartedAtByUserIds(memberIds);
+    const currentAbsenceByUserId =
+      await this.loadCurrentAbsenceByUserIds(memberIds);
 
     return memberships.map((membership) =>
-      toTeamSummary(membership.team, membership.role, absenceStartedAtByUserId),
+      toTeamSummary(membership.team, membership.role, currentAbsenceByUserId),
     );
   }
 
@@ -153,14 +165,14 @@ export class TeamService {
       allowInactiveAdmin: true,
     });
 
-    const absenceStartedAtByUserId = await this.loadAbsenceStartedAtByUserIds(
+    const currentAbsenceByUserId = await this.loadCurrentAbsenceByUserIds(
       allowed.team.members.map((member) => member.user.id),
     );
 
     return toTeamSummary(
       allowed.team,
       allowed.role,
-      absenceStartedAtByUserId,
+      currentAbsenceByUserId,
     );
   }
 

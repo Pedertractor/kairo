@@ -14,8 +14,8 @@ import { formatDateKey, parseDayBounds } from '../utils/app-timezone.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 import { getEntryDurationSeconds } from '../utils/time-entry-duration.js';
+import { calculateAvailabilitySeconds } from '../utils/work-availability.js';
 
-const DAILY_AVAILABILITY_SECONDS = 8 * 60 * 60 + 48 * 60;
 const CARD_STATUSES: CardStatus[] = [
   'TODO',
   'IN_PROGRESS',
@@ -46,58 +46,6 @@ function getPeriodBounds(
   const { dayEnd: periodEnd } = parseDayBounds(endDate);
 
   return { periodStart, periodEnd };
-}
-
-function getInclusiveDayCount(startDate: string, endDate: string): number {
-  const { dayStart: start } = parseDayBounds(startDate);
-  const { dayStart: end } = parseDayBounds(endDate);
-  const diffMs = end.getTime() - start.getTime();
-
-  return Math.floor(diffMs / (24 * 60 * 60 * 1000)) + 1;
-}
-
-function getInclusiveDayCountFromDates(
-  start: Date,
-  endInclusive: Date,
-): number {
-  const diffMs = endInclusive.getTime() - start.getTime();
-  return Math.floor(diffMs / (24 * 60 * 60 * 1000)) + 1;
-}
-
-function countAbsenceDaysInPeriod(
-  absences: Array<{ startedAt: Date; endedAt: Date | null }>,
-  periodStart: Date,
-  periodEndExclusive: Date,
-  now: Date,
-): number {
-  const todayStart = parseDayBounds(formatDateKey(now)).dayStart;
-  const periodEndInclusive = new Date(periodEndExclusive);
-  periodEndInclusive.setDate(periodEndInclusive.getDate() - 1);
-
-  let totalDays = 0;
-
-  for (const absence of absences) {
-    const absenceEndInclusive = absence.endedAt ?? todayStart;
-    const overlapStart =
-      absence.startedAt.getTime() > periodStart.getTime()
-        ? absence.startedAt
-        : periodStart;
-    const overlapEndInclusive =
-      absenceEndInclusive.getTime() < periodEndInclusive.getTime()
-        ? absenceEndInclusive
-        : periodEndInclusive;
-
-    if (overlapStart.getTime() > overlapEndInclusive.getTime()) {
-      continue;
-    }
-
-    totalDays += getInclusiveDayCountFromDates(
-      overlapStart,
-      overlapEndInclusive,
-    );
-  }
-
-  return totalDays;
 }
 
 function getOverlapSeconds(
@@ -195,7 +143,6 @@ export class AnalyticsService {
     const startDate = options.startDate ?? todayKey;
     const endDate = options.endDate ?? todayKey;
     const { periodStart, periodEnd } = getPeriodBounds(startDate, endDate);
-    const dayCount = getInclusiveDayCount(startDate, endDate);
     const scopedTeamIds = scopedTeams.map((team) => team.id);
     const employeeIds = [...employeesById.keys()];
     const [
@@ -205,6 +152,7 @@ export class AnalyticsService {
       clientActivities,
       clientTasks,
       absencePeriods,
+      allTimeTotals,
     ] = await Promise.all([
       this.repository.findEntriesForTeams(
         scopedTeamIds,
@@ -238,6 +186,7 @@ export class AnalyticsService {
         periodStart,
         periodEnd,
       ),
+      this.repository.countAllTimeTotals(scopedTeamIds, options.employeeId),
     ]);
     const now = new Date();
     const absencesByEmployee = new Map<
@@ -254,16 +203,14 @@ export class AnalyticsService {
     const availabilityByEmployee = new Map<string, number>();
 
     for (const employeeId of employeeIds) {
-      const absenceDays = countAbsenceDaysInPeriod(
-        absencesByEmployee.get(employeeId) ?? [],
-        periodStart,
-        periodEnd,
-        now,
-      );
-      const availableDays = Math.max(0, dayCount - absenceDays);
       availabilityByEmployee.set(
         employeeId,
-        DAILY_AVAILABILITY_SECONDS * availableDays,
+        calculateAvailabilitySeconds(
+          absencesByEmployee.get(employeeId) ?? [],
+          periodStart,
+          periodEnd,
+          now,
+        ),
       );
     }
 
@@ -674,6 +621,7 @@ export class AnalyticsService {
       activityTypes,
       clients,
       activityOverview,
+      allTimeTotals,
     };
   }
 }

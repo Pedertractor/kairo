@@ -25,15 +25,13 @@ export const refreshTokenSchema = z.object({
   refreshToken: z.string().min(1, 'Refresh token é obrigatório'),
 });
 
-const dateKeySchema = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida');
+const dateTimeSchema = z.string().datetime({ message: 'Data e hora inválidas' });
 
 export const updateAbsentSchema = z
   .object({
     absent: z.boolean(),
-    startDate: dateKeySchema.optional(),
-    endDate: dateKeySchema.nullable().optional(),
+    startDate: dateTimeSchema.optional(),
+    endDate: dateTimeSchema.nullable().optional(),
   })
   .refine((data) => data.absent || data.startDate === undefined, {
     message: 'startDate só é permitido ao marcar ausência',
@@ -44,6 +42,6 @@ export const updateAbsentSchema = z
       data.endDate === undefined ||
       data.endDate === null ||
       !data.startDate ||
-      data.startDate <= data.endDate,
-    { message: 'startDate deve ser anterior ou igual a endDate' },
+      new Date(data.startDate) < new Date(data.endDate),
+    { message: 'A data e hora de início devem ser anteriores ao fim' },
   );

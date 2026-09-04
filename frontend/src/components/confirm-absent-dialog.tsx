@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-import { DatePicker } from '@/components/date-picker'
+import { DateTimePickerField } from '@/components/datetime-picker-field'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -10,11 +10,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
 import { useActiveTimer } from '@/hooks/use-active-timer'
 import { useAuth } from '@/hooks/use-auth'
 import { api } from '@/lib/api-handler'
-import { fromDateKey, toDateKey } from '@/lib/date'
 import type { MeResponse } from '@/types/auth'
 
 interface ConfirmAbsentDialogProps {
@@ -31,17 +29,16 @@ export function ConfirmAbsentDialog({
   const { refreshUser } = useAuth()
   const { refresh: refreshTimer } = useActiveTimer()
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [startDate, setStartDate] = useState<Date | undefined>(undefined)
-  const [endDate, setEndDate] = useState<Date | undefined>(undefined)
+  const [startDate, setStartDate] = useState<string | null>(null)
+  const [endDate, setEndDate] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) {
       return
     }
 
-    const today = fromDateKey(toDateKey(new Date()))
-    setStartDate(today)
-    setEndDate(absent ? undefined : today)
+    setStartDate(new Date().toISOString())
+    setEndDate(null)
   }, [open, absent])
 
   async function handleConfirm() {
@@ -55,8 +52,8 @@ export function ConfirmAbsentDialog({
       } = { absent }
 
       if (absent) {
-        body.startDate = toDateKey(startDate ?? new Date())
-        body.endDate = endDate ? toDateKey(endDate) : null
+        body.startDate = startDate ?? new Date().toISOString()
+        body.endDate = endDate
       }
 
       await api<MeResponse>('/auth/me/absent', {
@@ -74,7 +71,7 @@ export function ConfirmAbsentDialog({
     !isSubmitting &&
     (!absent ||
       (Boolean(startDate) &&
-        (!endDate || toDateKey(endDate) >= toDateKey(startDate!))))
+        (!endDate || new Date(endDate) > new Date(startDate!))))
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -92,27 +89,21 @@ export function ConfirmAbsentDialog({
 
         {absent ? (
           <div className='space-y-3'>
-            <div className='space-y-1.5'>
-              <Label htmlFor='self-absence-start'>Data de início</Label>
-              <DatePicker
-                id='self-absence-start'
-                date={startDate}
-                onDateChange={setStartDate}
-                disabled={isSubmitting}
-              />
-            </div>
-            <div className='space-y-1.5'>
-              <Label htmlFor='self-absence-end'>
-                Data de fim (opcional)
-              </Label>
-              <DatePicker
-                id='self-absence-end'
-                date={endDate}
-                onDateChange={setEndDate}
-                disabled={isSubmitting}
-                placeholder='Em aberto'
-              />
-            </div>
+            <DateTimePickerField
+              id='self-absence-start'
+              label='Início da ausência'
+              value={startDate}
+              onChange={setStartDate}
+              disabled={isSubmitting}
+            />
+            <DateTimePickerField
+              id='self-absence-end'
+              label='Fim da ausência'
+              value={endDate}
+              onChange={setEndDate}
+              optional
+              disabled={isSubmitting}
+            />
           </div>
         ) : null}
 

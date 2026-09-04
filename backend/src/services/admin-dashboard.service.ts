@@ -14,8 +14,8 @@ import {
 } from '../utils/app-timezone.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
+import { calculateAvailabilitySeconds } from '../utils/work-availability.js';
 
-const DAILY_AVAILABILITY_SECONDS = 8 * 60 * 60 + 48 * 60;
 const DEFAULT_PERIOD_DAYS = 30;
 
 const ROLE_LABELS: Record<string, string> = {
@@ -42,56 +42,6 @@ function getPeriodBounds(startDate: string, endDate: string) {
   const { dayEnd: periodEnd } = parseDayBounds(endDate);
 
   return { periodStart, periodEnd };
-}
-
-function getInclusiveDayCount(startDate: string, endDate: string): number {
-  const { dayStart: start } = parseDayBounds(startDate);
-  const { dayStart: end } = parseDayBounds(endDate);
-
-  return Math.floor((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)) + 1;
-}
-
-function getInclusiveDayCountFromDates(start: Date, endInclusive: Date): number {
-  return (
-    Math.floor((endInclusive.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)) +
-    1
-  );
-}
-
-function countAbsenceDaysInPeriod(
-  absences: Array<{ startedAt: Date; endedAt: Date | null }>,
-  periodStart: Date,
-  periodEndExclusive: Date,
-  now: Date,
-): number {
-  const todayStart = parseDayBounds(formatDateKey(now)).dayStart;
-  const periodEndInclusive = new Date(periodEndExclusive);
-  periodEndInclusive.setDate(periodEndInclusive.getDate() - 1);
-
-  let totalDays = 0;
-
-  for (const absence of absences) {
-    const absenceEndInclusive = absence.endedAt ?? todayStart;
-    const overlapStart =
-      absence.startedAt.getTime() > periodStart.getTime()
-        ? absence.startedAt
-        : periodStart;
-    const overlapEndInclusive =
-      absenceEndInclusive.getTime() < periodEndInclusive.getTime()
-        ? absenceEndInclusive
-        : periodEndInclusive;
-
-    if (overlapStart.getTime() > overlapEndInclusive.getTime()) {
-      continue;
-    }
-
-    totalDays += getInclusiveDayCountFromDates(
-      overlapStart,
-      overlapEndInclusive,
-    );
-  }
-
-  return totalDays;
 }
 
 function listDateKeys(startDate: string, endDate: string): string[] {
@@ -166,7 +116,6 @@ export class AdminDashboardService {
       options.startDate ?? shiftDateKey(todayKey, -(DEFAULT_PERIOD_DAYS - 1));
     const endDate = options.endDate ?? todayKey;
     const { periodStart, periodEnd } = getPeriodBounds(startDate, endDate);
-    const dayCount = getInclusiveDayCount(startDate, endDate);
     const now = new Date();
 
     const users = await this.repository.findUsers();
@@ -234,15 +183,14 @@ export class AdminDashboardService {
     const availabilityByUser = new Map<string, number>();
 
     for (const userId of scopedUserIds) {
-      const absenceDays = countAbsenceDaysInPeriod(
-        absencesByUser.get(userId) ?? [],
-        periodStart,
-        periodEnd,
-        now,
-      );
       availabilityByUser.set(
         userId,
-        DAILY_AVAILABILITY_SECONDS * Math.max(0, dayCount - absenceDays),
+        calculateAvailabilitySeconds(
+          absencesByUser.get(userId) ?? [],
+          periodStart,
+          periodEnd,
+          now,
+        ),
       );
     }
 

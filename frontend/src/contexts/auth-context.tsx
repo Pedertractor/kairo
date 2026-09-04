@@ -157,6 +157,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(currentUser)
   }, [])
 
+  useEffect(() => {
+    if (!user?.absent || !user.absenceEndedAt) {
+      return
+    }
+
+    const endTime = new Date(user.absenceEndedAt).getTime()
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
+    let cancelled = false
+
+    const scheduleRefresh = () => {
+      const remaining = endTime - Date.now()
+
+      if (remaining <= 0) {
+        void refreshUser()
+        return
+      }
+
+      timeoutId = setTimeout(
+        () => {
+          if (!cancelled) {
+            scheduleRefresh()
+          }
+        },
+        Math.min(remaining, 2_147_483_647),
+      )
+    }
+
+    scheduleRefresh()
+
+    return () => {
+      cancelled = true
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId)
+      }
+    }
+  }, [refreshUser, user?.absenceEndedAt, user?.absent])
+
   const logout = useCallback(async () => {
     try {
       if (getStoredToken()) {

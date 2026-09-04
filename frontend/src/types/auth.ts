@@ -11,6 +11,8 @@ export interface User {
   active: boolean
   firstLogin: boolean
   absent: boolean
+  absenceStartedAt: string | null
+  absenceEndedAt: string | null
   hasOwnedTeams: boolean
   hasTeams: boolean
 }

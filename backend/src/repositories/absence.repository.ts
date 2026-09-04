@@ -1,14 +1,9 @@
 import type { PrismaClient } from '../generated/client.js';
-import { formatDateKey, parseDayBounds } from '../utils/app-timezone.js';
-
-function startOfToday(): Date {
-  return parseDayBounds(formatDateKey(new Date())).dayStart;
-}
 
 function coveringOnWhere(on: Date) {
   return {
     startedAt: { lte: on },
-    OR: [{ endedAt: null }, { endedAt: { gte: on } }],
+    OR: [{ endedAt: null }, { endedAt: { gt: on } }],
   };
 }
 
@@ -22,7 +17,7 @@ export class AbsenceRepository {
     });
   }
 
-  findCoveringOn(userId: string, on = startOfToday()) {
+  findCoveringOn(userId: string, on = new Date()) {
     return this.prisma.userAbsencePeriod.findFirst({
       where: { userId, ...coveringOnWhere(on) },
       orderBy: { startedAt: 'desc' },
@@ -39,11 +34,11 @@ export class AbsenceRepository {
         userId,
         AND: [
           {
-            OR: [{ endedAt: null }, { endedAt: { gte: startedAt } }],
+            OR: [{ endedAt: null }, { endedAt: { gt: startedAt } }],
           },
           ...(endedAt === null
             ? []
-            : [{ startedAt: { lte: endedAt } }]),
+            : [{ startedAt: { lt: endedAt } }]),
         ],
       },
     });
@@ -62,7 +57,7 @@ export class AbsenceRepository {
       where: {
         userId: { in: userIds },
         startedAt: { lt: rangeEndExclusive },
-        OR: [{ endedAt: null }, { endedAt: { gte: rangeStart } }],
+        OR: [{ endedAt: null }, { endedAt: { gt: rangeStart } }],
       },
       select: {
         userId: true,
@@ -93,7 +88,7 @@ export class AbsenceRepository {
       return Promise.resolve([]);
     }
 
-    const on = startOfToday();
+    const on = new Date();
 
     return this.prisma.userAbsencePeriod.findMany({
       where: {
@@ -103,6 +98,7 @@ export class AbsenceRepository {
       select: {
         userId: true,
         startedAt: true,
+        endedAt: true,
       },
       orderBy: { startedAt: 'desc' },
     });
