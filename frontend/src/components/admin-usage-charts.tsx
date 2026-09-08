@@ -180,56 +180,60 @@ export function UsageDonut({
   let offset = 0
 
   return (
-    <div className="flex flex-col items-center gap-4 sm:flex-row">
-      <div className="relative size-40 shrink-0">
-        <svg viewBox="0 0 140 140" className="size-full -rotate-90">
-          {slices.map((slice, index) => {
-            const length = (slice.value / total) * circumference
-            const circle = (
-              <circle
-                key={slice.label}
-                cx="70"
-                cy="70"
-                r={radius}
-                fill="transparent"
-                stroke={slice.color ?? CHART_COLORS[index % CHART_COLORS.length]}
-                strokeWidth="18"
-                strokeDasharray={`${length} ${circumference - length}`}
-                strokeDashoffset={-offset}
-                strokeLinecap="butt"
-              />
-            )
-            offset += length
-            return circle
-          })}
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-          <p className="text-lg font-bold tabular-nums">{centerValue}</p>
-          <p className="text-[11px] text-muted-foreground">{centerLabel}</p>
+    <div className="@container">
+      <div className="flex flex-col items-center gap-4 @sm:flex-row">
+        <div className="relative size-40 shrink-0">
+          <svg viewBox="0 0 140 140" className="size-full -rotate-90">
+            {slices.map((slice, index) => {
+              const length = (slice.value / total) * circumference
+              const circle = (
+                <circle
+                  key={slice.label}
+                  cx="70"
+                  cy="70"
+                  r={radius}
+                  fill="transparent"
+                  stroke={
+                    slice.color ?? CHART_COLORS[index % CHART_COLORS.length]
+                  }
+                  strokeWidth="18"
+                  strokeDasharray={`${length} ${circumference - length}`}
+                  strokeDashoffset={-offset}
+                  strokeLinecap="butt"
+                />
+              )
+              offset += length
+              return circle
+            })}
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+            <p className="text-lg font-bold tabular-nums">{centerValue}</p>
+            <p className="text-[11px] text-muted-foreground">{centerLabel}</p>
+          </div>
         </div>
+        <ul className="w-full min-w-0 flex-1 space-y-2">
+          {slices.map((slice, index) => (
+            <li
+              key={slice.label}
+              className="flex items-center justify-between gap-3 text-sm"
+            >
+              <span className="flex min-w-0 items-center gap-2">
+                <span
+                  className={cn('size-2.5 shrink-0 rounded-full')}
+                  style={{
+                    backgroundColor:
+                      slice.color ?? CHART_COLORS[index % CHART_COLORS.length],
+                  }}
+                />
+                <span className="truncate">{slice.label}</span>
+              </span>
+              <span className="shrink-0 font-semibold tabular-nums">
+                {slice.value}
+              </span>
+            </li>
+          ))}
+        </ul>
       </div>
-      <ul className="w-full space-y-2">
-        {slices.map((slice, index) => (
-          <li
-            key={slice.label}
-            className="flex items-center justify-between gap-3 text-sm"
-          >
-            <span className="flex min-w-0 items-center gap-2">
-              <span
-                className={cn('size-2.5 shrink-0 rounded-full')}
-                style={{
-                  backgroundColor:
-                    slice.color ?? CHART_COLORS[index % CHART_COLORS.length],
-                }}
-              />
-              <span className="truncate">{slice.label}</span>
-            </span>
-            <span className="shrink-0 font-semibold tabular-nums">
-              {slice.value}
-            </span>
-          </li>
-        ))}
-      </ul>
     </div>
   )
 }

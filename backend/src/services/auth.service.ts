@@ -28,11 +28,17 @@ export class AuthService {
   ) {}
 
   private async toAuthenticatedUser(user: User) {
-    const [hasOwnedTeams, hasTeams] = await Promise.all([
+    const [hasOwnedTeams, hasTeams, currentAbsence] = await Promise.all([
       this.userRepository.hasOwnedTeams(user.id),
       this.userRepository.hasTeams(user.id),
+      this.absenceService.getCurrentPeriod(user.id),
     ]);
-    return toSafeUser(user, hasOwnedTeams, hasTeams);
+
+    if (user.absent !== Boolean(currentAbsence)) {
+      await this.userRepository.setAbsent(user.id, Boolean(currentAbsence));
+    }
+
+    return toSafeUser(user, hasOwnedTeams, hasTeams, currentAbsence);
   }
 
   async login({ cardNumber, unit, password }: LoginInput) {

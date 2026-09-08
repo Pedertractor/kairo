@@ -9,6 +9,7 @@ export function toSafeUser(
   user: User,
   hasOwnedTeams = false,
   hasTeams = false,
+  currentAbsence?: { startedAt: Date; endedAt: Date | null } | null,
 ): SafeUser {
   return {
     id: user.id,
@@ -19,7 +20,9 @@ export function toSafeUser(
     role: user.role,
     active: user.active,
     firstLogin: user.firstLogin,
-    absent: user.absent,
+    absent: currentAbsence === undefined ? user.absent : Boolean(currentAbsence),
+    absenceStartedAt: currentAbsence?.startedAt.toISOString() ?? null,
+    absenceEndedAt: currentAbsence?.endedAt?.toISOString() ?? null,
     hasOwnedTeams,
     hasTeams,
   };

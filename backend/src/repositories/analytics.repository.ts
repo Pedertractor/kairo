@@ -178,6 +178,41 @@ export class AnalyticsRepository {
     });
   }
 
+  async countAllTimeTotals(teamIds: string[], employeeId?: string) {
+    const createdByFilter = employeeId ? { createdById: employeeId } : {};
+    const [activityCount, projectCount, taskCount] = await Promise.all([
+      this.prisma.card.count({
+        where: {
+          teamId: { in: teamIds },
+          type: 'ACTIVITY',
+          deletedAt: null,
+          ...createdByFilter,
+        },
+      }),
+      this.prisma.card.count({
+        where: {
+          teamId: { in: teamIds },
+          type: 'PROJECT',
+          deletedAt: null,
+          ...createdByFilter,
+        },
+      }),
+      this.prisma.task.count({
+        where: {
+          deletedAt: null,
+          ...createdByFilter,
+          card: {
+            teamId: { in: teamIds },
+            type: 'PROJECT',
+            deletedAt: null,
+          },
+        },
+      }),
+    ]);
+
+    return { activityCount, projectCount, taskCount };
+  }
+
   findTasksForClientAnalytics(
     teamIds: string[],
     periodStart: Date,

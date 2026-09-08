@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeft, Pencil } from 'lucide-react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Pencil } from 'lucide-react'
+import { useNavigate, useParams } from 'react-router-dom'
 
+import { BackButton } from '@/components/back-button'
 import { DeleteTaskDialog } from '@/components/delete-task-dialog'
 import { EditEstimatedHoursDialog } from '@/components/edit-estimated-hours-dialog'
 import { EditTaskTitleDialog } from '@/components/edit-task-title-dialog'
@@ -89,18 +90,10 @@ export function TaskDetailPage() {
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-6">
       <div>
-        <Button
-          variant="ghost"
-          size="sm"
-          render={
-            <Link
-              to={projectId ? `/projetos/${projectId}` : '/projetos'}
-            />
-          }
-        >
-          <ArrowLeft />
-          Voltar para projeto
-        </Button>
+        <BackButton
+          fallbackTo={projectId ? `/projetos/${projectId}` : '/projetos'}
+          fallbackLabel="Voltar para projeto"
+        />
       </div>
 
       {isLoading ? (
@@ -239,7 +232,9 @@ export function TaskDetailPage() {
                 task={task}
                 open={isDeleteDialogOpen}
                 onOpenChange={setIsDeleteDialogOpen}
-                onDeleted={() => navigate(`/projetos/${projectId}`)}
+                onDeleted={() =>
+                  navigate(`/projetos/${projectId}`, { replace: true })
+                }
               />
             </>
           ) : null}

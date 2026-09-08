@@ -10,10 +10,13 @@ import {
   BarChart3,
   BriefcaseBusiness,
   ChevronDown,
+  ClipboardList,
   Clock3,
   FolderKanban,
   Gauge,
+  Infinity as InfinityIcon,
   List,
+  ListChecks,
   PieChart,
   Sparkles,
   Tags,
@@ -249,6 +252,11 @@ export function AnalyticsPage() {
           byStatus: [],
           byTag: [],
         },
+        allTimeTotals: data.allTimeTotals ?? {
+          activityCount: 0,
+          projectCount: 0,
+          taskCount: 0,
+        },
         selectedProject: data.selectedProject
           ? {
               ...data.selectedProject,
@@ -377,6 +385,7 @@ export function AnalyticsPage() {
     [dashboard?.clients],
   );
   const activityOverview = dashboard?.activityOverview ?? null;
+  const allTimeTotals = dashboard?.allTimeTotals ?? null;
   const tagOptions = useMemo<TagFilterOption[]>(
     () =>
       activityTypes.map((activityType) => ({
@@ -532,6 +541,63 @@ export function AnalyticsPage() {
         </div>
       </section>
 
+      <section className='rounded-2xl border bg-card p-5 shadow-sm'>
+        <div className='flex items-start gap-3'>
+          <div className='flex size-10 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-slate-500 to-slate-700 text-white'>
+            <InfinityIcon className='size-5' />
+          </div>
+          <div className='min-w-0'>
+            <h2 className='font-semibold'>Totais gerais</h2>
+            <p className='text-sm text-muted-foreground'>
+              Resumo de todo o histórico: estes números não dependem do período
+              selecionado. Os demais blocos mostram apenas o que foi criado ou
+              apontado nas datas filtradas.
+            </p>
+          </div>
+        </div>
+
+        {isLoading || !allTimeTotals ? (
+          <div className='mt-4 grid gap-4 sm:grid-cols-3'>
+            {Array.from({ length: 3 }).map((_, index) => (
+              <Skeleton key={index} className='h-28 rounded-2xl' />
+            ))}
+          </div>
+        ) : (
+          <div className='mt-4 grid gap-4 sm:grid-cols-3'>
+            <div className='rounded-2xl border border-violet-200 bg-violet-50 p-5 text-violet-950 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-100'>
+              <ClipboardList className='mb-4 size-6 text-violet-500' />
+              <p className='text-xs font-semibold tracking-wide uppercase opacity-60'>
+                Atividades
+              </p>
+              <p className='mt-1 text-2xl font-bold tabular-nums'>
+                {allTimeTotals.activityCount}
+              </p>
+              <p className='mt-1 text-xs opacity-60'>Total desde o início</p>
+            </div>
+            <div className='rounded-2xl border border-indigo-200 bg-indigo-50 p-5 text-indigo-950 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-100'>
+              <FolderKanban className='mb-4 size-6 text-indigo-500' />
+              <p className='text-xs font-semibold tracking-wide uppercase opacity-60'>
+                Projetos
+              </p>
+              <p className='mt-1 text-2xl font-bold tabular-nums'>
+                {allTimeTotals.projectCount}
+              </p>
+              <p className='mt-1 text-xs opacity-60'>Total desde o início</p>
+            </div>
+            <div className='rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100'>
+              <ListChecks className='mb-4 size-6 text-emerald-500' />
+              <p className='text-xs font-semibold tracking-wide uppercase opacity-60'>
+                Tarefas
+              </p>
+              <p className='mt-1 text-2xl font-bold tabular-nums'>
+                {allTimeTotals.taskCount}
+              </p>
+              <p className='mt-1 text-xs opacity-60'>Total desde o início</p>
+            </div>
+          </div>
+        )}
+      </section>
+
       <Tabs
         value={analyticsTab}
         onValueChange={(value) => setAnalyticsTab(value as AnalyticsTab)}
@@ -560,8 +626,8 @@ export function AnalyticsPage() {
             </p>
             <p className='mt-1 text-xs opacity-60'>
               {periodDayCount === 1
-                ? '8h 48min por funcionário'
-                : `8h 48min × ${periodDayCount} dias por funcionário`}
+                ? 'Base de 8h 48min por funcionário, menos ausências'
+                : `Base de 8h 48min × ${periodDayCount} dias por funcionário, menos ausências`}
             </p>
           </div>
           <div className='rounded-2xl border border-cyan-200 bg-cyan-50 p-5 text-cyan-950 dark:border-cyan-900 dark:bg-cyan-950/40 dark:text-cyan-100'>

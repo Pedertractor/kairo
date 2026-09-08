@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeft, Pencil } from 'lucide-react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Pencil } from 'lucide-react'
+import { useNavigate, useParams } from 'react-router-dom'
 
 import { ActivityDetailsDialog } from '@/components/activity-details-dialog'
+import { BackButton } from '@/components/back-button'
 import { ActivityTagBadge } from '@/components/activity-tag-badge'
 import { ActivityStatusActions } from '@/components/activity-status-actions'
 import { ActivityTimeEntriesSection } from '@/components/activity-time-entries-section'
@@ -90,14 +91,10 @@ export function ActivityDetailPage() {
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-6">
       <div>
-        <Button
-          variant="ghost"
-          size="sm"
-          render={<Link to={teamId ? `/equipes/${teamId}` : '/equipes'} />}
-        >
-          <ArrowLeft />
-          Voltar para equipe
-        </Button>
+        <BackButton
+          fallbackTo={teamId ? `/equipes/${teamId}` : '/equipes'}
+          fallbackLabel="Voltar para equipe"
+        />
       </div>
 
       {isLoading ? (
@@ -251,7 +248,9 @@ export function ActivityDetailPage() {
                 activity={activity}
                 open={isDeleteDialogOpen}
                 onOpenChange={setIsDeleteDialogOpen}
-                onDeleted={() => navigate(`/equipes/${teamId}`)}
+                onDeleted={() =>
+                  navigate(`/equipes/${teamId}`, { replace: true })
+                }
               />
             </>
           ) : null}

@@ -7,6 +7,7 @@ export interface TeamMemberSummary {
   role: TeamRole;
   absent: boolean;
   absenceStartedAt: string | null;
+  absenceEndedAt: string | null;
 }
 
 export interface TeamUserOption {

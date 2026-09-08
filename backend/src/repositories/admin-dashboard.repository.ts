@@ -30,11 +30,15 @@ export class AdminDashboardRepository {
         _count: {
           select: { members: true, documents: true },
         },
-        cards: {
-          where: { deletedAt: null },
-          select: { type: true },
-        },
       },
+    });
+  }
+
+  groupCardsByTeamAndType() {
+    return this.prisma.card.groupBy({
+      by: ['teamId', 'type'],
+      where: { deletedAt: null },
+      _count: { _all: true },
     });
   }
 
@@ -64,19 +68,19 @@ export class AdminDashboardRepository {
     });
   }
 
-  countCreatedCards(
+  groupCreatedCardsByType(
     periodStart: Date,
     periodEnd: Date,
-    type: 'PROJECT' | 'ACTIVITY',
     createdById?: string,
   ) {
-    return this.prisma.card.count({
+    return this.prisma.card.groupBy({
+      by: ['type'],
       where: {
         deletedAt: null,
-        type,
         createdAt: { gte: periodStart, lt: periodEnd },
         ...(createdById ? { createdById } : {}),
       },
+      _count: { _all: true },
     });
   }
 
@@ -90,11 +94,7 @@ export class AdminDashboardRepository {
     });
   }
 
-  findTimeEntries(
-    periodStart: Date,
-    periodEnd: Date,
-    userId?: string,
-  ) {
+  findTimeEntries(periodStart: Date, periodEnd: Date, userId?: string) {
     return this.prisma.timeEntry.findMany({
       where: {
         ...(userId ? { userId } : {}),
@@ -115,29 +115,12 @@ export class AdminDashboardRepository {
         ],
       },
       select: {
-        id: true,
         userId: true,
         type: true,
         startedAt: true,
         endedAt: true,
-        card: {
-          select: {
-            title: true,
-            type: true,
-            teamId: true,
-          },
-        },
-        task: {
-          select: {
-            title: true,
-            card: {
-              select: {
-                type: true,
-                teamId: true,
-              },
-            },
-          },
-        },
+        card: { select: { teamId: true } },
+        task: { select: { card: { select: { teamId: true } } } },
       },
     });
   }
@@ -170,18 +153,10 @@ export class AdminDashboardRepository {
     });
   }
 
-  findAbsences(
-    userIds: string[],
-    periodStart: Date,
-    periodEnd: Date,
-  ) {
-    if (userIds.length === 0) {
-      return Promise.resolve([]);
-    }
-
+  findAbsences(periodStart: Date, periodEnd: Date, userId?: string) {
     return this.prisma.userAbsencePeriod.findMany({
       where: {
-        userId: { in: userIds },
+        ...(userId ? { userId } : { user: { active: true } }),
         startedAt: { lt: periodEnd },
         OR: [{ endedAt: { gt: periodStart } }, { endedAt: null }],
       },
