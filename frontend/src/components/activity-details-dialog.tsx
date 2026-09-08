@@ -45,6 +45,7 @@ import {
   NO_COMPLEXITY,
   isComplexityLevel,
 } from '@/lib/complexity-level'
+import { getIntegrationSourceLabel } from '@/lib/integration-source'
 import type {
   ActivityResponse,
   ActivitySummary,
@@ -219,7 +220,7 @@ export function ActivityDetailsDialog({
             },
           ).catch(() => ({ machines: [] }) as MachinesListResponse),
           api<TeamResponse>(`/teams/${teamId}`, { toastOnError: false }).catch(
-            () => ({ team: { members: [] } }) as TeamResponse,
+            () => null,
           ),
         ])
 
@@ -227,7 +228,7 @@ export function ActivityDetailsDialog({
           setTags(tagsData.tags)
           setClients(clientsData.clients)
           setMachines(machinesData.machines)
-          setMembers(teamData.team.members)
+          setMembers(teamData?.team.members ?? [])
         }
       } finally {
         if (!cancelled) {
@@ -609,6 +610,22 @@ export function ActivityDetailsDialog({
                 disabled
               />
             </Field>
+
+            {getIntegrationSourceLabel(activity?.integrationSource) ? (
+              <Field>
+                <FieldLabel htmlFor="activity-details-integration-source">
+                  Origem
+                </FieldLabel>
+                <Input
+                  id="activity-details-integration-source"
+                  value={
+                    getIntegrationSourceLabel(activity?.integrationSource) ?? ''
+                  }
+                  readOnly
+                  disabled
+                />
+              </Field>
+            ) : null}
 
             {activity ? (
               <>

@@ -166,14 +166,14 @@ export function CreateActivityDialog({
             },
           ).catch(() => ({ machines: [] }) as MachinesListResponse),
           api<TeamResponse>(`/teams/${teamId}`, { toastOnError: false }).catch(
-            () => ({ team: { members: [] } }) as TeamResponse,
+            () => null,
           ),
         ])
 
         if (!cancelled) {
           setClients(clientsData.clients)
           setMachines(machinesData.machines)
-          setMembers(teamData.team.members)
+          setMembers(teamData?.team.members ?? [])
         }
       } finally {
         if (!cancelled) {

@@ -38,6 +38,22 @@ const activityTagInclude = {
       name: true,
     },
   },
+  deletedBy: {
+    select: {
+      id: true,
+      name: true,
+    },
+  },
+} as const;
+
+const projectInclude = {
+  team: { select: { id: true, name: true } },
+  deletedBy: {
+    select: {
+      id: true,
+      name: true,
+    },
+  },
 } as const;
 
 export class CardRepository {
@@ -54,6 +70,13 @@ export class CardRepository {
   findActivityById(activityId: string) {
     return this.prisma.card.findFirst({
       where: { id: activityId, deletedAt: null },
+      include: activityTagInclude,
+    });
+  }
+
+  findActivityByIdIncludingDeleted(activityId: string) {
+    return this.prisma.card.findFirst({
+      where: { id: activityId },
       include: activityTagInclude,
     });
   }
@@ -130,6 +153,7 @@ export class CardRepository {
     machineId?: string;
     assignedToId?: string;
     complexityLevel?: ComplexityLevel;
+    integrationSource?: string;
   }) {
     return this.prisma.card.create({
       data: {
@@ -145,15 +169,16 @@ export class CardRepository {
         machineId: data.machineId ?? null,
         assignedToId: data.assignedToId ?? null,
         complexityLevel: data.complexityLevel ?? null,
+        integrationSource: data.integrationSource ?? null,
       },
       include: activityTagInclude,
     });
   }
 
-  softDeleteActivity(activityId: string) {
+  softDeleteActivity(activityId: string, deletedById: string) {
     return this.prisma.card.update({
       where: { id: activityId },
-      data: { deletedAt: new Date() },
+      data: { deletedAt: new Date(), deletedById },
       include: activityTagInclude,
     });
   }
@@ -185,9 +210,14 @@ export class CardRepository {
   findProjectById(projectId: string) {
     return this.prisma.card.findFirst({
       where: { id: projectId, deletedAt: null },
-      include: {
-        team: { select: { id: true, name: true } },
-      },
+      include: projectInclude,
+    });
+  }
+
+  findProjectByIdIncludingDeleted(projectId: string) {
+    return this.prisma.card.findFirst({
+      where: { id: projectId },
+      include: projectInclude,
     });
   }
 
@@ -226,6 +256,7 @@ export class CardRepository {
     description?: string;
     estimatedHours?: number;
     status?: CardStatus;
+    integrationSource?: string;
   }) {
     return this.prisma.card.create({
       data: {
@@ -236,11 +267,13 @@ export class CardRepository {
         type: 'PROJECT',
         status: data.status ?? 'TODO',
         estimatedHours: data.estimatedHours ?? null,
+        integrationSource: data.integrationSource ?? null,
       },
+      include: projectInclude,
     });
   }
 
-  softDeleteProject(projectId: string) {
+  softDeleteProject(projectId: string, deletedById: string) {
     const deletedAt = new Date();
 
     return this.prisma.$transaction([
@@ -250,7 +283,8 @@ export class CardRepository {
       }),
       this.prisma.card.update({
         where: { id: projectId },
-        data: { deletedAt },
+        data: { deletedAt, deletedById },
+        include: projectInclude,
       }),
     ]);
   }

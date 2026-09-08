@@ -28,6 +28,7 @@ type CardWithRelations = Card & {
   machine?: ActivityMachineSummary | null;
   createdBy?: { id: string; name: string } | null;
   assignedTo?: { id: string; name: string } | null;
+  deletedBy?: { id: string; name: string } | null;
 };
 
 function toActivityTag(
@@ -93,13 +94,18 @@ function toActivitySummary(
     assignedToName: card.assignedTo?.name ?? null,
     createdById: card.createdById,
     createdByName: card.createdBy?.name ?? null,
+    integrationSource: card.integrationSource ?? null,
+    deletedAt: card.deletedAt?.toISOString() ?? null,
+    deletedByName: card.deletedBy?.name ?? null,
     createdAt: card.createdAt.toISOString(),
     updatedAt: card.updatedAt.toISOString(),
   };
 }
 
 function toProjectSummary(
-  card: Card,
+  card: Card & {
+    deletedBy?: { id: string; name: string } | null;
+  },
   loggedSeconds = 0,
   teamName?: string,
 ): ProjectSummary {
@@ -113,6 +119,9 @@ function toProjectSummary(
     estimatedHours: card.estimatedHours?.toString() ?? null,
     loggedSeconds,
     createdById: card.createdById,
+    integrationSource: card.integrationSource ?? null,
+    deletedAt: card.deletedAt?.toISOString() ?? null,
+    deletedByName: card.deletedBy?.name ?? null,
     createdAt: card.createdAt.toISOString(),
     updatedAt: card.updatedAt.toISOString(),
   };
@@ -252,6 +261,29 @@ export class CardService {
     );
   }
 
+  async getActivityIncludingDeleted(
+    teamId: string,
+    activityId: string,
+    userId: string,
+  ): Promise<ActivitySummary> {
+    await this.assertTeamMember(teamId, userId);
+
+    const card =
+      await this.cardRepository.findActivityByIdIncludingDeleted(activityId);
+
+    if (!card || card.teamId !== teamId || card.type !== 'ACTIVITY') {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    const loggedSeconds = card.deletedAt
+      ? 0
+      : ((
+          await this.timeEntryRepository.getLoggedSecondsByCardIds([activityId])
+        ).get(activityId) ?? 0);
+
+    return toActivitySummary(card, loggedSeconds, false);
+  }
+
   async createActivity(
     teamId: string,
     userId: string,
@@ -263,6 +295,7 @@ export class CardService {
     machineId?: string,
     complexityLevel?: ComplexityLevel,
     assignedToId?: string,
+    integrationSource?: string,
   ): Promise<ActivitySummary> {
     const membership = await this.assertTeamMember(teamId, userId);
     assertTeamAdminOrFlag(
@@ -297,6 +330,7 @@ export class CardService {
       machineId,
       assignedToId,
       complexityLevel,
+      integrationSource,
     });
 
     return toActivitySummary(card);
@@ -433,6 +467,31 @@ export class CardService {
     );
   }
 
+  async getProjectIncludingDeleted(
+    teamId: string,
+    projectId: string,
+    userId: string,
+  ): Promise<ProjectSummary> {
+    await this.assertTeamMember(teamId, userId);
+
+    const card =
+      await this.cardRepository.findProjectByIdIncludingDeleted(projectId);
+
+    if (!card || card.teamId !== teamId || card.type !== 'PROJECT') {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    const loggedSeconds = card.deletedAt
+      ? 0
+      : ((
+          await this.timeEntryRepository.getLoggedSecondsByProjectIds([
+            projectId,
+          ])
+        ).get(projectId) ?? 0);
+
+    return toProjectSummary(card, loggedSeconds, card.team.name);
+  }
+
   async getProjectById(
     projectId: string,
     userId: string,
@@ -461,6 +520,7 @@ export class CardService {
     title: string,
     description?: string,
     estimatedHours?: number,
+    integrationSource?: string,
   ): Promise<ProjectSummary> {
     const membership = await this.assertTeamMember(teamId, userId);
     assertTeamAdminOrFlag(
@@ -474,6 +534,7 @@ export class CardService {
       title,
       description,
       estimatedHours,
+      integrationSource,
     });
 
     return toProjectSummary(card);
@@ -548,7 +609,10 @@ export class CardService {
       await this.timeEntryRepository.stopEntry(entry, endedAt);
     }
 
-    const deleted = await this.cardRepository.softDeleteActivity(activityId);
+    const deleted = await this.cardRepository.softDeleteActivity(
+      activityId,
+      userId,
+    );
 
     return toActivitySummary(deleted);
   }
@@ -574,8 +638,11 @@ export class CardService {
       await this.timeEntryRepository.stopEntry(entry, endedAt);
     }
 
-    await this.cardRepository.softDeleteProject(projectId);
+    const [, deleted] = await this.cardRepository.softDeleteProject(
+      projectId,
+      userId,
+    );
 
-    return toProjectSummary(card, 0, card.team.name);
+    return toProjectSummary(deleted, 0, card.team.name);
   }
 }
