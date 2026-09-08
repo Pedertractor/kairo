@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import { CreateTeamDialog } from '@/components/create-team-dialog'
 import { NoTeamMessage } from '@/components/no-team-message'
@@ -14,10 +15,15 @@ type TeamsFilter = 'ativas' | 'inativas'
 
 export function TeamsPage() {
   const { user, refreshUser } = useAuth()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const showAllTeams = searchParams.get('todas') === '1'
   const [teams, setTeams] = useState<TeamSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isRedirecting, setIsRedirecting] = useState(false)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [filter, setFilter] = useState<TeamsFilter>('ativas')
+  const singleTeamResolved = useRef(false)
 
   const loadTeams = useCallback(async () => {
     setIsLoading(true)
@@ -35,6 +41,24 @@ export function TeamsPage() {
   useEffect(() => {
     void loadTeams()
   }, [loadTeams])
+
+  // Com uma unica equipe ativa, abre direto os detalhes dela. A decisao e
+  // tomada uma vez por montagem: assim, ao voltar para a lista (?todas=1) o
+  // usuario continua nela mesmo clicando em "Equipes" na sidebar.
+  useEffect(() => {
+    if (isLoading || singleTeamResolved.current) {
+      return
+    }
+
+    singleTeamResolved.current = true
+
+    if (showAllTeams || filter !== 'ativas' || teams.length !== 1) {
+      return
+    }
+
+    setIsRedirecting(true)
+    navigate(`/equipes/${teams[0].id}?unica=1`, { replace: true })
+  }, [filter, isLoading, navigate, showAllTeams, teams])
 
   const handleTeamCreated = useCallback(async () => {
     await Promise.all([loadTeams(), refreshUser()])
@@ -80,7 +104,7 @@ export function TeamsPage() {
         </TabsList>
 
         <TabsContent value={filter}>
-          {isLoading ? (
+          {isLoading || isRedirecting ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 3 }).map((_, index) => (
                 <Skeleton key={index} className="h-32 rounded-xl" />

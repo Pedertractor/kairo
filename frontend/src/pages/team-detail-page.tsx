@@ -53,6 +53,10 @@ function resolveTeamTab(tab: TeamTab | null, team: TeamSummary): TeamTab {
     return 'atividades';
   }
 
+  if (requested === 'apontamentos' && team.role !== 'ADMIN') {
+    return 'atividades';
+  }
+
   if (requested === 'timeline' && !canViewTeamTimeline(team)) {
     return 'atividades';
   }
@@ -67,6 +71,7 @@ export function TeamDetailPage() {
   const tabFromUrl = parseTeamTab(searchParams.get('tab'));
   const dateFromUrl = searchParams.get('date') ?? undefined;
   const userIdFromUrl = searchParams.get('userId') ?? undefined;
+  const openedAsSingleTeam = searchParams.get('unica') === '1';
   const [team, setTeam] = useState<TeamResponse['team'] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -119,7 +124,11 @@ export function TeamDetailPage() {
   return (
     <div className='flex min-w-0 flex-1 flex-col gap-6'>
       <div>
-        <BackButton fallbackTo='/equipes' fallbackLabel='Voltar para equipes' />
+        <BackButton
+          fallbackTo={openedAsSingleTeam ? '/equipes?todas=1' : '/equipes'}
+          fallbackLabel='Voltar para equipes'
+          forceFallback={openedAsSingleTeam}
+        />
       </div>
 
       {isLoading ? (
@@ -237,12 +246,14 @@ export function TeamDetailPage() {
               >
                 Membros
               </TabsTrigger>
-              <TabsTrigger
-                value='apontamentos'
-                className='data-[state=active]:border-sidebar-primary data-[state=active]:text-sidebar-primary'
-              >
-                Apontamentos
-              </TabsTrigger>
+              {team.role === 'ADMIN' ? (
+                <TabsTrigger
+                  value='apontamentos'
+                  className='data-[state=active]:border-sidebar-primary data-[state=active]:text-sidebar-primary'
+                >
+                  Apontamentos
+                </TabsTrigger>
+              ) : null}
               {canViewTeamTimeline(team) ? (
                 <TabsTrigger
                   value='timeline'
@@ -290,9 +301,11 @@ export function TeamDetailPage() {
               />
             </TabsContent>
 
-            <TabsContent value='apontamentos'>
-              <TeamTimeEntriesSection teamId={team.id} />
-            </TabsContent>
+            {team.role === 'ADMIN' ? (
+              <TabsContent value='apontamentos'>
+                <TeamTimeEntriesSection teamId={team.id} />
+              </TabsContent>
+            ) : null}
 
             {canViewTeamTimeline(team) ? (
               <TabsContent value='timeline'>

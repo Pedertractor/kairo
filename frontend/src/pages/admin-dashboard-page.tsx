@@ -3,6 +3,7 @@ import dayjs from 'dayjs'
 import {
   Activity,
   BriefcaseBusiness,
+  ChevronDown,
   Clock3,
   FolderKanban,
   Gauge,
@@ -19,6 +20,11 @@ import {
 } from '@/components/admin-usage-charts'
 import { DateRangePicker } from '@/components/date-range-picker'
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
+import {
   Combobox,
   ComboboxContent,
   ComboboxEmpty,
@@ -33,6 +39,7 @@ import { fromDateKey, toDateKey } from '@/lib/date'
 import { STATUS_LABELS } from '@/lib/card-status'
 import { TASK_STATUS_LABELS } from '@/lib/task-status'
 import { formatDateTime, formatDuration } from '@/lib/time-format'
+import { cn } from '@/lib/utils'
 import type { AdminDashboard } from '@/types/admin-dashboard'
 import type { CardStatus } from '@/types/card'
 import type { TaskStatus } from '@/types/task'
@@ -64,6 +71,51 @@ function taskStatusLabel(status: string) {
   return TASK_STATUS_LABELS[status as TaskStatus] ?? status
 }
 
+function DashboardCollapsibleSection({
+  title,
+  description,
+  open,
+  onOpenChange,
+  children,
+}: {
+  title: string
+  description: string
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  children: ReactNode
+}) {
+  return (
+    <Collapsible
+      open={open}
+      onOpenChange={onOpenChange}
+      className="rounded-2xl border bg-card p-5 shadow-sm"
+    >
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <h2 className="font-semibold">{title}</h2>
+            <CollapsibleTrigger
+              className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label={open ? `Ocultar ${title}` : `Mostrar ${title}`}
+            >
+              <ChevronDown
+                className={cn(
+                  'size-4 transition-transform',
+                  !open && '-rotate-90',
+                )}
+              />
+            </CollapsibleTrigger>
+          </div>
+          {open ? (
+            <p className="text-sm text-muted-foreground">{description}</p>
+          ) : null}
+        </div>
+      </div>
+      <CollapsibleContent className="mt-4">{children}</CollapsibleContent>
+    </Collapsible>
+  )
+}
+
 function defaultStartDate() {
   return toDateKey(dayjs().subtract(29, 'day').toDate())
 }
@@ -74,6 +126,8 @@ export function AdminDashboardPage() {
   const [selectedUser, setSelectedUser] = useState<UserFilterOption | null>(null)
   const [dashboard, setDashboard] = useState<AdminDashboard | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [timeByPersonOpen, setTimeByPersonOpen] = useState(false)
+  const [timeByTeamOpen, setTimeByTeamOpen] = useState(false)
 
   const loadDashboard = useCallback(async () => {
     setIsLoading(true)
@@ -277,51 +331,28 @@ export function AdminDashboardPage() {
         </>
       )}
 
-      <div className="grid gap-4 xl:grid-cols-3">
-        <section className="rounded-2xl border bg-card p-5 shadow-sm xl:col-span-2">
-          <h2 className="font-semibold">Horas apontadas por dia</h2>
-          <p className="mb-4 text-sm text-muted-foreground">
-            Evolução do tempo registrado no período selecionado.
-          </p>
-          {isLoading ? (
-            <Skeleton className="h-52 rounded-xl" />
-          ) : (
-            <UsageLineChart
-              points={dailyPoints}
-              emptyLabel="Nenhum apontamento neste período."
-            />
-          )}
-        </section>
-
-        <section className="rounded-2xl border bg-card p-5 shadow-sm">
-          <h2 className="font-semibold">Tipo de apontamento</h2>
-          <p className="mb-4 text-sm text-muted-foreground">
-            Timer em tempo real versus lançamento manual.
-          </p>
-          {isLoading || !dashboard ? (
-            <Skeleton className="h-48 rounded-xl" />
-          ) : (
-            <UsageDonut
-              slices={dashboard.entryTypes.map((entry) => ({
-                label: entry.type === 'TIMER' ? 'Timer' : 'Manual',
-                value: entry.count,
-                color: entry.type === 'TIMER' ? '#22d3ee' : '#a78bfa',
-              }))}
-              emptyLabel="Nenhum apontamento neste período."
-              centerLabel="registros"
-              centerValue={String(summary?.timeEntryCount ?? 0)}
-            />
-          )}
-        </section>
-      </div>
+      <section className="rounded-2xl border bg-card p-5 shadow-sm">
+        <h2 className="font-semibold">Horas apontadas por dia</h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Evolução do tempo registrado no período selecionado.
+        </p>
+        {isLoading ? (
+          <Skeleton className="h-52 rounded-xl" />
+        ) : (
+          <UsageLineChart
+            points={dailyPoints}
+            emptyLabel="Nenhum apontamento neste período."
+          />
+        )}
+      </section>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-2xl border bg-card p-5 shadow-sm">
-          <h2 className="font-semibold">Tempo por pessoa</h2>
-          <p className="mb-4 text-sm text-muted-foreground">
-            Quem mais apontou horas no período. Busque pelo nome no filtro
-            acima para detalhar uma pessoa.
-          </p>
+        <DashboardCollapsibleSection
+          title="Tempo por pessoa"
+          description="Quem mais apontou horas no período. Busque pelo nome no filtro acima para detalhar uma pessoa."
+          open={timeByPersonOpen}
+          onOpenChange={setTimeByPersonOpen}
+        >
           {isLoading || !dashboard ? (
             <Skeleton className="h-64 rounded-xl" />
           ) : (
@@ -334,13 +365,14 @@ export function AdminDashboardPage() {
               }))}
             />
           )}
-        </section>
+        </DashboardCollapsibleSection>
 
-        <section className="rounded-2xl border bg-card p-5 shadow-sm">
-          <h2 className="font-semibold">Tempo por equipe</h2>
-          <p className="mb-4 text-sm text-muted-foreground">
-            Distribuição de horas entre as equipes da unidade.
-          </p>
+        <DashboardCollapsibleSection
+          title="Tempo por equipe"
+          description="Distribuição de horas entre as equipes da unidade."
+          open={timeByTeamOpen}
+          onOpenChange={setTimeByTeamOpen}
+        >
           {isLoading || !dashboard ? (
             <Skeleton className="h-64 rounded-xl" />
           ) : (
@@ -358,7 +390,7 @@ export function AdminDashboardPage() {
                 }))}
             />
           )}
-        </section>
+        </DashboardCollapsibleSection>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">

@@ -1,5 +1,5 @@
 import type { TimeEntry } from '../generated/client.js';
-import { UserRole } from '../generated/client.js';
+import { TeamRole, UserRole } from '../generated/client.js';
 import { CardRepository } from '../repositories/card.repository.js';
 import { TaskRepository } from '../repositories/task.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
@@ -824,7 +824,11 @@ export class TimeEntryService {
     userId: string,
     options: { date?: string; page: number; pageSize: number },
   ): Promise<PaginatedTeamTimeEntries> {
-    await this.assertTeamMember(teamId, userId);
+    const membership = await this.assertTeamMember(teamId, userId);
+
+    if (membership.role !== TeamRole.ADMIN) {
+      throw new AppError(403, MENSAGENS.PROIBIDO);
+    }
 
     const skip = (options.page - 1) * options.pageSize;
 

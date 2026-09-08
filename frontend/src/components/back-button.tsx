@@ -7,12 +7,17 @@ import { useBackNavigation } from '@/hooks/use-back-navigation'
 type BackButtonProps = {
   fallbackTo: string
   fallbackLabel: string
+  forceFallback?: boolean
 }
 
-export function BackButton({ fallbackTo, fallbackLabel }: BackButtonProps) {
+export function BackButton({
+  fallbackTo,
+  fallbackLabel,
+  forceFallback = false,
+}: BackButtonProps) {
   const { canGoBack, goBack } = useBackNavigation(fallbackTo)
 
-  if (canGoBack) {
+  if (canGoBack && !forceFallback) {
     return (
       <Button variant="ghost" size="sm" onClick={goBack}>
         <ArrowLeft />
