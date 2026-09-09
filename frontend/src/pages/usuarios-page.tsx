@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
+  Clock3,
   Crown,
   EllipsisIcon,
   KeyRound,
@@ -13,6 +14,7 @@ import {
 import { ChangeUserRoleDialog } from '@/components/change-user-role-dialog'
 import { CreateUserDialog } from '@/components/create-user-dialog'
 import { DeactivateUserDialog } from '@/components/deactivate-user-dialog'
+import { EditShiftDialog } from '@/components/edit-shift-dialog'
 import { ResetUserPasswordDialog } from '@/components/reset-user-password-dialog'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -43,7 +45,18 @@ const ROLE_LABELS: Record<UserRole, string> = {
   USER: 'Usuário',
 }
 
-type UserAction = 'role' | 'reset-password' | 'deactivate'
+type UserAction = 'role' | 'reset-password' | 'deactivate' | 'shift'
+
+function formatShiftLabel(
+  start: string | null,
+  end: string | null,
+): string {
+  if (!start || !end) {
+    return '—'
+  }
+
+  return `${start} – ${end}`
+}
 
 export function UsuariosPage() {
   const { user: currentUser } = useAuth()
@@ -166,6 +179,14 @@ export function UsuariosPage() {
         onUpdated={handleUserUpdated}
       />
 
+      <EditShiftDialog
+        mode="user"
+        target={activeAction === 'shift' ? selectedUser : null}
+        open={activeAction === 'shift'}
+        onOpenChange={closeActionDialog}
+        onUserUpdated={handleUserUpdated}
+      />
+
       {!isLoading && users.length > 0 ? (
         <div className="relative w-full sm:w-1/3">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -205,13 +226,14 @@ export function UsuariosPage() {
       ) : (
         <div className="overflow-hidden rounded-xl border bg-card">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[840px] text-sm">
+            <table className="w-full min-w-[960px] text-sm">
               <thead>
                 <tr className="border-b bg-brand-soft text-left text-xs text-sidebar-primary">
                   <th className="px-4 py-3 font-medium">Usuário</th>
                   <th className="px-4 py-3 font-medium">Cartão</th>
                   <th className="px-4 py-3 font-medium">Unidade</th>
                   <th className="px-4 py-3 font-medium">Função</th>
+                  <th className="px-4 py-3 font-medium">Turno</th>
                   <th className="px-4 py-3 font-medium">Estado</th>
                   <th className="px-4 py-3 text-right font-medium">Ações</th>
                 </tr>
@@ -265,6 +287,9 @@ export function UsuariosPage() {
                     <td className="px-4 py-3">{UNIT_LABELS[user.unit]}</td>
                     <td className="px-4 py-3">{ROLE_LABELS[user.role]}</td>
                     <td className="px-4 py-3">
+                      {formatShiftLabel(user.shiftStart, user.shiftEnd)}
+                    </td>
+                    <td className="px-4 py-3">
                       <span
                         className={cn(
                           'inline-flex rounded-md px-2 py-0.5 text-xs',
@@ -299,6 +324,12 @@ export function UsuariosPage() {
                                 >
                                   <Shield />
                                   Alterar função
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => openAction(user, 'shift')}
+                                >
+                                  <Clock3 />
+                                  Alterar turno
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() =>

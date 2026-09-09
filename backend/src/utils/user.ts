@@ -1,5 +1,6 @@
 import type { UnitType, User } from '../generated/client.js';
 import type { SafeUser } from '../types/auth.types.js';
+import { formatMinutesToTime } from './shift.js';
 
 export function toEmployeeId(unit: UnitType, cardNumber: string): string {
   return `${unit}-${cardNumber}`;
@@ -10,6 +11,7 @@ export function toSafeUser(
   hasOwnedTeams = false,
   hasTeams = false,
   currentAbsence?: { startedAt: Date; endedAt: Date | null } | null,
+  currentShift?: { startMinutes: number; endMinutes: number } | null,
 ): SafeUser {
   return {
     id: user.id,
@@ -23,6 +25,12 @@ export function toSafeUser(
     absent: currentAbsence === undefined ? user.absent : Boolean(currentAbsence),
     absenceStartedAt: currentAbsence?.startedAt.toISOString() ?? null,
     absenceEndedAt: currentAbsence?.endedAt?.toISOString() ?? null,
+    shiftStart: currentShift
+      ? formatMinutesToTime(currentShift.startMinutes)
+      : null,
+    shiftEnd: currentShift
+      ? formatMinutesToTime(currentShift.endMinutes)
+      : null,
     hasOwnedTeams,
     hasTeams,
   };

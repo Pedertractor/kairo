@@ -57,7 +57,11 @@ import { api } from '@/lib/api-handler';
 import { fromDateKey, toDateKey } from '@/lib/date';
 import { formatDuration } from '@/lib/time-format';
 import { cn } from '@/lib/utils';
-import type { AnalyticsDashboard, ClientAnalytics } from '@/types/analytics';
+import type {
+  AnalyticsDashboard,
+  ClientAnalytics,
+  WorkItemStatusOverview,
+} from '@/types/analytics';
 import type {
   TeamDayDashboard,
   TeamDayTimelineBlock,
@@ -89,6 +93,10 @@ function utilizationColor(percent: number) {
   if (percent >= 75) return 'from-emerald-400 to-cyan-500';
   if (percent >= 40) return 'from-amber-400 to-orange-500';
   return 'from-violet-500 to-indigo-500';
+}
+
+function emptyWorkItemOverview(): WorkItemStatusOverview {
+  return { total: 0, createdInPeriod: 0, byStatus: [] };
 }
 
 function getInclusiveDayCount(startDate: string, endDate: string): number {
@@ -248,8 +256,9 @@ export function AnalyticsPage() {
         activityTypes: data.activityTypes ?? [],
         clients: data.clients ?? [],
         activityOverview: data.activityOverview ?? {
-          total: 0,
-          byStatus: [],
+          activities: emptyWorkItemOverview(),
+          projects: emptyWorkItemOverview(),
+          tasks: emptyWorkItemOverview(),
           byTag: [],
         },
         allTimeTotals: data.allTimeTotals ?? {
@@ -929,7 +938,7 @@ export function AnalyticsPage() {
           </div>
         }
         title='Atividades por tipo e status'
-        description='Quantidade de atividades criadas no período por etiqueta e status atual.'
+        description='Todas as atividades, projetos e tarefas das equipes filtradas, com o status atual de cada um. Considera todo o histórico, e não apenas o que foi criado no período; o período filtrado aparece como destaque "criadas no período".'
       >
         <AnalyticsActivityOverview
           overview={activityOverview}

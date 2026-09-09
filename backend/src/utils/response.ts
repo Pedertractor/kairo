@@ -78,17 +78,22 @@ export const MENSAGENS = {
   TIMER_INICIADO_SUCESSO: 'Timer iniciado com sucesso',
   TIMER_JA_ATIVO: 'Você já tem um timer ativo para este item',
   TIMER_PAUSADO_SUCESSO: 'Timer pausado com sucesso',
-  USUARIO_AUSENTE:
-    'Não é possível iniciar um apontamento enquanto você estiver ausente',
   AUSENCIA_ATUALIZADA_SUCESSO: 'Status de ausência atualizado com sucesso',
   AUSENCIA_JA_ATIVA: 'Este usuário já possui um período de ausência em aberto',
   AUSENCIA_NAO_ATIVA: 'Não há período de ausência em aberto para encerrar',
   AUSENCIA_SOBREPOSTA:
     'O período informado se sobrepõe a outra ausência deste usuário',
-  AUSENCIA_INICIO_FUTURO:
-    'A data e hora de início da ausência não podem ser no futuro',
   AUSENCIA_FIM_ANTES_INICIO:
     'A data e hora de fim devem ser posteriores ao início',
+  AUSENCIA_NAO_ENCONTRADA: 'Ausência não encontrada',
+  AUSENCIA_PASSADA_IMUTAVEL:
+    'Apenas ausências futuras podem ser canceladas',
+  AUSENCIA_PASSADA_SEM_APONTAMENTO:
+    'Só é possível registrar uma ausência passada quando há apontamento naquele dia',
+  AUSENCIA_HOJE_APOS_APONTAMENTO:
+    'A ausência de hoje deve ser registrada antes do primeiro apontamento do usuário',
+  AUSENCIA_CRIADA_SUCESSO: 'Ausência criada com sucesso',
+  AUSENCIA_CANCELADA_SUCESSO: 'Ausência futura cancelada com sucesso',
   APONTAMENTO_ATUALIZADO_SUCESSO: 'Apontamento atualizado com sucesso',
   USUARIO_ROLE_ATUALIZADO_SUCESSO: 'Função do usuário atualizada com sucesso',
   USUARIO_SENHA_REPOSTA_SUCESSO: 'Senha resetada com sucesso',
@@ -102,6 +107,10 @@ export const MENSAGENS = {
   USUARIO_JA_CADASTRADO: 'Este usuário já está cadastrado na aplicação',
   FUNCIONARIO_NAO_ENCONTRADO: 'Funcionário não encontrado na API externa',
   ERRO_API_EXTERNA: 'Não foi possível consultar a API externa',
+  TURNO_INVALIDO:
+    'Horário de turno inválido. O fim deve ser posterior ao início',
+  TURNO_ATUALIZADO_SUCESSO: 'Turno atualizado com sucesso',
+  TURNOS_SINCRONIZADOS_SUCESSO: 'Turnos sincronizados com sucesso',
   DOCUMENTO_TIPO_INVALIDO:
     'Apenas ficheiros PDF ou imagens (JPEG, PNG, WebP, GIF) são permitidos',
   DOCUMENTO_TAMANHO_INVALIDO: 'O ficheiro não pode ultrapassar 10 MB',

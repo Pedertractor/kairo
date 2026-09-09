@@ -1,6 +1,7 @@
 import type { CardStatus } from '../generated/client.js';
 import { AbsenceRepository } from '../repositories/absence.repository.js';
 import { AnalyticsRepository } from '../repositories/analytics.repository.js';
+import { ShiftRepository } from '../repositories/shift.repository.js';
 import type {
   ActivityOverview,
   ActivityStatusCount,
@@ -65,6 +66,7 @@ export class AnalyticsService {
   constructor(
     private readonly repository: AnalyticsRepository,
     private readonly absenceRepository: AbsenceRepository,
+    private readonly shiftRepository: ShiftRepository,
   ) {}
 
   async getDashboard(
@@ -152,7 +154,9 @@ export class AnalyticsService {
       clientActivities,
       clientTasks,
       absencePeriods,
-      allTimeTotals,
+      shiftPeriods,
+      overviewCards,
+      overviewTasks,
     ] = await Promise.all([
       this.repository.findEntriesForTeams(
         scopedTeamIds,
@@ -186,7 +190,19 @@ export class AnalyticsService {
         periodStart,
         periodEnd,
       ),
-      this.repository.countAllTimeTotals(scopedTeamIds, options.employeeId),
+      this.shiftRepository.findOverlappingRange(
+        employeeIds,
+        periodStart,
+        periodEnd,
+      ),
+      this.repository.findCardsForStatusOverview(
+        scopedTeamIds,
+        options.employeeId,
+      ),
+      this.repository.findTasksForStatusOverview(
+        scopedTeamIds,
+        options.employeeId,
+      ),
     ]);
     const now = new Date();
     const absencesByEmployee = new Map<
@@ -200,6 +216,27 @@ export class AnalyticsService {
       absencesByEmployee.set(period.userId, list);
     }
 
+    const shiftsByEmployee = new Map<
+      string,
+      Array<{
+        startMinutes: number;
+        endMinutes: number;
+        startedAt: Date;
+        endedAt: Date | null;
+      }>
+    >();
+
+    for (const period of shiftPeriods) {
+      const list = shiftsByEmployee.get(period.userId) ?? [];
+      list.push({
+        startMinutes: period.startMinutes,
+        endMinutes: period.endMinutes,
+        startedAt: period.startedAt,
+        endedAt: period.endedAt,
+      });
+      shiftsByEmployee.set(period.userId, list);
+    }
+
     const availabilityByEmployee = new Map<string, number>();
 
     for (const employeeId of employeeIds) {
@@ -210,6 +247,7 @@ export class AnalyticsService {
           periodStart,
           periodEnd,
           now,
+          shiftsByEmployee.get(employeeId) ?? [],
         ),
       );
     }
@@ -367,7 +405,17 @@ export class AnalyticsService {
       return bucket;
     }
 
-    const overviewStatusCounts = emptyStatusCounts();
+    for (const activity of clientActivities) {
+      const bucket = ensureClientBucket(
+        activity.clientId,
+        activity.client?.name,
+      );
+      bucket.activityCount += 1;
+    }
+
+    const activityStatusCounts = emptyStatusCounts();
+    const projectStatusCounts = emptyStatusCounts();
+    const taskStatusCounts = emptyStatusCounts();
     const overviewTagBuckets = new Map<
       string,
       {
@@ -375,47 +423,100 @@ export class AnalyticsService {
         tagName: string;
         tagColor: string | null;
         count: number;
+        createdInPeriod: number;
         statusCounts: Map<CardStatus, number>;
       }
     >();
+    let activityTotal = 0;
+    let projectTotal = 0;
+    let activitiesCreatedInPeriod = 0;
+    let projectsCreatedInPeriod = 0;
+    let tasksCreatedInPeriod = 0;
 
-    for (const activity of clientActivities) {
-      const bucket = ensureClientBucket(
-        activity.clientId,
-        activity.client?.name,
+    const isCreatedInPeriod = (createdAt: Date) =>
+      createdAt >= periodStart && createdAt < periodEnd;
+
+    for (const card of overviewCards) {
+      const createdInPeriod = isCreatedInPeriod(card.createdAt);
+
+      if (card.type === 'PROJECT') {
+        projectTotal += 1;
+        projectStatusCounts.set(
+          card.status,
+          (projectStatusCounts.get(card.status) ?? 0) + 1,
+        );
+
+        if (createdInPeriod) {
+          projectsCreatedInPeriod += 1;
+        }
+
+        continue;
+      }
+
+      activityTotal += 1;
+      activityStatusCounts.set(
+        card.status,
+        (activityStatusCounts.get(card.status) ?? 0) + 1,
       );
-      bucket.activityCount += 1;
 
-      overviewStatusCounts.set(
-        activity.status,
-        (overviewStatusCounts.get(activity.status) ?? 0) + 1,
-      );
+      if (createdInPeriod) {
+        activitiesCreatedInPeriod += 1;
+      }
 
-      const tagKey = activity.tagId ?? NONE_TAG_KEY;
+      const tagKey = card.tagId ?? NONE_TAG_KEY;
       const tagBucket = overviewTagBuckets.get(tagKey) ?? {
-        tagId: activity.tagId,
-        tagName: activity.tag?.name ?? 'Sem etiqueta',
-        tagColor: activity.tag?.color ?? null,
+        tagId: card.tagId,
+        tagName: card.tag?.name ?? 'Sem etiqueta',
+        tagColor: card.tag?.color ?? null,
         count: 0,
+        createdInPeriod: 0,
         statusCounts: emptyStatusCounts(),
       };
       tagBucket.count += 1;
+      if (createdInPeriod) {
+        tagBucket.createdInPeriod += 1;
+      }
       tagBucket.statusCounts.set(
-        activity.status,
-        (tagBucket.statusCounts.get(activity.status) ?? 0) + 1,
+        card.status,
+        (tagBucket.statusCounts.get(card.status) ?? 0) + 1,
       );
       overviewTagBuckets.set(tagKey, tagBucket);
     }
 
+    for (const task of overviewTasks) {
+      taskStatusCounts.set(
+        task.status,
+        (taskStatusCounts.get(task.status) ?? 0) + 1,
+      );
+
+      if (isCreatedInPeriod(task.createdAt)) {
+        tasksCreatedInPeriod += 1;
+      }
+    }
+
     const activityOverview: ActivityOverview = {
-      total: clientActivities.length,
-      byStatus: toStatusCounts(overviewStatusCounts),
+      activities: {
+        total: activityTotal,
+        createdInPeriod: activitiesCreatedInPeriod,
+        byStatus: toStatusCounts(activityStatusCounts),
+      },
+      projects: {
+        total: projectTotal,
+        createdInPeriod: projectsCreatedInPeriod,
+        byStatus: toStatusCounts(projectStatusCounts),
+      },
+      tasks: {
+        total: overviewTasks.length,
+        createdInPeriod: tasksCreatedInPeriod,
+        byStatus: toStatusCounts(taskStatusCounts),
+      },
       byTag: [...overviewTagBuckets.entries()]
         .map(([key, bucket]) => ({
           tagId: bucket.tagId,
           tagName: bucket.tagName,
           tagColor: bucket.tagColor,
           count: bucket.count,
+          createdInPeriod: bucket.createdInPeriod,
           byStatus: toStatusCounts(bucket.statusCounts),
           _isNone: key === NONE_TAG_KEY,
         }))
@@ -429,6 +530,12 @@ export class AnalyticsService {
           return a.tagName.localeCompare(b.tagName);
         })
         .map(({ _isNone: _, ...row }) => row),
+    };
+
+    const allTimeTotals = {
+      activityCount: activityTotal,
+      projectCount: projectTotal,
+      taskCount: overviewTasks.length,
     };
 
     for (const task of clientTasks) {

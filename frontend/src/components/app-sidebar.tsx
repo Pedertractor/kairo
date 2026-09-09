@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/use-auth';
 import type { UnitType } from '@/types/auth';
 import {
   ChartNoAxesCombinedIcon,
+  CalendarOffIcon,
   ClockIcon,
   FolderKanbanIcon,
   HomeIcon,
@@ -48,6 +49,11 @@ const baseNavItems = [
     title: 'Apontamentos',
     url: '/apontamentos',
     icon: <ClockIcon />,
+  },
+  {
+    title: 'Ausências',
+    url: '/ausencias',
+    icon: <CalendarOffIcon />,
   },
 ];
 

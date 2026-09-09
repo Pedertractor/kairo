@@ -10,6 +10,29 @@ function coveringOnWhere(on: Date) {
 export class AbsenceRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
+  findVisible(userIds: string[]) {
+    return this.prisma.userAbsencePeriod.findMany({
+      where: {
+        userId: { in: userIds },
+      },
+      include: {
+        user: { select: { id: true, name: true } },
+        createdBy: { select: { id: true, name: true } },
+      },
+      orderBy: [{ startedAt: 'desc' }, { createdAt: 'desc' }],
+    });
+  }
+
+  findById(id: string) {
+    return this.prisma.userAbsencePeriod.findUnique({
+      where: { id },
+      include: {
+        user: { select: { id: true, name: true } },
+        createdBy: { select: { id: true, name: true } },
+      },
+    });
+  }
+
   findOpenByUserId(userId: string) {
     return this.prisma.userAbsencePeriod.findFirst({
       where: { userId, endedAt: null },
@@ -81,6 +104,10 @@ export class AbsenceRepository {
       where: { id },
       data: { endedAt },
     });
+  }
+
+  delete(id: string) {
+    return this.prisma.userAbsencePeriod.delete({ where: { id } });
   }
 
   findCurrentStartedAtByUserIds(userIds: string[]) {

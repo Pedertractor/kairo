@@ -436,15 +436,11 @@ export class TimeEntryService {
     return assertTeamMembership(membership);
   }
 
-  private async assertUserPresent(userId: string): Promise<void> {
+  private async assertActiveUser(userId: string): Promise<void> {
     const user = await this.userRepository.findById(userId);
 
     if (!user) {
       throw new AppError(404, MENSAGENS.USUARIO_NAO_ENCONTRADO);
-    }
-
-    if (await this.absenceService.isCurrentlyAbsent(userId)) {
-      throw new AppError(403, MENSAGENS.USUARIO_AUSENTE);
     }
   }
 
@@ -453,7 +449,7 @@ export class TimeEntryService {
     activityId: string,
     userId: string,
   ): Promise<ActiveTimer> {
-    await this.assertUserPresent(userId);
+    await this.assertActiveUser(userId);
     await this.assertTeamMember(teamId, userId);
 
     const card = await this.cardRepository.findActivityById(activityId);
@@ -482,6 +478,8 @@ export class TimeEntryService {
         activeEntry.cardId,
       );
     }
+
+    await this.absenceService.endCoveringAbsenceAt(userId, startedAt);
 
     const entry = await this.timeEntryRepository.startTimer({
       cardId: activityId,
@@ -514,7 +512,7 @@ export class TimeEntryService {
     taskId: string,
     userId: string,
   ): Promise<ActiveTimer> {
-    await this.assertUserPresent(userId);
+    await this.assertActiveUser(userId);
 
     const task = await this.taskRepository.findById(taskId);
 
@@ -549,6 +547,8 @@ export class TimeEntryService {
         activeEntry.cardId,
       );
     }
+
+    await this.absenceService.endCoveringAbsenceAt(userId, startedAt);
 
     const entry = await this.timeEntryRepository.startTaskTimer({
       taskId,

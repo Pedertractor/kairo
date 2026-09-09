@@ -19,3 +19,21 @@ export const createUserSchema = z.object({
 export const updateUserRoleSchema = z.object({
   role: z.enum(['ADMIN', 'LEADER', 'USER']),
 });
+
+const timeSchema = z
+  .string()
+  .regex(/^\d{1,2}:\d{2}(?::\d{2})?$/, 'Horário inválido');
+
+export const updateUserShiftSchema = z
+  .object({
+    start: timeSchema,
+    end: timeSchema,
+  })
+  .refine(
+    (data) => {
+      const [startH, startM] = data.start.split(':').map(Number);
+      const [endH, endM] = data.end.split(':').map(Number);
+      return endH * 60 + endM > startH * 60 + startM;
+    },
+    { message: 'O fim do turno deve ser posterior ao início' },
+  );

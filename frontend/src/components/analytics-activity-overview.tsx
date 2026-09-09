@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import type {
   ActivityOverview,
   AnalyticsCardStatus,
+  WorkItemStatusOverview,
 } from '@/types/analytics'
 
 const STATUS_CHART_COLORS: Record<AnalyticsCardStatus, string> = {
@@ -13,6 +14,95 @@ const STATUS_CHART_COLORS: Record<AnalyticsCardStatus, string> = {
   PAUSED: '#f59e0b',
   DONE: '#10b981',
   CANCELED: '#f43f5e',
+}
+
+const HIGHLIGHT_STATUSES: AnalyticsCardStatus[] = [
+  'IN_PROGRESS',
+  'TODO',
+  'DONE',
+]
+
+function countByStatus(
+  overview: WorkItemStatusOverview,
+  status: AnalyticsCardStatus,
+) {
+  return overview.byStatus.find((item) => item.status === status)?.count ?? 0
+}
+
+function WorkItemCard({
+  title,
+  itemLabel,
+  itemLabelPlural,
+  createdLabel,
+  createdLabelPlural,
+  accentClassName,
+  overview,
+}: {
+  title: string
+  itemLabel: string
+  itemLabelPlural: string
+  createdLabel: string
+  createdLabelPlural: string
+  accentClassName: string
+  overview: WorkItemStatusOverview
+}) {
+  return (
+    <div className={cn('rounded-2xl border p-4', accentClassName)}>
+      <p className='text-[10px] font-semibold tracking-wide uppercase opacity-70'>
+        {title}
+      </p>
+      <p className='mt-1 text-2xl font-bold tabular-nums'>{overview.total}</p>
+      <p className='text-xs opacity-70'>
+        {overview.total === 1 ? itemLabel : itemLabelPlural} no total ·{' '}
+        {overview.createdInPeriod}{' '}
+        {overview.createdInPeriod === 1 ? createdLabel : createdLabelPlural} no
+        período
+      </p>
+
+      <div className='mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs'>
+        {HIGHLIGHT_STATUSES.map((status) => (
+          <span key={status} className='flex items-center gap-1.5'>
+            <span
+              className='size-2 rounded-full'
+              style={{ backgroundColor: STATUS_CHART_COLORS[status] }}
+            />
+            {STATUS_LABELS[status]}{' '}
+            <span className='font-semibold tabular-nums'>
+              {countByStatus(overview, status)}
+            </span>
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function StatusDonut({
+  title,
+  overview,
+  itemLabel,
+  itemLabelPlural,
+}: {
+  title: string
+  overview: WorkItemStatusOverview
+  itemLabel: string
+  itemLabelPlural: string
+}) {
+  return (
+    <div className='rounded-2xl border p-4'>
+      <h3 className='mb-4 text-sm font-semibold'>{title}</h3>
+      <UsageDonut
+        slices={overview.byStatus.map((item) => ({
+          label: STATUS_LABELS[item.status],
+          value: item.count,
+          color: STATUS_CHART_COLORS[item.status],
+        }))}
+        emptyLabel={`Nenhum registro de ${itemLabelPlural}.`}
+        centerLabel={overview.total === 1 ? itemLabel : itemLabelPlural}
+        centerValue={String(overview.total)}
+      />
+    </div>
+  )
 }
 
 export function AnalyticsActivityOverview({
@@ -31,86 +121,96 @@ export function AnalyticsActivityOverview({
     )
   }
 
-  if (overview.total === 0) {
+  const grandTotal =
+    overview.activities.total + overview.projects.total + overview.tasks.total
+
+  if (grandTotal === 0) {
     return (
       <div className='rounded-2xl border border-dashed p-10 text-center text-sm text-muted-foreground'>
-        Nenhuma atividade criada neste período.
+        Nenhuma atividade, projeto ou tarefa cadastrada.
       </div>
     )
   }
 
-  const doneCount =
-    overview.byStatus.find((item) => item.status === 'DONE')?.count ?? 0
-  const inProgressCount =
-    overview.byStatus.find((item) => item.status === 'IN_PROGRESS')?.count ?? 0
-  const todoCount =
-    overview.byStatus.find((item) => item.status === 'TODO')?.count ?? 0
-
   return (
     <div className='space-y-6'>
-      <div className='grid gap-3 sm:grid-cols-2 xl:grid-cols-4'>
-        <div className='rounded-xl bg-muted/40 p-4'>
-          <p className='text-[10px] font-semibold tracking-wide text-muted-foreground uppercase'>
-            Criadas no período
-          </p>
-          <p className='mt-1 text-2xl font-bold tabular-nums'>
-            {overview.total}
-          </p>
-        </div>
-        <div className='rounded-xl bg-sky-500/10 p-4'>
-          <p className='text-[10px] font-semibold tracking-wide text-sky-700 uppercase dark:text-sky-300'>
-            Em andamento
-          </p>
-          <p className='mt-1 text-2xl font-bold tabular-nums'>
-            {inProgressCount}
-          </p>
-        </div>
-        <div className='rounded-xl bg-muted p-4'>
-          <p className='text-[10px] font-semibold tracking-wide text-muted-foreground uppercase'>
-            A fazer
-          </p>
-          <p className='mt-1 text-2xl font-bold tabular-nums'>{todoCount}</p>
-        </div>
-        <div className='rounded-xl bg-emerald-500/10 p-4'>
-          <p className='text-[10px] font-semibold tracking-wide text-emerald-700 uppercase dark:text-emerald-300'>
-            Concluídas
-          </p>
-          <p className='mt-1 text-2xl font-bold tabular-nums'>{doneCount}</p>
-        </div>
+      <p className='rounded-xl border border-dashed p-3 text-xs text-muted-foreground'>
+        Este bloco mostra o histórico completo das equipes filtradas: cada
+        atividade, projeto e tarefa aparece com o status que tem hoje,
+        independentemente de quando foi criado. O filtro de datas não remove
+        nada daqui — ele apenas define o número de itens{' '}
+        <span className='font-semibold'>criados no período</span> exibido em
+        cada cartão.
+      </p>
+
+      <div className='grid gap-3 sm:grid-cols-2 xl:grid-cols-3'>
+        <WorkItemCard
+          title='Atividades'
+          itemLabel='atividade'
+          itemLabelPlural='atividades'
+          createdLabel='criada'
+          createdLabelPlural='criadas'
+          accentClassName='border-violet-200 bg-violet-500/10 dark:border-violet-900'
+          overview={overview.activities}
+        />
+        <WorkItemCard
+          title='Projetos'
+          itemLabel='projeto'
+          itemLabelPlural='projetos'
+          createdLabel='criado'
+          createdLabelPlural='criados'
+          accentClassName='border-indigo-200 bg-indigo-500/10 dark:border-indigo-900'
+          overview={overview.projects}
+        />
+        <WorkItemCard
+          title='Tarefas'
+          itemLabel='tarefa'
+          itemLabelPlural='tarefas'
+          createdLabel='criada'
+          createdLabelPlural='criadas'
+          accentClassName='border-emerald-200 bg-emerald-500/10 dark:border-emerald-900'
+          overview={overview.tasks}
+        />
       </div>
 
-      <div className='grid gap-6 lg:grid-cols-2'>
-        <div className='rounded-2xl border p-4'>
-          <h3 className='mb-4 text-sm font-semibold'>Por status</h3>
-          <UsageDonut
-            slices={overview.byStatus.map((item) => ({
-              label: STATUS_LABELS[item.status],
-              value: item.count,
-              color: STATUS_CHART_COLORS[item.status],
-            }))}
-            emptyLabel='Nenhuma atividade neste período.'
-            centerLabel={overview.total === 1 ? 'atividade' : 'atividades'}
-            centerValue={String(overview.total)}
-          />
-        </div>
-        <div className='rounded-2xl border p-4'>
-          <h3 className='mb-4 text-sm font-semibold'>Por etiqueta</h3>
-          <UsageBarList
-            items={overview.byTag.map((tag) => ({
-              label: tag.tagName,
-              value: tag.count,
-              hint: tag.byStatus
-                .filter((status) => status.count > 0)
-                .map(
-                  (status) =>
-                    `${STATUS_LABELS[status.status]} ${status.count}`,
-                )
-                .join(' · '),
-            }))}
-            emptyLabel='Nenhuma etiqueta neste período.'
-            valueFormatter={(value) => String(value)}
-          />
-        </div>
+      <div className='grid gap-6 xl:grid-cols-3'>
+        <StatusDonut
+          title='Atividades por status'
+          overview={overview.activities}
+          itemLabel='atividade'
+          itemLabelPlural='atividades'
+        />
+        <StatusDonut
+          title='Projetos por status'
+          overview={overview.projects}
+          itemLabel='projeto'
+          itemLabelPlural='projetos'
+        />
+        <StatusDonut
+          title='Tarefas por status'
+          overview={overview.tasks}
+          itemLabel='tarefa'
+          itemLabelPlural='tarefas'
+        />
+      </div>
+
+      <div className='rounded-2xl border p-4'>
+        <h3 className='mb-1 text-sm font-semibold'>Atividades por etiqueta</h3>
+        <p className='mb-4 text-xs text-muted-foreground'>
+          Todas as atividades já criadas, agrupadas por etiqueta.
+        </p>
+        <UsageBarList
+          items={overview.byTag.map((tag) => ({
+            label: tag.tagName,
+            value: tag.count,
+            hint: tag.byStatus
+              .filter((status) => status.count > 0)
+              .map((status) => `${STATUS_LABELS[status.status]} ${status.count}`)
+              .join(' · '),
+          }))}
+          emptyLabel='Nenhuma etiqueta cadastrada.'
+          valueFormatter={(value) => String(value)}
+        />
       </div>
 
       <div className='space-y-3'>
@@ -129,8 +229,13 @@ export function AnalyticsActivityOverview({
                 />
                 <p className='truncate font-semibold'>{tag.tagName}</p>
               </span>
-              <span className='shrink-0 text-sm font-bold tabular-nums'>
-                {tag.count}
+              <span className='shrink-0 text-right'>
+                <span className='block text-sm font-bold tabular-nums'>
+                  {tag.count}
+                </span>
+                <span className='block text-[11px] text-muted-foreground'>
+                  {tag.createdInPeriod} no período
+                </span>
               </span>
             </div>
             <div className='flex h-3 overflow-hidden rounded-full bg-muted'>

@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { AnalyticsController } from '../controllers/analytics.controller.js';
 import { AbsenceRepository } from '../repositories/absence.repository.js';
 import { AnalyticsRepository } from '../repositories/analytics.repository.js';
+import { ShiftRepository } from '../repositories/shift.repository.js';
 import { AnalyticsService } from '../services/analytics.service.js';
 
 export async function analyticsRoutes(app: FastifyInstance) {
@@ -9,6 +10,7 @@ export async function analyticsRoutes(app: FastifyInstance) {
     new AnalyticsService(
       new AnalyticsRepository(app.prisma),
       new AbsenceRepository(app.prisma),
+      new ShiftRepository(app.prisma),
     ),
   );
 

@@ -67,6 +67,8 @@ export function ConfirmAbsentDialog({
     }
   }
 
+  const isScheduled = Boolean(startDate) && new Date(startDate!) > new Date()
+
   const canSubmit =
     !isSubmitting &&
     (!absent ||
@@ -82,8 +84,10 @@ export function ConfirmAbsentDialog({
           </DialogTitle>
           <DialogDescription>
             {absent
-              ? 'Ao marcar-se como ausente, o apontamento em andamento será pausado e você não poderá iniciar novos apontamentos até remover a ausência.'
-              : 'Ao remover a ausência, você voltará a poder iniciar apontamentos normalmente.'}
+              ? isScheduled
+                ? 'A ausência ficará agendada e só passará a valer no início informado. Até lá, você continua apontando normalmente.'
+                : 'Ao marcar-se como ausente, o apontamento em andamento será pausado. Se você iniciar um apontamento antes do fim da ausência, o horário de término será ajustado para o início desse apontamento.'
+              : 'Ao remover a ausência, o período atual será encerrado neste momento.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -102,6 +106,9 @@ export function ConfirmAbsentDialog({
               value={endDate}
               onChange={setEndDate}
               optional
+              openEndedLabel={
+                isScheduled ? 'Fim indeterminado' : 'Em andamento'
+              }
               disabled={isSubmitting}
             />
           </div>

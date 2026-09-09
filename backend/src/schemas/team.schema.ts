@@ -58,3 +58,21 @@ export const updateMemberAbsentSchema = z
       new Date(data.startDate) < new Date(data.endDate),
     { message: 'A data e hora de início devem ser anteriores ao fim' },
   );
+
+const timeSchema = z
+  .string()
+  .regex(/^\d{1,2}:\d{2}(?::\d{2})?$/, 'Horário inválido');
+
+export const updateMemberShiftSchema = z
+  .object({
+    start: timeSchema,
+    end: timeSchema,
+  })
+  .refine(
+    (data) => {
+      const [startH, startM] = data.start.split(':').map(Number);
+      const [endH, endM] = data.end.split(':').map(Number);
+      return endH * 60 + endM > startH * 60 + startM;
+    },
+    { message: 'O fim do turno deve ser posterior ao início' },
+  );

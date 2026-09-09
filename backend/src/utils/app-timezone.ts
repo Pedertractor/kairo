@@ -91,6 +91,13 @@ export function formatDateKey(date: Date): string {
   return `${parts.year}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`;
 }
 
+/** Wall-clock minutes since midnight for an instant, in the app timezone. */
+export function getZonedMinutesOfDay(instant: Date): number {
+  const parts = getZonedParts(instant);
+
+  return parts.hour * 60 + parts.minute;
+}
+
 export function shiftDateKey(dateKey: string, days: number): string {
   const [year, month, day] = dateKey.split('-').map(Number);
   const shifted = new Date(Date.UTC(year, month - 1, day + days));

@@ -28,3 +28,8 @@ export interface EmployeeLookupResult {
 export interface EmployeeLookupResponse {
   employee: EmployeeLookupResult
 }
+
+export interface UpdateUserShiftInput {
+  start: string
+  end: string
+}

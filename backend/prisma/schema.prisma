@@ -64,6 +64,11 @@ enum ComplexityLevel {
   MUITO_ALTA
 }
 
+enum ShiftSource {
+  API
+  MANUAL
+}
+
 model User {
   id           String   @id @default(cuid())
   employeeId   String   @unique
@@ -100,11 +105,37 @@ model User {
   absencePeriods UserAbsencePeriod[] @relation("UserAbsencePeriods")
   createdAbsences UserAbsencePeriod[] @relation("AbsenceCreatedBy")
 
+  shiftPeriods UserShiftPeriod[]
+
   apiKeys ApiKey[]
 
   @@unique([unit, cardNumber])
   @@index([active])
   @@map("users")
+}
+
+model UserShiftPeriod {
+  id           String      @id @default(cuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startMinutes Int
+  endMinutes   Int
+  startedAt    DateTime
+  endedAt      DateTime?
+  source       ShiftSource
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([userId, startedAt])
+  @@index([userId, endedAt])
+  @@map("user_shift_periods")
+}
+
+model AppJob {
+  name      String   @id
+  lastRunAt DateTime
+
+  @@map("app_jobs")
 }
 
 model ApiKey {

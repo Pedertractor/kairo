@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from '@/components/app-layout'
 import { useAuth } from '@/hooks/use-auth'
 import { AdminDashboardPage } from '@/pages/admin-dashboard-page'
+import { AbsencesPage } from '@/pages/absences-page'
 import { AnalyticsPage } from '@/pages/analytics-page'
 import { ChangePasswordPage } from '@/pages/change-password-page'
 import { HomePage } from '@/pages/home-page'
@@ -130,6 +131,14 @@ function App() {
         element={
           <ProtectedRoute key="apontamentos" title="Apontamentos">
             <ApontamentosPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/ausencias"
+        element={
+          <ProtectedRoute key="ausencias" title="Ausências">
+            <AbsencesPage />
           </ProtectedRoute>
         }
       />

@@ -13,6 +13,8 @@ export interface User {
   absent: boolean
   absenceStartedAt: string | null
   absenceEndedAt: string | null
+  shiftStart: string | null
+  shiftEnd: string | null
   hasOwnedTeams: boolean
   hasTeams: boolean
 }

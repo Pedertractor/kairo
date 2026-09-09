@@ -3,6 +3,7 @@ import {
   createUserSchema,
   employeeLookupParamSchema,
   updateUserRoleSchema,
+  updateUserShiftSchema,
   userIdParamSchema,
 } from '../schemas/user.schema.js';
 import { UserService } from '../services/user.service.js';
@@ -57,6 +58,48 @@ export class UserController {
       );
 
       return sendSuccess(reply, { user }, 201, MENSAGENS.USUARIO_CRIADO_SUCESSO);
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  syncShifts = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const result = await this.service.syncShifts(request.user.sub);
+
+      return sendSuccess(
+        reply,
+        result,
+        200,
+        MENSAGENS.TURNOS_SINCRONIZADOS_SUCESSO,
+      );
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  updateShift = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const params = userIdParamSchema.safeParse(request.params);
+      const body = updateUserShiftSchema.safeParse(request.body);
+
+      if (!params.success || !body.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const user = await this.service.updateShift(
+        request.user.sub,
+        params.data.id,
+        body.data.start,
+        body.data.end,
+      );
+
+      return sendSuccess(
+        reply,
+        { user },
+        200,
+        MENSAGENS.TURNO_ATUALIZADO_SUCESSO,
+      );
     } catch (error) {
       return handleControllerError(error, reply);
     }
