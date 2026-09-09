@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useActiveTimer } from '@/hooks/use-active-timer';
-import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/lib/api-handler';
 import { fromDateKey, toDateKey } from '@/lib/date';
 import { formatDateTime } from '@/lib/time-format';
@@ -45,7 +44,6 @@ function getEntryHref(entry: UserTimeEntrySummary): string | null {
 }
 
 export function ApontamentosPage() {
-  const { user } = useAuth();
   const [timeEntries, setTimeEntries] = useState<UserTimeEntrySummary[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
@@ -127,11 +125,7 @@ export function ApontamentosPage() {
           'fixed right-6 z-20 size-14 rounded-full shadow-lg lg:right-10',
           hasTimerBar ? 'bottom-24' : 'bottom-6',
         )}
-        aria-label={
-          user?.absent ? 'Indisponível enquanto ausente' : 'Iniciar apontamento'
-        }
-        title={user?.absent ? 'Você está marcado como ausente' : undefined}
-        disabled={user?.absent}
+        aria-label='Iniciar apontamento'
         onClick={() => setStartDialogOpen(true)}
       >
         <Plus className='size-6' />

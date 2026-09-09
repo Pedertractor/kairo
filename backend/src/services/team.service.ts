@@ -9,6 +9,7 @@ import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 import { assertTeamMembership } from '../utils/team-access.js';
 import { AbsenceService } from './absence.service.js';
+import type { CurrentShift, ShiftService } from './shift.service.js';
 
 type TeamWithMembers = {
   id: string;
@@ -38,9 +39,11 @@ type CurrentAbsence = {
 function toTeamMembers(
   members: TeamWithMembers['members'],
   currentAbsenceByUserId: Map<string, CurrentAbsence>,
+  currentShiftByUserId: Map<string, CurrentShift>,
 ): TeamMemberSummary[] {
   return members.map((member) => {
     const absence = currentAbsenceByUserId.get(member.user.id);
+    const shift = currentShiftByUserId.get(member.user.id);
 
     return {
       id: member.user.id,
@@ -49,6 +52,8 @@ function toTeamMembers(
       absent: Boolean(absence),
       absenceStartedAt: absence?.startedAt ?? null,
       absenceEndedAt: absence?.endedAt ?? null,
+      shiftStart: shift?.start ?? null,
+      shiftEnd: shift?.end ?? null,
     };
   });
 }
@@ -67,6 +72,7 @@ function toTeamSummary(
   team: TeamWithMembers,
   role: TeamRole,
   currentAbsenceByUserId: Map<string, CurrentAbsence>,
+  currentShiftByUserId: Map<string, CurrentShift>,
 ): TeamSummary {
   return {
     id: team.id,
@@ -74,7 +80,11 @@ function toTeamSummary(
     description: team.description,
     createdById: team.createdById,
     memberCount: team._count.members,
-    members: toTeamMembers(team.members, currentAbsenceByUserId),
+    members: toTeamMembers(
+      team.members,
+      currentAbsenceByUserId,
+      currentShiftByUserId,
+    ),
     costCenters: toTeamCostCenters(team.costCenters),
     role,
     active: team.active,
@@ -92,6 +102,7 @@ export class TeamService {
     private readonly absenceService: AbsenceService,
     private readonly absenceRepository: AbsenceRepository,
     private readonly costCenterRepository: CostCenterRepository,
+    private readonly shiftService: ShiftService,
   ) {}
 
   private async loadCurrentAbsenceByUserIds(
@@ -112,6 +123,15 @@ export class TeamService {
     }
 
     return map;
+  }
+
+  private async loadTeamContext(memberIds: string[]) {
+    const [currentAbsenceByUserId, currentShiftByUserId] = await Promise.all([
+      this.loadCurrentAbsenceByUserIds(memberIds),
+      this.shiftService.getCurrentByUserIds(memberIds),
+    ]);
+
+    return { currentAbsenceByUserId, currentShiftByUserId };
   }
 
   private async requireTeamAdmin(
@@ -147,11 +167,16 @@ export class TeamService {
         ),
       ),
     ];
-    const currentAbsenceByUserId =
-      await this.loadCurrentAbsenceByUserIds(memberIds);
+    const { currentAbsenceByUserId, currentShiftByUserId } =
+      await this.loadTeamContext(memberIds);
 
     return memberships.map((membership) =>
-      toTeamSummary(membership.team, membership.role, currentAbsenceByUserId),
+      toTeamSummary(
+        membership.team,
+        membership.role,
+        currentAbsenceByUserId,
+        currentShiftByUserId,
+      ),
     );
   }
 
@@ -165,14 +190,16 @@ export class TeamService {
       allowInactiveAdmin: true,
     });
 
-    const currentAbsenceByUserId = await this.loadCurrentAbsenceByUserIds(
-      allowed.team.members.map((member) => member.user.id),
-    );
+    const { currentAbsenceByUserId, currentShiftByUserId } =
+      await this.loadTeamContext(
+        allowed.team.members.map((member) => member.user.id),
+      );
 
     return toTeamSummary(
       allowed.team,
       allowed.role,
       currentAbsenceByUserId,
+      currentShiftByUserId,
     );
   }
 
@@ -335,6 +362,30 @@ export class TeamService {
       endDate: options?.endDate,
       createdById: actorUserId,
     });
+
+    return this.getTeamForMember(teamId, actorUserId);
+  }
+
+  async updateMemberShift(
+    teamId: string,
+    actorUserId: string,
+    targetUserId: string,
+    start: string,
+    end: string,
+  ): Promise<TeamSummary> {
+    await this.requireTeamAdmin(teamId, actorUserId, { forWrite: true });
+
+    const targetMembership =
+      await this.teamRepository.findMembershipByTeamAndUser(
+        teamId,
+        targetUserId,
+      );
+
+    if (!targetMembership) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    await this.shiftService.setManualShift(targetUserId, start, end);
 
     return this.getTeamForMember(teamId, actorUserId);
   }

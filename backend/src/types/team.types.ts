@@ -8,6 +8,8 @@ export interface TeamMemberSummary {
   absent: boolean;
   absenceStartedAt: string | null;
   absenceEndedAt: string | null;
+  shiftStart: string | null;
+  shiftEnd: string | null;
 }
 
 export interface TeamUserOption {

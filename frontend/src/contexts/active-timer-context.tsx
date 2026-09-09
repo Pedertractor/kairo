@@ -9,7 +9,6 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from 'react';
-import { toast } from 'sonner';
 
 import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/lib/api-handler';
@@ -95,7 +94,7 @@ function toPausedTarget(activeTimer: ActiveTimer): PausedTimerTarget | null {
 }
 
 export function ActiveTimerProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { refreshUser } = useAuth();
   const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(null);
   const [pausedTarget, setPausedTarget] = useState<PausedTimerTarget | null>(
     () => readPausedTimerTarget(),
@@ -158,11 +157,6 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
   }, [activeTimer, elapsedStore]);
 
   const startTimer = useCallback(async (teamId: string, activityId: string) => {
-    if (user?.absent) {
-      toast.error('Você está ausente e não pode iniciar apontamentos.');
-      return;
-    }
-
     setIsStarting(true);
     try {
       const data = await api<StartTimerResponse>(
@@ -174,18 +168,14 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
       invalidateHomeData();
       invalidateTaskData();
       invalidateActivityData();
+      await refreshUser();
     } finally {
       setIsStarting(false);
     }
-  }, [clearPausedTarget, user?.absent]);
+  }, [clearPausedTarget, refreshUser]);
 
   const startTaskTimer = useCallback(
     async (projectId: string, taskId: string) => {
-      if (user?.absent) {
-        toast.error('Você está ausente e não pode iniciar apontamentos.');
-        return;
-      }
-
       setIsStarting(true);
 
       try {
@@ -198,11 +188,12 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
         invalidateHomeData();
         invalidateTaskData();
         invalidateActivityData();
+        await refreshUser();
       } finally {
         setIsStarting(false);
       }
     },
-    [clearPausedTarget, user?.absent],
+    [clearPausedTarget, refreshUser],
   );
 
   const pauseTimer = useCallback(async () => {

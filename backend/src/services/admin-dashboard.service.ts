@@ -1,4 +1,5 @@
 import { AdminDashboardRepository } from '../repositories/admin-dashboard.repository.js';
+import { ShiftRepository } from '../repositories/shift.repository.js';
 import type {
   AdminDashboard,
   AdminDailyUsage,
@@ -158,7 +159,10 @@ function fillStatusCounts(
 }
 
 export class AdminDashboardService {
-  constructor(private readonly repository: AdminDashboardRepository) {}
+  constructor(
+    private readonly repository: AdminDashboardRepository,
+    private readonly shiftRepository: ShiftRepository,
+  ) {}
 
   async getDashboard(options: {
     startDate?: string;
@@ -214,6 +218,12 @@ export class AdminDashboardService {
       ? [selectedUser.id]
       : users.filter((user) => user.active).map((user) => user.id);
 
+    const shiftPeriods = await this.shiftRepository.findOverlappingRange(
+      scopedUserIds,
+      periodStart,
+      periodEnd,
+    );
+
     const absencesByUser = new Map<
       string,
       Array<{ startedAt: Date; endedAt: Date | null }>
@@ -223,6 +233,27 @@ export class AdminDashboardService {
       const list = absencesByUser.get(period.userId) ?? [];
       list.push({ startedAt: period.startedAt, endedAt: period.endedAt });
       absencesByUser.set(period.userId, list);
+    }
+
+    const shiftsByUser = new Map<
+      string,
+      Array<{
+        startMinutes: number;
+        endMinutes: number;
+        startedAt: Date;
+        endedAt: Date | null;
+      }>
+    >();
+
+    for (const period of shiftPeriods) {
+      const list = shiftsByUser.get(period.userId) ?? [];
+      list.push({
+        startMinutes: period.startMinutes,
+        endMinutes: period.endMinutes,
+        startedAt: period.startedAt,
+        endedAt: period.endedAt,
+      });
+      shiftsByUser.set(period.userId, list);
     }
 
     const availabilityByUser = new Map<string, number>();
@@ -235,6 +266,7 @@ export class AdminDashboardService {
           periodStart,
           periodEnd,
           now,
+          shiftsByUser.get(userId) ?? [],
         ),
       );
     }

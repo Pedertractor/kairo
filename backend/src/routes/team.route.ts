@@ -4,11 +4,13 @@ import { createRequireAdminOrLeader } from '../middleware/require-admin-or-leade
 import { AbsenceRepository } from '../repositories/absence.repository.js';
 import { CardRepository } from '../repositories/card.repository.js';
 import { CostCenterRepository } from '../repositories/cost-center.repository.js';
+import { ShiftRepository } from '../repositories/shift.repository.js';
 import { TaskRepository } from '../repositories/task.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
 import { UserRepository } from '../repositories/user.repository.js';
 import { AbsenceService } from '../services/absence.service.js';
+import { ShiftService } from '../services/shift.service.js';
 import { TeamService } from '../services/team.service.js';
 
 export async function teamRoutes(app: FastifyInstance) {
@@ -29,6 +31,7 @@ export async function teamRoutes(app: FastifyInstance) {
       absenceService,
       absenceRepository,
       new CostCenterRepository(app.prisma),
+      new ShiftService(new ShiftRepository(app.prisma)),
     ),
   );
 
@@ -84,6 +87,11 @@ export async function teamRoutes(app: FastifyInstance) {
     '/teams/:id/members/:userId/absent',
     { preHandler: [app.authenticate] },
     controller.updateMemberAbsent,
+  );
+  app.patch(
+    '/teams/:id/members/:userId/shift',
+    { preHandler: [app.authenticate] },
+    controller.updateMemberShift,
   );
   app.post(
     '/teams',

@@ -60,13 +60,7 @@ export function HomePage() {
               'fixed right-6 z-20 size-14 rounded-full shadow-lg lg:right-10',
               hasTimerBar ? 'bottom-24' : 'bottom-6',
             )}
-            aria-label={
-              user?.absent
-                ? 'Indisponível enquanto ausente'
-                : 'Iniciar apontamento'
-            }
-            title={user?.absent ? 'Você está marcado como ausente' : undefined}
-            disabled={user?.absent}
+            aria-label='Iniciar apontamento'
             onClick={() => setStartDialogOpen(true)}
           >
             <Plus className='size-6' />

@@ -450,6 +450,18 @@ export class TimeEntryRepository {
     });
   }
 
+  async hasAnyOnDay(userId: string, dayStart: Date, dayEnd: Date) {
+    const entry = await this.prisma.timeEntry.findFirst({
+      where: {
+        userId,
+        startedAt: { gte: dayStart, lt: dayEnd },
+      },
+      select: { id: true },
+    });
+
+    return entry !== null;
+  }
+
   findOverlappingDayByTeamId(teamId: string, dayStart: Date, dayEnd: Date) {
     return this.prisma.timeEntry.findMany({
       where: {

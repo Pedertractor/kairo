@@ -11,6 +11,7 @@ import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 import { toSafeUser } from '../utils/user.js';
 import { AbsenceService } from './absence.service.js';
+import { ShiftService } from './shift.service.js';
 
 function hashRefreshToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
@@ -25,20 +26,34 @@ export class AuthService {
     private readonly userRepository: UserRepository,
     private readonly refreshTokenRepository: RefreshTokenRepository,
     private readonly absenceService: AbsenceService,
+    private readonly shiftService: ShiftService,
   ) {}
 
   private async toAuthenticatedUser(user: User) {
-    const [hasOwnedTeams, hasTeams, currentAbsence] = await Promise.all([
-      this.userRepository.hasOwnedTeams(user.id),
-      this.userRepository.hasTeams(user.id),
-      this.absenceService.getCurrentPeriod(user.id),
-    ]);
+    const [hasOwnedTeams, hasTeams, currentAbsence, currentShift] =
+      await Promise.all([
+        this.userRepository.hasOwnedTeams(user.id),
+        this.userRepository.hasTeams(user.id),
+        this.absenceService.getCurrentPeriod(user.id),
+        this.shiftService.getCurrentByUserId(user.id),
+      ]);
 
     if (user.absent !== Boolean(currentAbsence)) {
       await this.userRepository.setAbsent(user.id, Boolean(currentAbsence));
     }
 
-    return toSafeUser(user, hasOwnedTeams, hasTeams, currentAbsence);
+    return toSafeUser(
+      user,
+      hasOwnedTeams,
+      hasTeams,
+      currentAbsence,
+      currentShift
+        ? {
+            startMinutes: currentShift.startMinutes,
+            endMinutes: currentShift.endMinutes,
+          }
+        : null,
+    );
   }
 
   async login({ cardNumber, unit, password }: LoginInput) {

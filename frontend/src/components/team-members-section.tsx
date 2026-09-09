@@ -4,6 +4,7 @@ import { ptBR as dateFnsPtBR } from 'date-fns/locale';
 import {
   CalendarCheck,
   CalendarOff,
+  Clock3,
   Crown,
   EllipsisIcon,
   UserMinus,
@@ -13,6 +14,7 @@ import {
 
 import { AddTeamMemberDialog } from '@/components/add-team-member-dialog';
 import { DemoteTeamAdminDialog } from '@/components/demote-team-admin-dialog';
+import { EditShiftDialog } from '@/components/edit-shift-dialog';
 import { PromoteTeamAdminDialog } from '@/components/promote-team-admin-dialog';
 import { RemoveTeamMemberDialog } from '@/components/remove-team-member-dialog';
 import { SetMemberAbsentDialog } from '@/components/set-member-absent-dialog';
@@ -35,6 +37,17 @@ const ROLE_LABELS: Record<TeamMemberSummary['role'], string> = {
   MEMBER: 'Membro',
 };
 
+function formatShiftLabel(
+  start: string | null,
+  end: string | null,
+): string | null {
+  if (!start || !end) {
+    return null;
+  }
+
+  return `${start} – ${end}`;
+}
+
 interface TeamMembersSectionProps {
   teamId: string;
   members: TeamMemberSummary[];
@@ -56,6 +69,8 @@ export function TeamMembersSection({
   const [memberToDemoteAdmin, setMemberToDemoteAdmin] =
     useState<TeamMemberSummary | null>(null);
   const [memberToToggleAbsent, setMemberToToggleAbsent] =
+    useState<TeamMemberSummary | null>(null);
+  const [memberToEditShift, setMemberToEditShift] =
     useState<TeamMemberSummary | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const canManageMembers = currentUserRole === 'ADMIN';
@@ -127,6 +142,19 @@ export function TeamMembersSection({
         onUpdated={onTeamUpdated}
       />
 
+      <EditShiftDialog
+        mode='team'
+        teamId={teamId}
+        target={memberToEditShift}
+        open={memberToEditShift !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setMemberToEditShift(null);
+          }
+        }}
+        onTeamUpdated={onTeamUpdated}
+      />
+
       {members.length === 0 && !canManageMembers ? (
         <p className='text-sm text-muted-foreground'>
           Nenhum membro nesta equipe.
@@ -144,6 +172,10 @@ export function TeamMembersSection({
               user?.id !== member.id &&
               member.role === 'ADMIN' &&
               adminCount > 1;
+            const shiftLabel = formatShiftLabel(
+              member.shiftStart,
+              member.shiftEnd,
+            );
             return (
               <li
                 key={member.id}
@@ -172,6 +204,7 @@ export function TeamMembersSection({
                   </div>
                   <p className='text-xs text-muted-foreground'>
                     {ROLE_LABELS[member.role]}
+                    {shiftLabel ? ` · ${shiftLabel}` : ''}
                     {member.absent
                       ? member.absenceStartedAt
                         ? ` · Ausente desde ${format(new Date(member.absenceStartedAt), 'Pp', { locale: dateFnsPtBR })}`
@@ -203,6 +236,13 @@ export function TeamMembersSection({
                         {member.absent
                           ? 'Marcar como disponível'
                           : 'Marcar como ausente'}
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
+                        onClick={() => setMemberToEditShift(member)}
+                      >
+                        <Clock3 />
+                        Alterar turno
                       </DropdownMenuItem>
 
                       {canPromoteAdmin ? (

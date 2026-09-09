@@ -117,6 +117,11 @@ export class UserRepository {
       role: UserRole;
     },
     teamId: string,
+    initialShift?: {
+      startMinutes: number;
+      endMinutes: number;
+      source: 'API' | 'MANUAL';
+    } | null,
   ) {
     return this.prisma.$transaction(async (tx) => {
       const user = await tx.user.create({ data });
@@ -128,6 +133,18 @@ export class UserRepository {
           role: 'MEMBER',
         },
       });
+
+      if (initialShift) {
+        await tx.userShiftPeriod.create({
+          data: {
+            userId: user.id,
+            startMinutes: initialShift.startMinutes,
+            endMinutes: initialShift.endMinutes,
+            startedAt: new Date(),
+            source: initialShift.source,
+          },
+        });
+      }
 
       return user;
     });
@@ -176,14 +193,39 @@ export class UserRepository {
     });
   }
 
-  create(data: {
-    employeeId: string;
-    name: string;
-    unit: UnitType;
-    cardNumber: string;
-    passwordHash: string;
-    role: UserRole;
-  }) {
-    return this.prisma.user.create({ data });
+  create(
+    data: {
+      employeeId: string;
+      name: string;
+      unit: UnitType;
+      cardNumber: string;
+      passwordHash: string;
+      role: UserRole;
+    },
+    initialShift?: {
+      startMinutes: number;
+      endMinutes: number;
+      source: 'API' | 'MANUAL';
+    } | null,
+  ) {
+    if (!initialShift) {
+      return this.prisma.user.create({ data });
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({ data });
+
+      await tx.userShiftPeriod.create({
+        data: {
+          userId: user.id,
+          startMinutes: initialShift.startMinutes,
+          endMinutes: initialShift.endMinutes,
+          startedAt: new Date(),
+          source: initialShift.source,
+        },
+      });
+
+      return user;
+    });
   }
 }

@@ -19,10 +19,8 @@ import { mergeDateTimeValue, splitDateTimeValue } from '@/lib/datetime-value'
 
 type EndMode = 'active' | 'set'
 
-const END_MODE_LABELS: Record<EndMode, string> = {
-  active: 'Em andamento',
-  set: 'Definir data e hora',
-}
+const DEFAULT_OPEN_ENDED_LABEL = 'Em andamento'
+const SET_END_LABEL = 'Definir data e hora'
 
 interface DateTimePickerFieldProps {
   id: string
@@ -30,6 +28,7 @@ interface DateTimePickerFieldProps {
   value: string | null
   onChange: (value: string | null) => void
   optional?: boolean
+  openEndedLabel?: string
   description?: string
   disabled?: boolean
 }
@@ -40,11 +39,16 @@ export function DateTimePickerField({
   value,
   onChange,
   optional = false,
+  openEndedLabel = DEFAULT_OPEN_ENDED_LABEL,
   description,
   disabled = false,
 }: DateTimePickerFieldProps) {
   const [{ date, time }, setDateTime] = useState(() => splitDateTimeValue(value))
   const endMode: EndMode = optional && !value ? 'active' : 'set'
+  const endModeLabels: Record<EndMode, string> = {
+    active: openEndedLabel,
+    set: SET_END_LABEL,
+  }
 
   useEffect(() => {
     setDateTime(splitDateTimeValue(value))
@@ -66,8 +70,8 @@ export function DateTimePickerField({
     setDateTime(next)
 
     // Native `type="time"` clears to "" on Backspace. Emitting null here would
-    // flip optional fields to "Em andamento", unmount this input, and the dialog
-    // focus manager treats that focus loss as a dismiss.
+    // flip optional fields to the open-ended mode, unmount this input, and the
+    // dialog focus manager treats that focus loss as a dismiss.
     if (!nextTime) {
       return
     }
@@ -101,13 +105,13 @@ export function DateTimePickerField({
           <SelectTrigger id={`${id}-mode`} className="w-full">
             <SelectValue>
               {(selectedValue) =>
-                END_MODE_LABELS[selectedValue as EndMode] ?? 'Selecionar'
+                endModeLabels[selectedValue as EndMode] ?? 'Selecionar'
               }
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="active">Em andamento</SelectItem>
-            <SelectItem value="set">Definir data e hora</SelectItem>
+            <SelectItem value="active">{openEndedLabel}</SelectItem>
+            <SelectItem value="set">{SET_END_LABEL}</SelectItem>
           </SelectContent>
         </Select>
       ) : null}

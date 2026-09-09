@@ -86,6 +86,8 @@ export function SetMemberAbsentDialog({
     }
   }
 
+  const isScheduled = Boolean(startDate) && new Date(startDate!) > new Date()
+
   const canSubmit =
     !isSubmitting &&
     Boolean(member) &&
@@ -107,8 +109,10 @@ export function SetMemberAbsentDialog({
                 <span className='font-medium text-foreground'>
                   {member?.name}
                 </span>{' '}
-                como ausente? O apontamento em andamento será pausado e a pessoa
-                não poderá iniciar novos apontamentos.
+                como ausente?{' '}
+                {isScheduled
+                  ? 'A ausência ficará agendada e só passará a valer no início informado. Até lá, a pessoa continua apontando normalmente.'
+                  : 'O apontamento em andamento será pausado. Se a pessoa iniciar um apontamento antes do fim da ausência, o horário de término será ajustado para o início desse apontamento.'}
               </>
             ) : (
               <>
@@ -116,7 +120,7 @@ export function SetMemberAbsentDialog({
                 <span className='font-medium text-foreground'>
                   {member?.name}
                 </span>
-                ? A pessoa voltará a poder iniciar apontamentos.
+                ? O período de ausência atual será encerrado neste momento.
               </>
             )}
           </DialogDescription>
@@ -137,6 +141,9 @@ export function SetMemberAbsentDialog({
               value={endDate}
               onChange={setEndDate}
               optional
+              openEndedLabel={
+                isScheduled ? 'Fim indeterminado' : 'Em andamento'
+              }
               disabled={isSubmitting}
             />
           </div>

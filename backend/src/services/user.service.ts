@@ -1,7 +1,8 @@
 import bcrypt from 'bcryptjs';
-import { TeamRole, UserRole } from '../generated/client.js';
+import { ShiftSource, TeamRole, UserRole } from '../generated/client.js';
 import { env } from '../config/env.js';
 import { EmployeeService } from './employee.service.js';
+import { ShiftService } from './shift.service.js';
 import { CardRepository } from '../repositories/card.repository.js';
 import { RefreshTokenRepository } from '../repositories/refresh-token.repository.js';
 import { TaskRepository } from '../repositories/task.repository.js';
@@ -16,6 +17,21 @@ import { toEmployeeId, toSafeUser } from '../utils/user.js';
 import { releaseActivityIfIdle } from './card-status-sync.js';
 import { releaseTaskIfIdle } from './task-status-sync.js';
 
+type UserRecord = {
+  id: string;
+  employeeId: string;
+  name: string;
+  unit: EmployeeLookupResult['unit'];
+  cardNumber: string;
+  passwordHash: string;
+  role: UserRole;
+  active: boolean;
+  firstLogin: boolean;
+  absent: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export class UserService {
   private readonly employeeService = new EmployeeService();
 
@@ -26,6 +42,7 @@ export class UserService {
     private readonly timeEntryRepository: TimeEntryRepository,
     private readonly taskRepository: TaskRepository,
     private readonly cardRepository: CardRepository,
+    private readonly shiftService: ShiftService,
   ) {}
 
   /** Closes a leftover running timer so it never holds a task open. */
@@ -93,6 +110,34 @@ export class UserService {
     await this.assertLeaderCanManage(actor.id, target.id);
   }
 
+  private async toSafeUsers(users: UserRecord[]): Promise<SafeUser[]> {
+    const shifts = await this.shiftService.getCurrentByUserIds(
+      users.map((user) => user.id),
+    );
+
+    return users.map((user) => {
+      const shift = shifts.get(user.id);
+
+      return toSafeUser(
+        user,
+        false,
+        false,
+        undefined,
+        shift
+          ? {
+              startMinutes: shift.startMinutes,
+              endMinutes: shift.endMinutes,
+            }
+          : null,
+      );
+    });
+  }
+
+  private async toSafeUserWithShift(user: UserRecord): Promise<SafeUser> {
+    const [mapped] = await this.toSafeUsers([user]);
+    return mapped;
+  }
+
   async lookupEmployee(
     cardNumber: string,
     unit: EmployeeLookupResult['unit'],
@@ -145,6 +190,14 @@ export class UserService {
       unit,
     );
 
+    const initialShift = employee.shift
+      ? {
+          startMinutes: employee.shift.startMinutes,
+          endMinutes: employee.shift.endMinutes,
+          source: ShiftSource.API,
+        }
+      : null;
+
     const passwordHash = await bcrypt.hash(env.DEFAULT_PASSWORD, 10);
 
     const createData = {
@@ -160,12 +213,13 @@ export class UserService {
       const user = await this.userRepository.createWithTeamMembership(
         createData,
         teamId,
+        initialShift,
       );
-      return toSafeUser(user);
+      return this.toSafeUserWithShift(user);
     }
 
-    const user = await this.userRepository.create(createData);
-    return toSafeUser(user);
+    const user = await this.userRepository.create(createData, initialShift);
+    return this.toSafeUserWithShift(user);
   }
 
   async listUsers(actorUserId: string): Promise<SafeUser[]> {
@@ -173,12 +227,12 @@ export class UserService {
 
     if (actor.role === UserRole.ADMIN) {
       const users = await this.userRepository.findAll();
-      return users.map((user) => toSafeUser(user));
+      return this.toSafeUsers(users);
     }
 
     if (actor.role === UserRole.LEADER) {
       const users = await this.userRepository.findManagedByTeamAdmin(actorUserId);
-      return users.map((user) => toSafeUser(user));
+      return this.toSafeUsers(users);
     }
 
     throw new AppError(403, MENSAGENS.PROIBIDO);
@@ -223,7 +277,7 @@ export class UserService {
     const updated = await this.userRepository.updateRole(targetUserId, {
       role,
     });
-    return toSafeUser(updated);
+    return this.toSafeUserWithShift(updated);
   }
 
   async resetPassword(
@@ -246,7 +300,7 @@ export class UserService {
     );
     await this.refreshTokenRepository.revokeAllForUser(targetUserId);
 
-    return toSafeUser(updated);
+    return this.toSafeUserWithShift(updated);
   }
 
   async deactivate(actorUserId: string, targetUserId: string): Promise<SafeUser> {
@@ -280,7 +334,7 @@ export class UserService {
     const updated = await this.userRepository.setActive(targetUserId, false);
     await this.refreshTokenRepository.revokeAllForUser(targetUserId);
     await this.stopActiveTimer(targetUserId);
-    return toSafeUser(updated);
+    return this.toSafeUserWithShift(updated);
   }
 
   async reactivate(
@@ -301,6 +355,38 @@ export class UserService {
     await this.assertCanManageTarget(actor, targetUser);
 
     const updated = await this.userRepository.setActive(targetUserId, true);
-    return toSafeUser(updated);
+    return this.toSafeUserWithShift(updated);
+  }
+
+  async updateShift(
+    actorUserId: string,
+    targetUserId: string,
+    start: string,
+    end: string,
+  ): Promise<SafeUser> {
+    const actor = await this.getActorOrThrow(actorUserId);
+    const targetUser = await this.userRepository.findById(targetUserId);
+
+    if (!targetUser) {
+      throw new AppError(404, MENSAGENS.USUARIO_NAO_ENCONTRADO);
+    }
+
+    await this.assertCanManageTarget(actor, targetUser);
+    await this.shiftService.setManualShift(targetUserId, start, end);
+
+    return this.toSafeUserWithShift(targetUser);
+  }
+
+  async syncShifts(actorUserId: string): Promise<{
+    synced: number;
+    updated: number;
+  }> {
+    const actor = await this.getActorOrThrow(actorUserId);
+
+    if (actor.role !== UserRole.ADMIN) {
+      throw new AppError(403, MENSAGENS.PROIBIDO);
+    }
+
+    return this.shiftService.syncFromExternal();
   }
 }

@@ -6,6 +6,7 @@ import {
   teamIdParamSchema,
   teamMemberParamSchema,
   updateMemberAbsentSchema,
+  updateMemberShiftSchema,
   updateTeamSchema,
 } from '../schemas/team.schema.js';
 import { setTeamCostCentersSchema } from '../schemas/cost-center.schema.js';
@@ -201,6 +202,37 @@ export class TeamController {
         { team },
         200,
         MENSAGENS.AUSENCIA_ATUALIZADA_SUCESSO,
+      );
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  updateMemberShift = async (
+    request: FastifyRequest,
+    reply: FastifyReply,
+  ) => {
+    try {
+      const params = teamMemberParamSchema.safeParse(request.params);
+      const body = updateMemberShiftSchema.safeParse(request.body);
+
+      if (!params.success || !body.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const team = await this.service.updateMemberShift(
+        params.data.id,
+        request.user.sub,
+        params.data.userId,
+        body.data.start,
+        body.data.end,
+      );
+
+      return sendSuccess(
+        reply,
+        { team },
+        200,
+        MENSAGENS.TURNO_ATUALIZADO_SUCESSO,
       );
     } catch (error) {
       return handleControllerError(error, reply);

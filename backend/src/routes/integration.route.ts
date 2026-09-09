@@ -7,6 +7,7 @@ import { CostCenterRepository } from '../repositories/cost-center.repository.js'
 import { FavoriteRepository } from '../repositories/favorite.repository.js';
 import { MachineRepository } from '../repositories/machine.repository.js';
 import { RefreshTokenRepository } from '../repositories/refresh-token.repository.js';
+import { ShiftRepository } from '../repositories/shift.repository.js';
 import { TagRepository } from '../repositories/tag.repository.js';
 import { TaskRepository } from '../repositories/task.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
@@ -15,12 +16,14 @@ import { UserRepository } from '../repositories/user.repository.js';
 import { AbsenceService } from '../services/absence.service.js';
 import { AuthService } from '../services/auth.service.js';
 import { CardService } from '../services/card.service.js';
+import { ShiftService } from '../services/shift.service.js';
 import { TagService } from '../services/tag.service.js';
 import { TeamService } from '../services/team.service.js';
 
 export async function integrationRoutes(app: FastifyInstance) {
   const userRepository = new UserRepository(app.prisma);
   const absenceRepository = new AbsenceRepository(app.prisma);
+  const shiftService = new ShiftService(new ShiftRepository(app.prisma));
   const absenceService = new AbsenceService(
     userRepository,
     absenceRepository,
@@ -34,6 +37,7 @@ export async function integrationRoutes(app: FastifyInstance) {
       userRepository,
       new RefreshTokenRepository(app.prisma),
       absenceService,
+      shiftService,
     ),
     new TeamService(
       new TeamRepository(app.prisma),
@@ -41,6 +45,7 @@ export async function integrationRoutes(app: FastifyInstance) {
       absenceService,
       absenceRepository,
       new CostCenterRepository(app.prisma),
+      shiftService,
     ),
     new TagService(
       new TagRepository(app.prisma),

@@ -1,18 +1,24 @@
 import type { FastifyInstance } from 'fastify';
 import { UserController } from '../controllers/user.controller.js';
+import { createRequireAdmin } from '../middleware/require-admin.js';
 import { createRequireAdminOrLeader } from '../middleware/require-admin-or-leader.js';
 import { CardRepository } from '../repositories/card.repository.js';
 import { RefreshTokenRepository } from '../repositories/refresh-token.repository.js';
+import { ShiftRepository } from '../repositories/shift.repository.js';
 import { TaskRepository } from '../repositories/task.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
 import { UserRepository } from '../repositories/user.repository.js';
+import { ShiftService } from '../services/shift.service.js';
 import { UserService } from '../services/user.service.js';
 
 export async function userRoutes(app: FastifyInstance) {
   const userRepository = new UserRepository(app.prisma);
   const teamRepository = new TeamRepository(app.prisma);
+  const shiftRepository = new ShiftRepository(app.prisma);
+  const shiftService = new ShiftService(shiftRepository);
   const requireAdminOrLeader = createRequireAdminOrLeader(userRepository);
+  const requireAdmin = createRequireAdmin(userRepository);
   const controller = new UserController(
     new UserService(
       userRepository,
@@ -21,6 +27,7 @@ export async function userRoutes(app: FastifyInstance) {
       new TimeEntryRepository(app.prisma),
       new TaskRepository(app.prisma),
       new CardRepository(app.prisma),
+      shiftService,
     ),
   );
 
@@ -39,10 +46,20 @@ export async function userRoutes(app: FastifyInstance) {
     { preHandler: [app.authenticate, requireAdminOrLeader] },
     controller.create,
   );
+  app.post(
+    '/users/shifts/sync',
+    { preHandler: [app.authenticate, requireAdmin] },
+    controller.syncShifts,
+  );
   app.patch(
     '/users/:id/role',
     { preHandler: [app.authenticate, requireAdminOrLeader] },
     controller.updateRole,
+  );
+  app.patch(
+    '/users/:id/shift',
+    { preHandler: [app.authenticate, requireAdminOrLeader] },
+    controller.updateShift,
   );
   app.post(
     '/users/:id/reset-password',

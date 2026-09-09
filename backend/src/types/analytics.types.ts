@@ -88,12 +88,20 @@ export interface ActivityTagOverview {
   tagName: string;
   tagColor: string | null;
   count: number;
+  createdInPeriod: number;
+  byStatus: ActivityStatusCount[];
+}
+
+export interface WorkItemStatusOverview {
+  total: number;
+  createdInPeriod: number;
   byStatus: ActivityStatusCount[];
 }
 
 export interface ActivityOverview {
-  total: number;
-  byStatus: ActivityStatusCount[];
+  activities: WorkItemStatusOverview;
+  projects: WorkItemStatusOverview;
+  tasks: WorkItemStatusOverview;
   byTag: ActivityTagOverview[];
 }
 

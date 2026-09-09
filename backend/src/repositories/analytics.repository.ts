@@ -169,48 +169,47 @@ export class AnalyticsRepository {
       },
       select: {
         id: true,
-        status: true,
-        tagId: true,
-        tag: { select: { name: true, color: true } },
         clientId: true,
         client: { select: { id: true, name: true } },
       },
     });
   }
 
-  async countAllTimeTotals(teamIds: string[], employeeId?: string) {
-    const createdByFilter = employeeId ? { createdById: employeeId } : {};
-    const [activityCount, projectCount, taskCount] = await Promise.all([
-      this.prisma.card.count({
-        where: {
-          teamId: { in: teamIds },
-          type: 'ACTIVITY',
-          deletedAt: null,
-          ...createdByFilter,
-        },
-      }),
-      this.prisma.card.count({
-        where: {
+  findCardsForStatusOverview(teamIds: string[], employeeId?: string) {
+    return this.prisma.card.findMany({
+      where: {
+        teamId: { in: teamIds },
+        deletedAt: null,
+        ...(employeeId ? { createdById: employeeId } : {}),
+      },
+      select: {
+        id: true,
+        type: true,
+        status: true,
+        createdAt: true,
+        tagId: true,
+        tag: { select: { name: true, color: true } },
+      },
+    });
+  }
+
+  findTasksForStatusOverview(teamIds: string[], employeeId?: string) {
+    return this.prisma.task.findMany({
+      where: {
+        deletedAt: null,
+        ...(employeeId ? { createdById: employeeId } : {}),
+        card: {
           teamId: { in: teamIds },
           type: 'PROJECT',
           deletedAt: null,
-          ...createdByFilter,
         },
-      }),
-      this.prisma.task.count({
-        where: {
-          deletedAt: null,
-          ...createdByFilter,
-          card: {
-            teamId: { in: teamIds },
-            type: 'PROJECT',
-            deletedAt: null,
-          },
-        },
-      }),
-    ]);
-
-    return { activityCount, projectCount, taskCount };
+      },
+      select: {
+        id: true,
+        status: true,
+        createdAt: true,
+      },
+    });
   }
 
   findTasksForClientAnalytics(

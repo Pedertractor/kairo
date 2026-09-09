@@ -3,11 +3,13 @@ import { AuthController } from '../controllers/auth.controller.js';
 import { AbsenceRepository } from '../repositories/absence.repository.js';
 import { CardRepository } from '../repositories/card.repository.js';
 import { RefreshTokenRepository } from '../repositories/refresh-token.repository.js';
+import { ShiftRepository } from '../repositories/shift.repository.js';
 import { TaskRepository } from '../repositories/task.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
 import { UserRepository } from '../repositories/user.repository.js';
 import { AbsenceService } from '../services/absence.service.js';
 import { AuthService } from '../services/auth.service.js';
+import { ShiftService } from '../services/shift.service.js';
 
 export async function authRoutes(app: FastifyInstance) {
   const userRepository = new UserRepository(app.prisma);
@@ -22,6 +24,7 @@ export async function authRoutes(app: FastifyInstance) {
         new TaskRepository(app.prisma),
         new CardRepository(app.prisma),
       ),
+      new ShiftService(new ShiftRepository(app.prisma)),
     ),
   );
 

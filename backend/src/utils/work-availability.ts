@@ -7,9 +7,17 @@ export interface AbsenceInterval {
   endedAt: Date | null;
 }
 
+export interface ShiftPeriodInterval {
+  startMinutes: number;
+  endMinutes: number;
+  startedAt: Date;
+  endedAt: Date | null;
+}
+
 interface DaySlice {
   start: number;
   end: number;
+  dateKey: string;
 }
 
 const MAX_CACHED_PERIODS = 256;
@@ -46,7 +54,7 @@ function getPeriodDaySlices(
       break;
     }
 
-    slices.push({ start: sliceStart, end: sliceEnd });
+    slices.push({ start: sliceStart, end: sliceEnd, dateKey });
 
     if (dayEnd.getTime() >= periodEndMs) {
       break;
@@ -113,36 +121,108 @@ function absentSecondsInSlice(
   return Math.floor(totalMilliseconds / 1000);
 }
 
+function resolveShiftForDay(
+  shifts: ShiftPeriodInterval[],
+  dayStartMs: number,
+  dayEndMs: number,
+): ShiftPeriodInterval | null {
+  let match: ShiftPeriodInterval | null = null;
+
+  for (const shift of shifts) {
+    if (shift.startedAt.getTime() >= dayEndMs) {
+      break;
+    }
+
+    if (shift.endedAt !== null && shift.endedAt.getTime() <= dayStartMs) {
+      continue;
+    }
+
+    match = shift;
+  }
+
+  return match;
+}
+
 export function calculateAvailabilitySeconds(
   absences: AbsenceInterval[],
   periodStart: Date,
   periodEndExclusive: Date,
   now = new Date(),
+  shifts: ShiftPeriodInterval[] = [],
 ): number {
   const slices = getPeriodDaySlices(periodStart, periodEndExclusive);
 
-  if (absences.length === 0) {
-    return slices.length * DAILY_AVAILABILITY_SECONDS;
-  }
-
-  const sorted =
+  const sortedAbsences =
     absences.length > 1
       ? [...absences].sort(
           (left, right) =>
             left.startedAt.getTime() - right.startedAt.getTime(),
         )
       : absences;
-  const nowMs = now.getTime();
 
+  const sortedShifts =
+    shifts.length > 1
+      ? [...shifts].sort(
+          (left, right) =>
+            left.startedAt.getTime() - right.startedAt.getTime(),
+        )
+      : shifts;
+
+  const nowMs = now.getTime();
   let availabilitySeconds = 0;
 
   for (const slice of slices) {
+    const { dayStart, dayEnd } = parseDayBounds(slice.dateKey);
+    const dayStartMs = dayStart.getTime();
+    const dayEndMs = dayEnd.getTime();
+    const shift = resolveShiftForDay(sortedShifts, dayStartMs, dayEndMs);
+
+    const dailyCapacitySeconds = shift
+      ? (shift.endMinutes - shift.startMinutes) * 60
+      : DAILY_AVAILABILITY_SECONDS;
+
+    if (dailyCapacitySeconds <= 0) {
+      continue;
+    }
+
+    const windowStart = shift
+      ? dayStartMs + shift.startMinutes * 60_000
+      : slice.start;
+    const windowEnd = shift
+      ? dayStartMs + shift.endMinutes * 60_000
+      : slice.end;
+
+    const effectiveSlice: DaySlice = {
+      start: Math.max(slice.start, windowStart),
+      // Do not charge future shift time. For the current day, occupation grows
+      // against elapsed scheduled time; future days contribute no capacity.
+      end: Math.min(slice.end, windowEnd, nowMs),
+      dateKey: slice.dateKey,
+    };
+
+    if (effectiveSlice.start >= effectiveSlice.end) {
+      continue;
+    }
+
+    if (sortedAbsences.length === 0) {
+      const openSeconds = Math.floor(
+        (effectiveSlice.end - effectiveSlice.start) / 1000,
+      );
+      availabilitySeconds += Math.min(dailyCapacitySeconds, openSeconds);
+      continue;
+    }
+
     const absentSeconds = Math.min(
-      DAILY_AVAILABILITY_SECONDS,
-      absentSecondsInSlice(sorted, slice, nowMs),
+      dailyCapacitySeconds,
+      absentSecondsInSlice(sortedAbsences, effectiveSlice, nowMs),
     );
 
-    availabilitySeconds += DAILY_AVAILABILITY_SECONDS - absentSeconds;
+    const openSeconds = Math.floor(
+      (effectiveSlice.end - effectiveSlice.start) / 1000,
+    );
+    const capacityInPeriod = Math.min(dailyCapacitySeconds, openSeconds);
+
+    availabilitySeconds += capacityInPeriod - absentSeconds;
   }
 
   return availabilitySeconds;
