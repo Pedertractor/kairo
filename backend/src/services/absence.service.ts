@@ -3,7 +3,7 @@ import { CardRepository } from '../repositories/card.repository.js';
 import { TaskRepository } from '../repositories/task.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
 import { UserRepository } from '../repositories/user.repository.js';
-import { UserRole, type User } from '../generated/client.js';
+import type { User } from '../generated/client.js';
 import { AppError } from '../utils/errors.js';
 import { formatDateKey, parseDayBounds } from '../utils/app-timezone.js';
 import { MENSAGENS } from '../utils/response.js';
@@ -77,9 +77,7 @@ export class AbsenceService {
   }> {
     const actor = await this.getActiveUser(actorUserId);
     const visibleUsers =
-      actor.role === UserRole.ADMIN
-        ? await this.userRepository.findAll()
-        : await this.userRepository.findManagedByTeamAdmin(actorUserId);
+      await this.userRepository.findManagedByTeamAdmin(actorUserId);
     const usersById = new Map(
       [actor, ...visibleUsers].map((user) => [user.id, user]),
     );
@@ -88,10 +86,7 @@ export class AbsenceService {
       .filter((user) => user.active)
       .sort((left, right) => left.name.localeCompare(right.name))
       .map((user) => ({ id: user.id, name: user.name }));
-    const periods = await this.absenceRepository.findVisible(
-      visibleUserIds,
-      actorUserId,
-    );
+    const periods = await this.absenceRepository.findVisible(visibleUserIds);
     const nowMs = Date.now();
 
     return {
@@ -105,11 +100,7 @@ export class AbsenceService {
         startedAt: period.startedAt.toISOString(),
         endedAt: period.endedAt?.toISOString() ?? null,
         createdAt: period.createdAt.toISOString(),
-        canCancel:
-          period.startedAt.getTime() > nowMs &&
-          (period.userId === actorUserId ||
-            period.createdById === actorUserId ||
-            usersById.has(period.userId)),
+        canCancel: period.startedAt.getTime() > nowMs,
       })),
     };
   }
@@ -120,14 +111,11 @@ export class AbsenceService {
     startDate: string,
     endDate?: string | null,
   ): Promise<void> {
-    const actor = await this.getActiveUser(actorUserId);
-    const canManage =
-      actorUserId === targetUserId ||
-      actor.role === UserRole.ADMIN ||
-      (await this.userRepository.canLeaderManageUser(
-        actorUserId,
-        targetUserId,
-      ));
+    await this.getActiveUser(actorUserId);
+    const canManage = await this.canManageAbsenceTarget(
+      actorUserId,
+      targetUserId,
+    );
 
     if (!canManage) {
       throw new AppError(403, MENSAGENS.PROIBIDO);
@@ -141,7 +129,7 @@ export class AbsenceService {
   }
 
   async cancelFuture(actorUserId: string, absenceId: string): Promise<void> {
-    const actor = await this.getActiveUser(actorUserId);
+    await this.getActiveUser(actorUserId);
     const period = await this.absenceRepository.findById(absenceId);
 
     if (!period) {
@@ -149,13 +137,8 @@ export class AbsenceService {
     }
 
     const canManage =
-      period.userId === actorUserId ||
       period.createdById === actorUserId ||
-      actor.role === UserRole.ADMIN ||
-      (await this.userRepository.canLeaderManageUser(
-        actorUserId,
-        period.userId,
-      ));
+      (await this.canManageAbsenceTarget(actorUserId, period.userId));
 
     if (!canManage) {
       throw new AppError(403, MENSAGENS.PROIBIDO);
@@ -254,6 +237,17 @@ export class AbsenceService {
     }
 
     return updated;
+  }
+
+  private async canManageAbsenceTarget(
+    actorUserId: string,
+    targetUserId: string,
+  ): Promise<boolean> {
+    if (actorUserId === targetUserId) {
+      return true;
+    }
+
+    return this.userRepository.canLeaderManageUser(actorUserId, targetUserId);
   }
 
   private async getActiveUser(userId: string): Promise<User> {

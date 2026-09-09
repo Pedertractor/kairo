@@ -45,7 +45,7 @@ Each change (API sync or a leader edit) closes the previous `UserShiftPeriod` an
 **Setup**
 
 - Same shift and day
-- Admin marks the person absent from 06:15 until 09:14
+- A team admin marks the person absent from 06:15 until 09:14
 - Time entry starts at 09:15
 - Snapshot at 12:00
 
@@ -83,7 +83,7 @@ A person who already knows they will be off tomorrow in a given window can regis
 | Past day | Allowed only if that user already has a time entry on that day |
 | Today | Allowed only if that user has **not** started any time entry yet |
 
-Admins see absences they created and absences of people they manage. Regular users see only their own. Only **future** absences can be cancelled.
+Team admins see and create absences only for members of teams they administer. Application admins have no global access on this page. Regular members can create only their own absences. Only **future** absences can be cancelled.
 
 ---
 

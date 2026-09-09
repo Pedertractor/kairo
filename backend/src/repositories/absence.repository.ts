@@ -10,10 +10,10 @@ function coveringOnWhere(on: Date) {
 export class AbsenceRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  findVisible(userIds: string[], createdById: string) {
+  findVisible(userIds: string[]) {
     return this.prisma.userAbsencePeriod.findMany({
       where: {
-        OR: [{ userId: { in: userIds } }, { createdById }],
+        userId: { in: userIds },
       },
       include: {
         user: { select: { id: true, name: true } },

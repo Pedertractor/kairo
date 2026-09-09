@@ -34,8 +34,17 @@ function createService(options?: {
   covering?: { id: string; startedAt: Date; endedAt: Date | null } | null;
   open?: unknown;
   overlapping?: unknown;
+  actor?: User;
+  canLeaderManageUser?: boolean;
+  managedUsers?: User[];
+  users?: User[];
 }) {
-  const user = makeUser();
+  const user = options?.actor ?? makeUser();
+  const knownUsers = new Map(
+    [user, ...(options?.managedUsers ?? []), ...(options?.users ?? [])].map(
+      (known) => [known.id, known],
+    ),
+  );
   let covering = options?.covering ?? null;
   const created: Array<{
     userId: string;
@@ -45,17 +54,22 @@ function createService(options?: {
   }> = [];
   const closed: Array<{ id: string; endedAt: Date }> = [];
   const deleted: string[] = [];
+  const findAllCalls: number[] = [];
   let absentFlag: boolean | null = null;
 
   const userRepository = {
-    findById: async () => user,
-    setAbsent: async (_id: string, absent: boolean) => {
+    findById: async (id: string) => knownUsers.get(id) ?? null,
+    setAbsent: async (id: string, absent: boolean) => {
       absentFlag = absent;
-      return { ...user, absent };
+      const target = knownUsers.get(id) ?? user;
+      return { ...target, absent };
     },
-    canLeaderManageUser: async () => false,
-    findAll: async () => [user],
-    findManagedByTeamAdmin: async () => [],
+    canLeaderManageUser: async () => options?.canLeaderManageUser ?? false,
+    findAll: async () => {
+      findAllCalls.push(1);
+      return [...knownUsers.values()];
+    },
+    findManagedByTeamAdmin: async () => options?.managedUsers ?? [],
   };
 
   const absenceRepository = {
@@ -131,6 +145,7 @@ function createService(options?: {
     ) => {
       covering = next;
     },
+    findAllCalls,
   };
 }
 
@@ -318,5 +333,130 @@ describe('AbsenceService cancel and early return', () => {
     );
 
     assert.equal(closed.length, 0);
+  });
+});
+
+describe('AbsenceService team-scoped access', () => {
+  it('lets a team admin create an absence for a managed member', async () => {
+    const today = formatDateKey(new Date());
+    const tomorrow = shiftDateKey(today, 1);
+    const member = makeUser({ id: 'member-1', name: 'Bruno' });
+    const { service, created } = createService({
+      actor: makeUser({ id: 'leader-1', role: UserRole.LEADER }),
+      canLeaderManageUser: true,
+      users: [member],
+    });
+
+    await service.createForActor(
+      'leader-1',
+      member.id,
+      isoAt(tomorrow, 6, 15),
+      isoAt(tomorrow, 10, 0),
+    );
+
+    assert.equal(created.length, 1);
+    assert.equal(created[0]?.userId, member.id);
+    assert.equal(created[0]?.createdById, 'leader-1');
+  });
+
+  it('rejects a member creating an absence for someone else', async () => {
+    const today = formatDateKey(new Date());
+    const tomorrow = shiftDateKey(today, 1);
+    const { service } = createService({
+      users: [makeUser({ id: 'other-user', name: 'Carlos' })],
+    });
+
+    await assert.rejects(
+      () =>
+        service.createForActor(
+          'user-1',
+          'other-user',
+          isoAt(tomorrow, 6, 15),
+          isoAt(tomorrow, 10, 0),
+        ),
+      (error: unknown) => {
+        assert.ok(error instanceof AppError);
+        assert.equal(error.statusCode, 403);
+        assert.equal(error.message, MENSAGENS.PROIBIDO);
+        return true;
+      },
+    );
+  });
+
+  it('does not let an application admin create an absence for unmanaged users', async () => {
+    const today = formatDateKey(new Date());
+    const tomorrow = shiftDateKey(today, 1);
+    const { service } = createService({
+      actor: makeUser({ id: 'admin-1', role: UserRole.ADMIN }),
+      canLeaderManageUser: false,
+      users: [makeUser({ id: 'other-user', name: 'Carlos' })],
+    });
+
+    await assert.rejects(
+      () =>
+        service.createForActor(
+          'admin-1',
+          'other-user',
+          isoAt(tomorrow, 6, 15),
+          isoAt(tomorrow, 10, 0),
+        ),
+      (error: unknown) => {
+        assert.ok(error instanceof AppError);
+        assert.equal(error.statusCode, 403);
+        return true;
+      },
+    );
+  });
+
+  it('lists only the actor and members of teams they administer', async () => {
+    const actor = makeUser({ id: 'leader-1', role: UserRole.ADMIN });
+    const member = makeUser({ id: 'member-1', name: 'Bruno' });
+    const { service, findAllCalls } = createService({
+      actor,
+      managedUsers: [member],
+    });
+
+    const result = await service.listForActor(actor.id);
+
+    assert.equal(findAllCalls.length, 0);
+    assert.deepEqual(
+      result.users.map((item) => item.id).sort(),
+      ['leader-1', 'member-1'],
+    );
+  });
+
+  it('refuses an application admin cancelling an unmanaged absence', async () => {
+    const tomorrow = shiftDateKey(formatDateKey(new Date()), 1);
+    const admin = makeUser({ id: 'admin-1', role: UserRole.ADMIN });
+    const service = new AbsenceService(
+      {
+        findById: async () => admin,
+        canLeaderManageUser: async () => false,
+      } as never,
+      {
+        findById: async () => ({
+          id: 'absence-other',
+          userId: 'other-user',
+          createdById: 'other-user',
+          startedAt: zonedDateTimeToUtc(tomorrow, 6, 15),
+          endedAt: zonedDateTimeToUtc(tomorrow, 10, 0),
+        }),
+        delete: async () => {
+          throw new Error('must not cancel an unmanaged absence');
+        },
+      } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    await assert.rejects(
+      () => service.cancelFuture(admin.id, 'absence-other'),
+      (error: unknown) => {
+        assert.ok(error instanceof AppError);
+        assert.equal(error.statusCode, 403);
+        return true;
+      },
+    );
   });
 });

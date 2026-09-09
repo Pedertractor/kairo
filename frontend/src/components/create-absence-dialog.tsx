@@ -85,8 +85,9 @@ export function CreateAbsenceDialog({
         <DialogHeader>
           <DialogTitle>Nova ausência</DialogTitle>
           <DialogDescription>
-            Informe a pessoa e o período que deve ser descontado da
-            disponibilidade.
+            {users.length > 1
+              ? 'Selecione um membro da equipe e o período que deve ser descontado da disponibilidade.'
+              : 'Informe o período que deve ser descontado da sua disponibilidade.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -94,7 +95,7 @@ export function CreateAbsenceDialog({
           {users.length > 1 ? (
             <div className='space-y-2'>
               <label className='text-sm font-medium' htmlFor='absence-user'>
-                Usuário
+                Membro
               </label>
               <Select
                 value={userId}

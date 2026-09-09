@@ -81,7 +81,9 @@ export function AbsencesPage() {
         <div>
           <h1 className='text-2xl font-semibold tracking-tight'>Ausências</h1>
           <p className='text-sm text-muted-foreground'>
-            Consulte o histórico e agende períodos de ausência.
+            {user?.hasOwnedTeams
+              ? 'Consulte e agende ausências dos membros das suas equipes.'
+              : 'Agende e consulte os seus períodos de ausência.'}
           </p>
         </div>
         <Button onClick={() => setIsCreateOpen(true)}>
@@ -90,15 +92,17 @@ export function AbsencesPage() {
         </Button>
       </div>
 
-      <div className='relative max-w-md'>
-        <Search className='absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
-        <Input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder='Buscar por usuário ou criador'
-          className='pl-9'
-        />
-      </div>
+      {users.length > 1 ? (
+        <div className='relative max-w-md'>
+          <Search className='absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
+          <Input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder='Buscar por usuário ou criador'
+            className='pl-9'
+          />
+        </div>
+      ) : null}
 
       {isLoading ? (
         <div className='space-y-3'>
