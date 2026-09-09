@@ -51,11 +51,18 @@ export interface RecentWorkItem {
   taskId: string | null;
 }
 
+export interface DayTimelineTag {
+  id: string;
+  name: string;
+  color: string;
+}
+
 export interface DayTimelineBlock {
   id: string;
   title: string;
   kind: RecentWorkItemKind;
   teamId: string;
+  tag: DayTimelineTag | null;
   startedAt: string;
   endedAt: string | null;
   isActive: boolean;

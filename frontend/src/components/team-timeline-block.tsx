@@ -1,3 +1,4 @@
+import { ActivityTagBadge } from '@/components/activity-tag-badge';
 import {
   Tooltip,
   TooltipContent,
@@ -58,6 +59,7 @@ export function TeamTimelineBlock({
               left: `calc(${leftPercent}% + ${COLUMN_GAP_PX / 2}px)`,
               width: `calc(${widthPercent}% - ${COLUMN_GAP_PX}px)`,
               backgroundColor: colors.backgroundColor,
+              color: colors.textColor,
             }}
           >
             {showTitle ? (
@@ -95,6 +97,9 @@ export function TeamTimelineBlock({
           <p className='max-w-48 text-sm font-semibold'>{block.title}</p>
           <p className='text-xs text-muted-foreground'>{block.userName}</p>
           <p className='text-xs text-muted-foreground'>{timeRange}</p>
+          {block.tag ? (
+            <ActivityTagBadge tag={block.tag} className='mt-1' />
+          ) : null}
         </div>
       </TooltipContent>
     </Tooltip>

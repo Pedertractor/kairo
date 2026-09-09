@@ -1,3 +1,5 @@
+import type { ActivityTag } from '@/types/tag';
+
 export type TimeEntryType = 'TIMER' | 'MANUAL';
 
 export interface TimeEntrySummary {
@@ -77,6 +79,7 @@ export interface DayTimelineBlock {
   title: string;
   kind: RecentWorkItemKind;
   teamId: string;
+  tag: ActivityTag | null;
   startedAt: string;
   endedAt: string | null;
   isActive: boolean;

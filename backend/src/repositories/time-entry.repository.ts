@@ -326,9 +326,15 @@ export class TimeEntryRepository {
 
   findByTeamId(
     teamId: string,
-    options: { date?: string; skip: number; take: number },
+    options: {
+      date?: string;
+      userId?: string;
+      activeOnly?: boolean;
+      skip: number;
+      take: number;
+    },
   ) {
-    const where = this.buildTeamEntriesWhere(teamId, options.date);
+    const where = this.buildTeamEntriesWhere(teamId, options);
 
     return this.prisma.timeEntry.findMany({
       where,
@@ -339,38 +345,50 @@ export class TimeEntryRepository {
     });
   }
 
-  countByTeamId(teamId: string, date?: string) {
-    const where = this.buildTeamEntriesWhere(teamId, date);
+  countByTeamId(
+    teamId: string,
+    options?: { date?: string; userId?: string; activeOnly?: boolean },
+  ) {
+    const where = this.buildTeamEntriesWhere(teamId, options);
 
     return this.prisma.timeEntry.count({ where });
   }
 
   private buildTeamEntriesWhere(
     teamId: string,
-    date?: string,
+    options?: { date?: string; userId?: string; activeOnly?: boolean },
   ): Prisma.TimeEntryWhereInput {
-    const teamFilter: Prisma.TimeEntryWhereInput = {
-      OR: [
-        { card: { teamId, deletedAt: null } },
-        { task: { deletedAt: null, card: { teamId, deletedAt: null } } },
-      ],
-    };
+    const filters: Prisma.TimeEntryWhereInput[] = [
+      {
+        OR: [
+          { card: { teamId, deletedAt: null } },
+          { task: { deletedAt: null, card: { teamId, deletedAt: null } } },
+        ],
+      },
+    ];
 
-    if (!date) {
-      return teamFilter;
+    if (options?.userId) {
+      filters.push({ userId: options.userId });
     }
 
-    const { dayStart, dayEnd } = parseDayBounds(date);
+    if (options?.activeOnly) {
+      filters.push({ endedAt: null });
+    }
 
-    return {
-      AND: [
-        teamFilter,
-        {
-          startedAt: { lt: dayEnd },
-          OR: [{ endedAt: { gt: dayStart } }, { endedAt: null }],
-        },
-      ],
-    };
+    if (options?.date) {
+      const { dayStart, dayEnd } = parseDayBounds(options.date);
+
+      filters.push({
+        startedAt: { lt: dayEnd },
+        OR: [{ endedAt: { gt: dayStart } }, { endedAt: null }],
+      });
+    }
+
+    if (filters.length === 1) {
+      return filters[0]!;
+    }
+
+    return { AND: filters };
   }
 
   private buildUserEntriesWhere(
@@ -430,6 +448,7 @@ export class TimeEntryRepository {
             title: true,
             type: true,
             teamId: true,
+            tag: { select: { id: true, name: true, color: true } },
           },
         },
         task: {
@@ -442,6 +461,7 @@ export class TimeEntryRepository {
                 title: true,
                 type: true,
                 teamId: true,
+                tag: { select: { id: true, name: true, color: true } },
               },
             },
           },
@@ -492,6 +512,7 @@ export class TimeEntryRepository {
             title: true,
             type: true,
             teamId: true,
+            tag: { select: { id: true, name: true, color: true } },
           },
         },
         task: {
@@ -504,6 +525,7 @@ export class TimeEntryRepository {
                 title: true,
                 type: true,
                 teamId: true,
+                tag: { select: { id: true, name: true, color: true } },
               },
             },
           },

@@ -303,7 +303,10 @@ export function TeamDetailPage() {
 
             {team.role === 'ADMIN' ? (
               <TabsContent value='apontamentos'>
-                <TeamTimeEntriesSection teamId={team.id} />
+                <TeamTimeEntriesSection
+                  teamId={team.id}
+                  members={team.members}
+                />
               </TabsContent>
             ) : null}
 

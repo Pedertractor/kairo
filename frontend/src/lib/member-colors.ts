@@ -1,10 +1,23 @@
+import { getContrastingTextColor } from '@/lib/tag-colors';
+
 export interface MemberColorScheme {
   bar: string;
   subtext: string;
   backgroundColor: string;
+  textColor?: string;
 }
 
 const GOLDEN_ANGLE_DEGREES = 137.508;
+
+/** Timeline blocks of tagged activities follow the tag color instead of the member color. */
+export function buildTagColorScheme(tagColor: string): MemberColorScheme {
+  return {
+    bar: '',
+    subtext: 'opacity-80',
+    backgroundColor: tagColor,
+    textColor: getContrastingTextColor(tagColor),
+  };
+}
 
 export function buildMemberColorMap(
   userIds: string[],

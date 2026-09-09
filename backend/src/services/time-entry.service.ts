@@ -212,6 +212,7 @@ function mapDayEntryToBlock(
       title: `${parentCard.title} · ${entry.task.title}`,
       kind: 'TASK',
       teamId: parentCard.teamId,
+      tag: parentCard.tag,
       startedAt: clipped.startedAt,
       endedAt: clipped.endedAt,
       isActive: clipped.isActive,
@@ -233,6 +234,7 @@ function mapDayEntryToBlock(
     title: entry.card.title,
     kind,
     teamId: entry.card.teamId,
+    tag: entry.card.tag,
     startedAt: clipped.startedAt,
     endedAt: clipped.endedAt,
     isActive: clipped.isActive,
@@ -822,7 +824,13 @@ export class TimeEntryService {
   async listTeamTimeEntries(
     teamId: string,
     userId: string,
-    options: { date?: string; page: number; pageSize: number },
+    options: {
+      date?: string;
+      page: number;
+      pageSize: number;
+      userId?: string;
+      activeOnly?: boolean;
+    },
   ): Promise<PaginatedTeamTimeEntries> {
     const membership = await this.assertTeamMember(teamId, userId);
 
@@ -831,14 +839,19 @@ export class TimeEntryService {
     }
 
     const skip = (options.page - 1) * options.pageSize;
+    const filters = {
+      date: options.date,
+      userId: options.userId,
+      activeOnly: options.activeOnly,
+    };
 
     const [entries, total] = await Promise.all([
       this.timeEntryRepository.findByTeamId(teamId, {
-        date: options.date,
+        ...filters,
         skip,
         take: options.pageSize,
       }),
-      this.timeEntryRepository.countByTeamId(teamId, options.date),
+      this.timeEntryRepository.countByTeamId(teamId, filters),
     ]);
 
     const totalPages = total === 0 ? 0 : Math.ceil(total / options.pageSize);

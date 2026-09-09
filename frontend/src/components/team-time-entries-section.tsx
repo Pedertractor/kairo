@@ -5,10 +5,18 @@ import { DatePicker } from '@/components/date-picker';
 import { TimeEntryDuration } from '@/components/time-entry-duration';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { api } from '@/lib/api-handler';
 import { fromDateKey, toDateKey } from '@/lib/date';
 import { formatDateTime } from '@/lib/time-format';
+import type { TeamMemberSummary } from '@/types/team';
 import type {
   RecentWorkItemKind,
   TeamTimeEntriesResponse,
@@ -16,6 +24,9 @@ import type {
 } from '@/types/time-entry';
 
 const PAGE_SIZE = 6;
+const ALL_MEMBERS = 'all';
+const ALL_ENTRIES = 'all';
+const ACTIVE_ENTRIES = 'active';
 
 const KIND_LABELS: Record<RecentWorkItemKind, string> = {
   ACTIVITY: 'Atividade',
@@ -44,15 +55,27 @@ function getEntryHref(
 
 interface TeamTimeEntriesSectionProps {
   teamId: string;
+  members: TeamMemberSummary[];
 }
 
-export function TeamTimeEntriesSection({ teamId }: TeamTimeEntriesSectionProps) {
+export function TeamTimeEntriesSection({
+  teamId,
+  members,
+}: TeamTimeEntriesSectionProps) {
   const [timeEntries, setTimeEntries] = useState<TeamTimeEntrySummary[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [total, setTotal] = useState(0);
   const [selectedDate, setSelectedDate] = useState(toDateKey(new Date()));
+  const [selectedUserId, setSelectedUserId] = useState(ALL_MEMBERS);
+  const [entryFilter, setEntryFilter] = useState(ALL_ENTRIES);
   const [isLoading, setIsLoading] = useState(true);
+  const sortedMembers = [...members].sort((a, b) =>
+    a.name.localeCompare(b.name, 'pt-BR'),
+  );
+  const selectedMember = sortedMembers.find(
+    (member) => member.id === selectedUserId,
+  );
 
   const loadTimeEntries = useCallback(async () => {
     setIsLoading(true);
@@ -64,6 +87,14 @@ export function TeamTimeEntriesSection({ teamId }: TeamTimeEntriesSectionProps) 
         date: selectedDate,
       });
 
+      if (selectedUserId !== ALL_MEMBERS) {
+        params.set('userId', selectedUserId);
+      }
+
+      if (entryFilter === ACTIVE_ENTRIES) {
+        params.set('activeOnly', 'true');
+      }
+
       const data = await api<TeamTimeEntriesResponse>(
         `/teams/${teamId}/time-entries?${params.toString()}`,
       );
@@ -74,7 +105,7 @@ export function TeamTimeEntriesSection({ teamId }: TeamTimeEntriesSectionProps) 
     } finally {
       setIsLoading(false);
     }
-  }, [teamId, page, selectedDate]);
+  }, [teamId, page, selectedDate, selectedUserId, entryFilter]);
 
   useEffect(() => {
     void loadTimeEntries();
@@ -82,11 +113,20 @@ export function TeamTimeEntriesSection({ teamId }: TeamTimeEntriesSectionProps) 
 
   useEffect(() => {
     setPage(1);
-  }, [selectedDate]);
+  }, [selectedDate, selectedUserId, entryFilter]);
+
+  useEffect(() => {
+    if (
+      selectedUserId !== ALL_MEMBERS &&
+      !members.some((member) => member.id === selectedUserId)
+    ) {
+      setSelectedUserId(ALL_MEMBERS);
+    }
+  }, [members, selectedUserId]);
 
   return (
     <div className='flex flex-col gap-4'>
-      <div className='flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between'>
+      <div className='flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between'>
         <div>
           <p className='text-sm font-medium'>Apontamentos</p>
           <p className='text-sm text-muted-foreground'>
@@ -94,18 +134,70 @@ export function TeamTimeEntriesSection({ teamId }: TeamTimeEntriesSectionProps) 
           </p>
         </div>
 
-        <div className='flex flex-col gap-2 sm:w-52'>
-          <Label htmlFor='team-entries-date'>Filtrar por dia</Label>
-          <DatePicker
-            id='team-entries-date'
-            date={fromDateKey(selectedDate)}
-            displayFormat='dd-MM-yy'
-            onDateChange={(date) => {
-              if (date) {
-                setSelectedDate(toDateKey(date));
-              }
-            }}
-          />
+        <div className='flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end'>
+          <div className='flex flex-col gap-2 sm:w-52'>
+            <Label htmlFor='team-entries-date'>Filtrar por dia</Label>
+            <DatePicker
+              id='team-entries-date'
+              date={fromDateKey(selectedDate)}
+              displayFormat='dd-MM-yy'
+              onDateChange={(date) => {
+                if (date) {
+                  setSelectedDate(toDateKey(date));
+                }
+              }}
+            />
+          </div>
+
+          <div className='flex flex-col gap-2 sm:w-52'>
+            <Label htmlFor='team-entries-user'>Filtrar por membro</Label>
+            <Select
+              value={selectedUserId}
+              onValueChange={(value) => setSelectedUserId(value ?? ALL_MEMBERS)}
+            >
+              <SelectTrigger
+                id='team-entries-user'
+                className='w-full'
+                aria-label='Filtrar por membro'
+              >
+                <SelectValue placeholder='Todos os membros'>
+                  {() => selectedMember?.name ?? 'Todos os membros'}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_MEMBERS}>Todos os membros</SelectItem>
+                {sortedMembers.map((member) => (
+                  <SelectItem key={member.id} value={member.id}>
+                    {member.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className='flex flex-col gap-2 sm:w-52'>
+            <Label htmlFor='team-entries-status'>Filtrar por status</Label>
+            <Select
+              value={entryFilter}
+              onValueChange={(value) => setEntryFilter(value ?? ALL_ENTRIES)}
+            >
+              <SelectTrigger
+                id='team-entries-status'
+                className='w-full'
+                aria-label='Filtrar apontamentos em andamento'
+              >
+                <SelectValue>
+                  {() =>
+                    entryFilter === ACTIVE_ENTRIES ? 'Em andamento' : 'Todos'
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_ENTRIES}>Todos</SelectItem>
+                <SelectItem value={ACTIVE_ENTRIES}>Em andamento</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -117,10 +209,10 @@ export function TeamTimeEntriesSection({ teamId }: TeamTimeEntriesSectionProps) 
         </div>
       ) : timeEntries.length === 0 ? (
         <div className='flex min-h-48 flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/30 p-8 text-center'>
-          <p className='text-sm font-medium'>Nenhum apontamento neste dia</p>
+          <p className='text-sm font-medium'>Nenhum apontamento encontrado</p>
           <p className='max-w-sm text-sm text-muted-foreground'>
-            Os apontamentos dos membros desta equipe para o dia selecionado
-            aparecerão aqui.
+            Os apontamentos dos membros desta equipe para os filtros
+            selecionados aparecerão aqui.
           </p>
         </div>
       ) : (
