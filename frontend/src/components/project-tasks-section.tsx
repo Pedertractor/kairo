@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 
 import { CreateTaskDialog } from '@/components/create-task-dialog';
 import { ComplexityLevelMeter, ComplexityLevelStripe } from '@/components/complexity-level-meter';
+import { FilterField, ResponsiveFilters } from '@/components/responsive-filters';
 import { DeleteTaskDialog } from '@/components/delete-task-dialog';
 import { FavoriteButton } from '@/components/favorite-button';
 import { FinishTaskDialog } from '@/components/finish-task-dialog';
@@ -30,6 +31,7 @@ import {
 } from '@/lib/task-status';
 import { cn } from '@/lib/utils';
 import type { TaskStatus, TaskSummary, TasksListResponse } from '@/types/task';
+import type { TeamMemberSummary, TeamResponse } from '@/types/team';
 
 interface ProjectTasksSectionProps {
   projectId: string;
@@ -38,6 +40,8 @@ interface ProjectTasksSectionProps {
 
 const VISIBILITY_ACTIVE = 'active';
 const VISIBILITY_ALL = 'all';
+const ALL_ASSIGNEES = 'all';
+const UNASSIGNED = 'unassigned';
 
 const TASK_CARD_STATUS_CLASS: Record<TaskStatus, string> = {
   TODO: 'border-border bg-card',
@@ -62,6 +66,15 @@ export function ProjectTasksSection({
   const [taskToDelete, setTaskToDelete] = useState<TaskSummary | null>(null);
   const [taskToUpdate, setTaskToUpdate] = useState<TaskSummary | null>(null);
   const [visibilityFilter, setVisibilityFilter] = useState(VISIBILITY_ACTIVE);
+  const [assigneeFilter, setAssigneeFilter] = useState(ALL_ASSIGNEES);
+  const [members, setMembers] = useState<TeamMemberSummary[]>([]);
+  const sortedMembers = useMemo(
+    () => [...members].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
+    [members],
+  );
+  const selectedAssignee = sortedMembers.find(
+    (member) => member.id === assigneeFilter,
+  );
 
   const loadTasks = useCallback(async (options?: { silent?: boolean }) => {
     if (!options?.silent) {
@@ -82,6 +95,34 @@ export function ProjectTasksSection({
     void loadTasks();
   }, [loadTasks]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadMembers() {
+      const data = await api<TeamResponse>(`/teams/${teamId}`);
+      if (!cancelled) {
+        setMembers(data.team.members);
+      }
+    }
+
+    void loadMembers();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [teamId]);
+
+  useEffect(() => {
+    if (
+      assigneeFilter !== ALL_ASSIGNEES &&
+      assigneeFilter !== UNASSIGNED &&
+      members.length > 0 &&
+      !members.some((member) => member.id === assigneeFilter)
+    ) {
+      setAssigneeFilter(ALL_ASSIGNEES);
+    }
+  }, [members, assigneeFilter]);
+
   useEffect(
     () => subscribeTaskDataInvalidation(() => void loadTasks({ silent: true })),
     [loadTasks],
@@ -90,11 +131,23 @@ export function ProjectTasksSection({
   const filteredTasks = useMemo(() => {
     const showFinished = visibilityFilter === VISIBILITY_ALL;
 
-    return tasks.filter(
-      (task) => showFinished || !isFinishedTaskStatus(task.status),
-    );
-  }, [tasks, visibilityFilter]);
+    return tasks.filter((task) => {
+      if (!showFinished && isFinishedTaskStatus(task.status)) {
+        return false;
+      }
 
+      const matchesAssignee =
+        assigneeFilter === ALL_ASSIGNEES ||
+        (assigneeFilter === UNASSIGNED
+          ? !task.assignedToId
+          : task.assignedToId === assigneeFilter);
+
+      return matchesAssignee;
+    });
+  }, [tasks, visibilityFilter, assigneeFilter]);
+
+  const hasSheetFilters =
+    visibilityFilter !== VISIBILITY_ACTIVE || assigneeFilter !== ALL_ASSIGNEES;
   const hasFinishedHidden =
     visibilityFilter === VISIBILITY_ACTIVE &&
     tasks.some((task) => isFinishedTaskStatus(task.status));
@@ -158,25 +211,86 @@ export function ProjectTasksSection({
       />
 
       {!isLoading && tasks.length > 0 ? (
-        <div className='w-full sm:w-1/4'>
-          <Select
-            value={visibilityFilter}
-            onValueChange={(value) =>
-              setVisibilityFilter(value ?? VISIBILITY_ACTIVE)
-            }
+        <div className='flex items-end'>
+          <ResponsiveFilters
+            description='Filtrar as tarefas deste projeto.'
+            hasActiveFilters={hasSheetFilters}
           >
-            <SelectTrigger className='w-full' aria-label='Filtrar concluídas'>
-              <SelectValue>
-                {(selectedValue) =>
-                  selectedValue === VISIBILITY_ALL ? 'Todos' : 'Ativos'
-                }
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={VISIBILITY_ACTIVE}>Ativos</SelectItem>
-              <SelectItem value={VISIBILITY_ALL}>Todos</SelectItem>
-            </SelectContent>
-          </Select>
+            {(idPrefix, itemClassName) => (
+              <>
+                <FilterField
+                  id={`${idPrefix}-assignee`}
+                  label='Filtrar por responsável'
+                  className={itemClassName}
+                >
+                  <Select
+                    value={assigneeFilter}
+                    onValueChange={(value) =>
+                      setAssigneeFilter(value ?? ALL_ASSIGNEES)
+                    }
+                  >
+                    <SelectTrigger
+                      id={`${idPrefix}-assignee`}
+                      className='w-full'
+                      aria-label='Filtrar por responsável'
+                    >
+                      <SelectValue placeholder='Todos os responsáveis'>
+                        {() => {
+                          if (assigneeFilter === UNASSIGNED) {
+                            return 'Sem responsável';
+                          }
+
+                          return (
+                            selectedAssignee?.name ?? 'Todos os responsáveis'
+                          );
+                        }}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ALL_ASSIGNEES}>
+                        Todos os responsáveis
+                      </SelectItem>
+                      <SelectItem value={UNASSIGNED}>Sem responsável</SelectItem>
+                      {sortedMembers.map((member) => (
+                        <SelectItem key={member.id} value={member.id}>
+                          {member.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FilterField>
+
+                <FilterField
+                  id={`${idPrefix}-visibility`}
+                  label='Filtrar por situação'
+                  className={itemClassName}
+                >
+                  <Select
+                    value={visibilityFilter}
+                    onValueChange={(value) =>
+                      setVisibilityFilter(value ?? VISIBILITY_ACTIVE)
+                    }
+                  >
+                    <SelectTrigger
+                      id={`${idPrefix}-visibility`}
+                      className='w-full'
+                      aria-label='Filtrar concluídas'
+                    >
+                      <SelectValue>
+                        {(selectedValue) =>
+                          selectedValue === VISIBILITY_ALL ? 'Todos' : 'Ativos'
+                        }
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={VISIBILITY_ACTIVE}>Ativos</SelectItem>
+                      <SelectItem value={VISIBILITY_ALL}>Todos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FilterField>
+              </>
+            )}
+          </ResponsiveFilters>
         </div>
       ) : null}
 
@@ -197,9 +311,11 @@ export function ProjectTasksSection({
         <div className='flex min-h-32 flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/30 p-8 text-center'>
           <p className='text-sm font-medium'>Nenhuma tarefa encontrada</p>
           <p className='max-w-sm text-sm text-muted-foreground'>
-            {hasFinishedHidden
+            {hasFinishedHidden && !hasSheetFilters
               ? 'Há tarefas concluídas ocultas. Selecione "Todos" para exibi-las.'
-              : 'As tarefas deste projeto aparecerão aqui.'}
+              : hasSheetFilters
+                ? 'Tente ajustar os filtros de busca.'
+                : 'As tarefas deste projeto aparecerão aqui.'}
           </p>
         </div>
       ) : (

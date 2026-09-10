@@ -290,6 +290,7 @@ export function TeamDetailPage() {
             <TabsContent value='atividades'>
               <TeamActivitiesSection
                 teamId={team.id}
+                members={team.members}
                 canCreate={canCreateTeamActivities(team)}
               />
             </TabsContent>

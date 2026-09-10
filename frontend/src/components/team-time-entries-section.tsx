@@ -2,9 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { DatePicker } from '@/components/date-picker';
+import { FilterField, ResponsiveFilters } from '@/components/responsive-filters';
 import { TimeEntryDuration } from '@/components/time-entry-duration';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -76,6 +76,8 @@ export function TeamTimeEntriesSection({
   const selectedMember = sortedMembers.find(
     (member) => member.id === selectedUserId,
   );
+  const hasActiveFilters =
+    selectedUserId !== ALL_MEMBERS || entryFilter === ACTIVE_ENTRIES;
 
   const loadTimeEntries = useCallback(async () => {
     setIsLoading(true);
@@ -126,79 +128,101 @@ export function TeamTimeEntriesSection({
 
   return (
     <div className='flex flex-col gap-4'>
-      <div className='flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between'>
-        <div>
+      <div className='flex items-start justify-between gap-3'>
+        <div className='min-w-0'>
           <p className='text-sm font-medium'>Apontamentos</p>
           <p className='text-sm text-muted-foreground'>
             Registros de horas dos membros desta equipe.
           </p>
         </div>
 
-        <div className='flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end'>
-          <div className='flex flex-col gap-2 sm:w-52'>
-            <Label htmlFor='team-entries-date'>Filtrar por dia</Label>
-            <DatePicker
-              id='team-entries-date'
-              date={fromDateKey(selectedDate)}
-              displayFormat='dd-MM-yy'
-              onDateChange={(date) => {
-                if (date) {
-                  setSelectedDate(toDateKey(date));
-                }
-              }}
-            />
-          </div>
-
-          <div className='flex flex-col gap-2 sm:w-52'>
-            <Label htmlFor='team-entries-user'>Filtrar por membro</Label>
-            <Select
-              value={selectedUserId}
-              onValueChange={(value) => setSelectedUserId(value ?? ALL_MEMBERS)}
-            >
-              <SelectTrigger
-                id='team-entries-user'
-                className='w-full'
-                aria-label='Filtrar por membro'
+        <ResponsiveFilters
+          description='Filtrar os apontamentos desta equipe.'
+          hasActiveFilters={hasActiveFilters}
+        >
+          {(idPrefix, itemClassName) => (
+            <>
+              <FilterField
+                id={`${idPrefix}-date`}
+                label='Filtrar por dia'
+                className={itemClassName}
               >
-                <SelectValue placeholder='Todos os membros'>
-                  {() => selectedMember?.name ?? 'Todos os membros'}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_MEMBERS}>Todos os membros</SelectItem>
-                {sortedMembers.map((member) => (
-                  <SelectItem key={member.id} value={member.id}>
-                    {member.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+                <DatePicker
+                  id={`${idPrefix}-date`}
+                  date={fromDateKey(selectedDate)}
+                  displayFormat='dd-MM-yy'
+                  onDateChange={(date) => {
+                    if (date) {
+                      setSelectedDate(toDateKey(date));
+                    }
+                  }}
+                />
+              </FilterField>
 
-          <div className='flex flex-col gap-2 sm:w-52'>
-            <Label htmlFor='team-entries-status'>Filtrar por status</Label>
-            <Select
-              value={entryFilter}
-              onValueChange={(value) => setEntryFilter(value ?? ALL_ENTRIES)}
-            >
-              <SelectTrigger
-                id='team-entries-status'
-                className='w-full'
-                aria-label='Filtrar apontamentos em andamento'
+              <FilterField
+                id={`${idPrefix}-user`}
+                label='Filtrar por membro'
+                className={itemClassName}
               >
-                <SelectValue>
-                  {() =>
-                    entryFilter === ACTIVE_ENTRIES ? 'Em andamento' : 'Todos'
+                <Select
+                  value={selectedUserId}
+                  onValueChange={(value) =>
+                    setSelectedUserId(value ?? ALL_MEMBERS)
                   }
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_ENTRIES}>Todos</SelectItem>
-                <SelectItem value={ACTIVE_ENTRIES}>Em andamento</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+                >
+                  <SelectTrigger
+                    id={`${idPrefix}-user`}
+                    className='w-full'
+                    aria-label='Filtrar por membro'
+                  >
+                    <SelectValue placeholder='Todos os membros'>
+                      {() => selectedMember?.name ?? 'Todos os membros'}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_MEMBERS}>Todos os membros</SelectItem>
+                    {sortedMembers.map((member) => (
+                      <SelectItem key={member.id} value={member.id}>
+                        {member.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FilterField>
+
+              <FilterField
+                id={`${idPrefix}-status`}
+                label='Filtrar por status'
+                className={itemClassName}
+              >
+                <Select
+                  value={entryFilter}
+                  onValueChange={(value) =>
+                    setEntryFilter(value ?? ALL_ENTRIES)
+                  }
+                >
+                  <SelectTrigger
+                    id={`${idPrefix}-status`}
+                    className='w-full'
+                    aria-label='Filtrar apontamentos em andamento'
+                  >
+                    <SelectValue>
+                      {() =>
+                        entryFilter === ACTIVE_ENTRIES
+                          ? 'Em andamento'
+                          : 'Todos'
+                      }
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_ENTRIES}>Todos</SelectItem>
+                    <SelectItem value={ACTIVE_ENTRIES}>Em andamento</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FilterField>
+            </>
+          )}
+        </ResponsiveFilters>
       </div>
 
       {isLoading ? (
