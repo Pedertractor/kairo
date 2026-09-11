@@ -6,6 +6,7 @@ import { taskParamSchema } from '../schemas/task.schema.js';
 import {
   dayDashboardQuerySchema,
   listTaskTimeEntriesQuerySchema,
+  listTeamTimeEntriesQuerySchema,
   listUserTimeEntriesQuerySchema,
   taskTimeEntryParamSchema,
   timeEntryIdParamSchema,
@@ -209,7 +210,7 @@ export class TimeEntryController {
   listTeamTimeEntries = async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const params = teamIdParamSchema.safeParse(request.params);
-      const query = listUserTimeEntriesQuerySchema.safeParse(request.query);
+      const query = listTeamTimeEntriesQuerySchema.safeParse(request.query);
 
       if (!params.success || !query.success) {
         throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);

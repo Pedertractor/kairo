@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 
 import { CardTimeBudget } from '@/components/card-time-budget'
 import { CreateProjectDialog } from '@/components/create-project-dialog'
+import { FilterField, ResponsiveFilters } from '@/components/responsive-filters'
 import { DeleteProjectDialog } from '@/components/delete-project-dialog'
 import { FinishProjectDialog } from '@/components/finish-project-dialog'
 import { ItemActionsMenu } from '@/components/item-actions-menu'
@@ -96,10 +97,9 @@ export function ProjetosPage() {
     })
   }, [projects, nameFilter, statusFilter, visibilityFilter])
 
-  const hasActiveFilters =
-    nameFilter.trim() !== '' ||
-    statusFilter !== ALL_STATUSES ||
-    visibilityFilter !== VISIBILITY_ACTIVE
+  const hasSheetFilters =
+    statusFilter !== ALL_STATUSES || visibilityFilter !== VISIBILITY_ACTIVE
+  const hasActiveFilters = nameFilter.trim() !== '' || hasSheetFilters
   const hasFinishedHidden =
     visibilityFilter === VISIBILITY_ACTIVE &&
     projects.some((project) => isFinishedStatus(project.status))
@@ -151,8 +151,8 @@ export function ProjetosPage() {
       />
 
       {!isLoading && projects.length > 0 ? (
-        <div className="flex w-full flex-col gap-3 sm:w-3/4 sm:flex-row">
-          <div className="relative min-w-0 flex-1">
+        <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="relative min-w-0 w-full sm:max-w-xs">
             <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
@@ -163,48 +163,78 @@ export function ProjetosPage() {
               aria-label="Buscar projetos por nome"
             />
           </div>
-          <div className="min-w-0 flex-1">
-            <Select
-              value={visibilityFilter}
-              onValueChange={(value) =>
-                setVisibilityFilter(value ?? VISIBILITY_ACTIVE)
-              }
-            >
-              <SelectTrigger className="w-full" aria-label="Filtrar concluídos">
-                <SelectValue>
-                  {(selectedValue) =>
-                    selectedValue === VISIBILITY_ALL ? 'Todos' : 'Ativos'
-                  }
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={VISIBILITY_ACTIVE}>Ativos</SelectItem>
-                <SelectItem value={VISIBILITY_ALL}>Todos</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="min-w-0 flex-1">
-            <Select
-              value={statusFilter}
-              onValueChange={(value) => setStatusFilter(value as StatusFilter)}
-            >
-              <SelectTrigger className="w-full" aria-label="Filtrar por status">
-                <SelectValue placeholder="Status">
-                  {(selectedValue) =>
-                    getStatusFilterLabel(selectedValue as StatusFilter)
-                  }
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_STATUSES}>Todos os status</SelectItem>
-                {CARD_STATUSES.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {STATUS_LABELS[status]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <ResponsiveFilters
+            description="Filtrar os projetos das suas equipes."
+            hasActiveFilters={hasSheetFilters}
+          >
+            {(idPrefix, itemClassName) => (
+              <>
+                <FilterField
+                  id={`${idPrefix}-visibility`}
+                  label="Filtrar por situação"
+                  className={itemClassName}
+                >
+                  <Select
+                    value={visibilityFilter}
+                    onValueChange={(value) =>
+                      setVisibilityFilter(value ?? VISIBILITY_ACTIVE)
+                    }
+                  >
+                    <SelectTrigger
+                      id={`${idPrefix}-visibility`}
+                      className="w-full"
+                      aria-label="Filtrar concluídos"
+                    >
+                      <SelectValue>
+                        {(selectedValue) =>
+                          selectedValue === VISIBILITY_ALL ? 'Todos' : 'Ativos'
+                        }
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={VISIBILITY_ACTIVE}>Ativos</SelectItem>
+                      <SelectItem value={VISIBILITY_ALL}>Todos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FilterField>
+
+                <FilterField
+                  id={`${idPrefix}-status`}
+                  label="Filtrar por status"
+                  className={itemClassName}
+                >
+                  <Select
+                    value={statusFilter}
+                    onValueChange={(value) =>
+                      setStatusFilter(value as StatusFilter)
+                    }
+                  >
+                    <SelectTrigger
+                      id={`${idPrefix}-status`}
+                      className="w-full"
+                      aria-label="Filtrar por status"
+                    >
+                      <SelectValue placeholder="Status">
+                        {(selectedValue) =>
+                          getStatusFilterLabel(selectedValue as StatusFilter)
+                        }
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ALL_STATUSES}>
+                        Todos os status
+                      </SelectItem>
+                      {CARD_STATUSES.map((status) => (
+                        <SelectItem key={status} value={status}>
+                          {STATUS_LABELS[status]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FilterField>
+              </>
+            )}
+          </ResponsiveFilters>
         </div>
       ) : null}
 

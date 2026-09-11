@@ -290,6 +290,7 @@ export function TeamDetailPage() {
             <TabsContent value='atividades'>
               <TeamActivitiesSection
                 teamId={team.id}
+                members={team.members}
                 canCreate={canCreateTeamActivities(team)}
               />
             </TabsContent>
@@ -303,7 +304,10 @@ export function TeamDetailPage() {
 
             {team.role === 'ADMIN' ? (
               <TabsContent value='apontamentos'>
-                <TeamTimeEntriesSection teamId={team.id} />
+                <TeamTimeEntriesSection
+                  teamId={team.id}
+                  members={team.members}
+                />
               </TabsContent>
             ) : null}
 

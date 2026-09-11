@@ -177,9 +177,13 @@ export function calculateAvailabilitySeconds(
     const dayEndMs = dayEnd.getTime();
     const shift = resolveShiftForDay(sortedShifts, dayStartMs, dayEndMs);
 
-    const dailyCapacitySeconds = shift
+    const rawShiftSeconds = shift
       ? (shift.endMinutes - shift.startMinutes) * 60
       : DAILY_AVAILABILITY_SECONDS;
+    const dailyCapacitySeconds = Math.min(
+      DAILY_AVAILABILITY_SECONDS,
+      rawShiftSeconds,
+    );
 
     if (dailyCapacitySeconds <= 0) {
       continue;
@@ -194,9 +198,9 @@ export function calculateAvailabilitySeconds(
 
     const effectiveSlice: DaySlice = {
       start: Math.max(slice.start, windowStart),
-      // Do not charge future shift time. For the current day, occupation grows
-      // against elapsed scheduled time; future days contribute no capacity.
-      end: Math.min(slice.end, windowEnd, nowMs),
+      // Use the full scheduled shift, not elapsed time. Capacity is the day's
+      // shift (capped at 8h 48min), even if the turn has just started.
+      end: Math.min(slice.end, windowEnd),
       dateKey: slice.dateKey,
     };
 

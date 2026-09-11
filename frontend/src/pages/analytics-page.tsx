@@ -923,6 +923,7 @@ export function AnalyticsPage() {
             onDateChange={setTimelineDate}
             isLoading={isLoadingTimeline}
             showDateOptions={false}
+            colorBlocksByTag
           />
         </section>
       ) : null}

@@ -35,6 +35,15 @@ export const listUserTimeEntriesQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(50).default(6),
 });
 
+export const listTeamTimeEntriesQuerySchema =
+  listUserTimeEntriesQuerySchema.extend({
+    userId: z.string().min(1).optional(),
+    activeOnly: z
+      .enum(['true', 'false'])
+      .optional()
+      .transform((value) => value === 'true'),
+  });
+
 export const updateTaskTimeEntrySchema = z
   .object({
     startedAt: z.string().datetime({ message: 'Data de início inválida' }),

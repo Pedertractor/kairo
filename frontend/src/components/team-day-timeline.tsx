@@ -7,7 +7,7 @@ import { TeamTimelineBlock } from '@/components/team-timeline-block';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { buildMemberColorMap } from '@/lib/member-colors';
+import { buildMemberColorMap, buildTagColorScheme } from '@/lib/member-colors';
 import { toDateKey } from '@/lib/date';
 import { formatCurrentTime } from '@/lib/format-time';
 import {
@@ -38,6 +38,8 @@ interface TeamDayTimelineProps {
   onDateChange: (date: string) => void;
   isLoading: boolean;
   showDateOptions?: boolean;
+  /** Colors each block by its activity tag, falling back to the member color. */
+  colorBlocksByTag?: boolean;
 }
 
 interface DateOption {
@@ -142,6 +144,7 @@ export function TeamDayTimeline({
   onDateChange,
   isLoading,
   showDateOptions = true,
+  colorBlocksByTag = false,
 }: TeamDayTimelineProps) {
   const dateOptions = useMemo(
     () => buildDateOptions(selectedDate),
@@ -208,6 +211,24 @@ export function TeamDayTimeline({
       ),
     [memberLegend],
   );
+
+  const tagLegend = useMemo(() => {
+    if (!colorBlocksByTag) {
+      return [];
+    }
+
+    const tags = new Map<string, { id: string; name: string; color: string }>();
+
+    for (const block of blocks) {
+      if (block.tag) {
+        tags.set(block.tag.id, block.tag);
+      }
+    }
+
+    return [...tags.values()].sort((left, right) =>
+      left.name.localeCompare(right.name),
+    );
+  }, [blocks, colorBlocksByTag]);
 
   const laidOutBlocks = useMemo(
     () =>
@@ -415,7 +436,7 @@ export function TeamDayTimeline({
           </div>
         ) : (
           <>
-            {memberLegend.length > 0 ? (
+            {memberLegend.length > 1 || (!colorBlocksByTag && memberLegend.length > 0) ? (
               <div className='mb-3 grid grid-cols-[3rem_minmax(0,1fr)] gap-x-3 sm:grid-cols-[3.25rem_minmax(0,1fr)] sm:gap-x-4'>
                 <div />
                 <div
@@ -430,18 +451,38 @@ export function TeamDayTimeline({
                       className='flex min-w-0 items-center justify-center gap-1.5 px-1 text-xs'
                       title={member.userName}
                     >
-                      <span
-                        className='size-2.5 shrink-0 rounded-full'
-                        style={{
-                          backgroundColor: member.colors.backgroundColor,
-                        }}
-                      />
+                      {colorBlocksByTag ? null : (
+                        <span
+                          className='size-2.5 shrink-0 rounded-full'
+                          style={{
+                            backgroundColor: member.colors.backgroundColor,
+                          }}
+                        />
+                      )}
                       <span className='truncate font-medium text-foreground'>
                         {member.userName}
                       </span>
                     </div>
                   ))}
                 </div>
+              </div>
+            ) : null}
+
+            {tagLegend.length > 0 ? (
+              <div className='mb-3 flex flex-wrap items-center gap-2'>
+                {tagLegend.map((tag) => (
+                  <span
+                    key={tag.id}
+                    className='inline-flex max-w-full items-center gap-1.5 text-xs font-medium text-foreground'
+                    title={tag.name}
+                  >
+                    <span
+                      className='size-2.5 shrink-0 rounded-full'
+                      style={{ backgroundColor: tag.color }}
+                    />
+                    <span className='truncate'>{tag.name}</span>
+                  </span>
+                ))}
               </div>
             ) : null}
 
@@ -509,14 +550,24 @@ export function TeamDayTimeline({
                         hourHeight,
                       3,
                     );
-                    const colors = memberColorMap.get(layout.block.userId);
+                    const memberColors = memberColorMap.get(
+                      layout.block.userId,
+                    );
                     const memberColumn = memberColumnMap.get(
                       layout.block.userId,
                     );
 
-                    if (colors === undefined || memberColumn === undefined) {
+                    if (
+                      memberColors === undefined ||
+                      memberColumn === undefined
+                    ) {
                       return null;
                     }
+
+                    const colors =
+                      colorBlocksByTag && layout.block.tag
+                        ? buildTagColorScheme(layout.block.tag.color)
+                        : memberColors;
 
                     return (
                       <TeamTimelineBlock

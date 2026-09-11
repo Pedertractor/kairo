@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 
 import { CardTimeBudget } from '@/components/card-time-budget'
 import { CreateProjectDialog } from '@/components/create-project-dialog'
+import { FilterField, ResponsiveFilters } from '@/components/responsive-filters'
 import { DeleteProjectDialog } from '@/components/delete-project-dialog'
 import { FinishProjectDialog } from '@/components/finish-project-dialog'
 import { ItemActionsMenu } from '@/components/item-actions-menu'
@@ -75,6 +76,7 @@ export function TeamProjectsSection({
     )
   }, [projects, visibilityFilter])
 
+  const hasSheetFilters = visibilityFilter !== VISIBILITY_ACTIVE
   const hasFinishedHidden =
     visibilityFilter === VISIBILITY_ACTIVE &&
     projects.some((project) => isFinishedStatus(project.status))
@@ -139,25 +141,42 @@ export function TeamProjectsSection({
       />
 
       {!isLoading && projects.length > 0 ? (
-        <div className="w-full sm:w-1/4">
-          <Select
-            value={visibilityFilter}
-            onValueChange={(value) =>
-              setVisibilityFilter(value ?? VISIBILITY_ACTIVE)
-            }
+        <div className="flex items-end">
+          <ResponsiveFilters
+            description="Filtrar os projetos desta equipe."
+            hasActiveFilters={hasSheetFilters}
           >
-            <SelectTrigger className="w-full" aria-label="Filtrar concluídos">
-              <SelectValue>
-                {(selectedValue) =>
-                  selectedValue === VISIBILITY_ALL ? 'Todos' : 'Ativos'
-                }
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={VISIBILITY_ACTIVE}>Ativos</SelectItem>
-              <SelectItem value={VISIBILITY_ALL}>Todos</SelectItem>
-            </SelectContent>
-          </Select>
+            {(idPrefix, itemClassName) => (
+              <FilterField
+                id={`${idPrefix}-visibility`}
+                label="Filtrar por situação"
+                className={itemClassName}
+              >
+                <Select
+                  value={visibilityFilter}
+                  onValueChange={(value) =>
+                    setVisibilityFilter(value ?? VISIBILITY_ACTIVE)
+                  }
+                >
+                  <SelectTrigger
+                    id={`${idPrefix}-visibility`}
+                    className="w-full"
+                    aria-label="Filtrar concluídos"
+                  >
+                    <SelectValue>
+                      {(selectedValue) =>
+                        selectedValue === VISIBILITY_ALL ? 'Todos' : 'Ativos'
+                      }
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={VISIBILITY_ACTIVE}>Ativos</SelectItem>
+                    <SelectItem value={VISIBILITY_ALL}>Todos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FilterField>
+            )}
+          </ResponsiveFilters>
         </div>
       ) : null}
 
