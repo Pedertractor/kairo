@@ -46,6 +46,7 @@ import {
   isComplexityLevel,
 } from '@/lib/complexity-level'
 import { getIntegrationSourceLabel } from '@/lib/integration-source'
+import { canEditTeamActivities } from '@/lib/team-permissions'
 import type {
   ActivityResponse,
   ActivitySummary,
@@ -142,6 +143,7 @@ export function ActivityDetailsDialog({
   const [clients, setClients] = useState<ClientSummary[]>([])
   const [machines, setMachines] = useState<MachineSummary[]>([])
   const [members, setMembers] = useState<TeamMemberSummary[]>([])
+  const [canEdit, setCanEdit] = useState(false)
   const [isLoadingOptions, setIsLoadingOptions] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -206,6 +208,7 @@ export function ActivityDetailsDialog({
 
     async function loadOptions() {
       setIsLoadingOptions(true)
+      setCanEdit(false)
 
       try {
         const [tagsData, clientsData, machinesData, teamData] = await Promise.all([
@@ -229,6 +232,9 @@ export function ActivityDetailsDialog({
           setClients(clientsData.clients)
           setMachines(machinesData.machines)
           setMembers(teamData?.team.members ?? [])
+          setCanEdit(
+            teamData ? canEditTeamActivities(teamData.team) : false,
+          )
         }
       } finally {
         if (!cancelled) {
@@ -253,50 +259,52 @@ export function ActivityDetailsDialog({
 
     const payload: UpdateActivityInput = {}
 
-    const nextTitle = title.trim()
-    if (nextTitle && nextTitle !== activity.title) {
-      payload.title = nextTitle
-    }
+    if (canEdit) {
+      const nextTitle = title.trim()
+      if (nextTitle && nextTitle !== activity.title) {
+        payload.title = nextTitle
+      }
 
-    const nextDescription = description.trim() || null
-    if (nextDescription !== (activity.description ?? null)) {
-      payload.description = nextDescription
+      const nextDescription = description.trim() || null
+      if (nextDescription !== (activity.description ?? null)) {
+        payload.description = nextDescription
+      }
+
+      const nextTagId = tagId === NO_TAG ? null : tagId
+      if (nextTagId !== (activity.tag?.id ?? null)) {
+        payload.tagId = nextTagId
+      }
+
+      const nextClientId = selectedClient?.value ?? null
+      if (nextClientId !== (activity.client?.id ?? null)) {
+        payload.clientId = nextClientId
+      }
+
+      const nextMachineId = selectedMachine?.value ?? null
+      if (nextMachineId !== (activity.machine?.id ?? null)) {
+        payload.machineId = nextMachineId
+      }
+
+      const nextAssignedToId = selectedAssignee?.value ?? null
+      if (nextAssignedToId !== (activity.assignedToId ?? null)) {
+        payload.assignedToId = nextAssignedToId
+      }
+
+      const nextComplexity = isComplexityLevel(complexityLevel)
+        ? complexityLevel
+        : null
+      if (nextComplexity !== (activity.complexityLevel ?? null)) {
+        payload.complexityLevel = nextComplexity
+      }
+
+      const nextHours = toHoursValue(estimatedHours)
+      if (nextHours !== toHoursValue(activity.estimatedHours ?? '')) {
+        payload.estimatedHours = nextHours
+      }
     }
 
     if (status !== activity.status) {
       payload.status = status
-    }
-
-    const nextTagId = tagId === NO_TAG ? null : tagId
-    if (nextTagId !== (activity.tag?.id ?? null)) {
-      payload.tagId = nextTagId
-    }
-
-    const nextClientId = selectedClient?.value ?? null
-    if (nextClientId !== (activity.client?.id ?? null)) {
-      payload.clientId = nextClientId
-    }
-
-    const nextMachineId = selectedMachine?.value ?? null
-    if (nextMachineId !== (activity.machine?.id ?? null)) {
-      payload.machineId = nextMachineId
-    }
-
-    const nextAssignedToId = selectedAssignee?.value ?? null
-    if (nextAssignedToId !== (activity.assignedToId ?? null)) {
-      payload.assignedToId = nextAssignedToId
-    }
-
-    const nextComplexity = isComplexityLevel(complexityLevel)
-      ? complexityLevel
-      : null
-    if (nextComplexity !== (activity.complexityLevel ?? null)) {
-      payload.complexityLevel = nextComplexity
-    }
-
-    const nextHours = toHoursValue(estimatedHours)
-    if (nextHours !== toHoursValue(activity.estimatedHours ?? '')) {
-      payload.estimatedHours = nextHours
     }
 
     if (Object.keys(payload).length === 0) {
@@ -322,6 +330,9 @@ export function ActivityDetailsDialog({
     }
   }
 
+  const isBusy = isSubmitting || !activity
+  const fieldsLocked = isBusy || !canEdit
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-y-auto">
@@ -329,7 +340,9 @@ export function ActivityDetailsDialog({
           <DialogHeader>
             <DialogTitle>Detalhes da atividade</DialogTitle>
             <DialogDescription>
-              Visualize e edite as informações desta atividade.
+              {canEdit
+                ? 'Visualize e edite as informações desta atividade.'
+                : 'Visualize as informações desta atividade.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -342,7 +355,7 @@ export function ActivityDetailsDialog({
                 onChange={(event) => setTitle(event.target.value)}
                 placeholder="Título da atividade"
                 required
-                disabled={isSubmitting || !activity}
+                disabled={fieldsLocked}
               />
             </Field>
 
@@ -356,7 +369,7 @@ export function ActivityDetailsDialog({
                 onChange={(event) => setDescription(event.target.value)}
                 placeholder="Descrição opcional"
                 rows={3}
-                disabled={isSubmitting || !activity}
+                disabled={fieldsLocked}
               />
             </Field>
 
@@ -365,7 +378,7 @@ export function ActivityDetailsDialog({
               <Select
                 value={status}
                 onValueChange={(value) => setStatus(value as CardStatus)}
-                disabled={isSubmitting || !activity}
+                disabled={isBusy}
               >
                 <SelectTrigger id="activity-details-status" className="w-full">
                   <SelectValue placeholder="Selecione um status">
@@ -389,7 +402,7 @@ export function ActivityDetailsDialog({
               <Select
                 value={tagId}
                 onValueChange={(value) => setTagId(value ?? NO_TAG)}
-                disabled={isSubmitting || isLoadingOptions || !activity}
+                disabled={fieldsLocked || isLoadingOptions}
               >
                 <SelectTrigger id="activity-details-tag" className="w-full">
                   <SelectValue placeholder="Sem etiqueta">
@@ -444,14 +457,14 @@ export function ActivityDetailsDialog({
                   onValueChange={setSelectedClient}
                   itemToStringLabel={(item) => item.label}
                   isItemEqualToValue={(a, b) => a.value === b.value}
-                  disabled={isSubmitting || !activity}
+                  disabled={fieldsLocked}
                 >
                   <ComboboxInput
                     id="activity-details-client"
                     className="w-full"
                     placeholder="Buscar cliente..."
                     showClear
-                    disabled={isSubmitting || !activity}
+                    disabled={fieldsLocked}
                   />
                   <ComboboxContent>
                     <ComboboxEmpty>Nenhum cliente encontrado.</ComboboxEmpty>
@@ -481,14 +494,14 @@ export function ActivityDetailsDialog({
                   onValueChange={setSelectedMachine}
                   itemToStringLabel={(item) => item.label}
                   isItemEqualToValue={(a, b) => a.value === b.value}
-                  disabled={isSubmitting || !activity}
+                  disabled={fieldsLocked}
                 >
                   <ComboboxInput
                     id="activity-details-machine"
                     className="w-full"
                     placeholder="Buscar máquina..."
                     showClear
-                    disabled={isSubmitting || !activity}
+                    disabled={fieldsLocked}
                   />
                   <ComboboxContent>
                     <ComboboxEmpty>Nenhuma máquina encontrada.</ComboboxEmpty>
@@ -520,14 +533,14 @@ export function ActivityDetailsDialog({
                   onValueChange={setSelectedAssignee}
                   itemToStringLabel={(item) => item.label}
                   isItemEqualToValue={(a, b) => a.value === b.value}
-                  disabled={isSubmitting || !activity}
+                  disabled={fieldsLocked}
                 >
                   <ComboboxInput
                     id="activity-details-assignee"
                     className="w-full"
                     placeholder="Buscar responsável..."
                     showClear
-                    disabled={isSubmitting || !activity}
+                    disabled={fieldsLocked}
                   />
                   <ComboboxContent>
                     <ComboboxEmpty>Nenhum membro encontrado.</ComboboxEmpty>
@@ -552,7 +565,7 @@ export function ActivityDetailsDialog({
                 onValueChange={(value) =>
                   setComplexityLevel(value ?? NO_COMPLEXITY)
                 }
-                disabled={isSubmitting || !activity}
+                disabled={fieldsLocked}
               >
                 <SelectTrigger
                   id="activity-details-complexity"
@@ -592,7 +605,7 @@ export function ActivityDetailsDialog({
                 value={estimatedHours}
                 onChange={(event) => setEstimatedHours(event.target.value)}
                 placeholder="Ex.: 8"
-                disabled={isSubmitting || !activity}
+                disabled={fieldsLocked}
               />
               <FieldDescription>
                 Deixe em branco para tempo indefinido.

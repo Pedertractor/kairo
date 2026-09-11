@@ -116,6 +116,7 @@ export class TeamRepository {
       membersCanCreateActivities?: boolean;
       membersCanCreateProjects?: boolean;
       membersCanViewTimeline?: boolean;
+      membersCanEditActivities?: boolean;
       membersCanEditTags?: boolean;
       membersCanDeleteTags?: boolean;
     },
@@ -135,6 +136,9 @@ export class TeamRepository {
           : {}),
         ...(data.membersCanViewTimeline !== undefined
           ? { membersCanViewTimeline: data.membersCanViewTimeline }
+          : {}),
+        ...(data.membersCanEditActivities !== undefined
+          ? { membersCanEditActivities: data.membersCanEditActivities }
           : {}),
         ...(data.membersCanEditTags !== undefined
           ? { membersCanEditTags: data.membersCanEditTags }

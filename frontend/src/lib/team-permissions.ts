@@ -6,6 +6,12 @@ export function canCreateTeamActivities(
   return team.role === 'ADMIN' || team.membersCanCreateActivities
 }
 
+export function canEditTeamActivities(
+  team: Pick<TeamSummary, 'role' | 'membersCanEditActivities'>,
+) {
+  return team.role === 'ADMIN' || team.membersCanEditActivities
+}
+
 export function canCreateTeamProjects(
   team: Pick<TeamSummary, 'role' | 'membersCanCreateProjects'>,
 ) {

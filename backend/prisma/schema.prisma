@@ -200,6 +200,7 @@ model Team {
   membersCanCreateActivities Boolean @default(true)
   membersCanCreateProjects   Boolean @default(true)
   membersCanViewTimeline     Boolean @default(false)
+  membersCanEditActivities   Boolean @default(true)
   membersCanEditTags         Boolean @default(true)
   membersCanDeleteTags       Boolean @default(true)
 

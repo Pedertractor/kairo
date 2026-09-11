@@ -16,7 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/lib/api-handler';
-import { canCreateTeamActivities, canCreateTeamProjects, canDeleteTeamTags, canEditTeamTags, canViewTeamTimeline } from '@/lib/team-permissions';
+import { canCreateTeamActivities, canCreateTeamProjects, canDeleteTeamTags, canEditTeamActivities, canEditTeamTags, canViewTeamTimeline } from '@/lib/team-permissions';
 import type { TeamResponse, TeamSummary } from '@/types/team';
 
 type TeamTab =
@@ -292,6 +292,7 @@ export function TeamDetailPage() {
                 teamId={team.id}
                 members={team.members}
                 canCreate={canCreateTeamActivities(team)}
+                canEditActivities={canEditTeamActivities(team)}
                 canEditTags={canEditTeamTags(team)}
                 canDeleteTags={canDeleteTeamTags(team)}
               />

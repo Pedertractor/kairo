@@ -24,6 +24,7 @@ export function TeamSettingsSection({
       | 'membersCanCreateActivities'
       | 'membersCanCreateProjects'
       | 'membersCanViewTimeline'
+      | 'membersCanEditActivities'
       | 'membersCanEditTags'
       | 'membersCanDeleteTags'
     >,
@@ -69,6 +70,26 @@ export function TeamSettingsSection({
             disabled={pendingField !== null}
             onCheckedChange={(checked) =>
               void updateFlag('membersCanCreateActivities', checked)
+            }
+          />
+        </Field>
+
+        <Field orientation="horizontal">
+          <FieldContent>
+            <FieldLabel htmlFor="members-can-edit-activities">
+              Todos podem editar atividades
+            </FieldLabel>
+            <FieldDescription>
+              Quando desativado, apenas administradores da equipe podem editar
+              dados das atividades. Status e exclusão continuam disponíveis.
+            </FieldDescription>
+          </FieldContent>
+          <Switch
+            id="members-can-edit-activities"
+            checked={team.membersCanEditActivities}
+            disabled={pendingField !== null}
+            onCheckedChange={(checked) =>
+              void updateFlag('membersCanEditActivities', checked)
             }
           />
         </Field>

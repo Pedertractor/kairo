@@ -32,6 +32,7 @@ export interface TeamSummary {
   membersCanCreateActivities: boolean;
   membersCanCreateProjects: boolean;
   membersCanViewTimeline: boolean;
+  membersCanEditActivities: boolean;
   membersCanEditTags: boolean;
   membersCanDeleteTags: boolean;
   createdAt: string;

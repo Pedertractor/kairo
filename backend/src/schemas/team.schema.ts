@@ -12,6 +12,7 @@ export const updateTeamSchema = z
     membersCanCreateActivities: z.boolean().optional(),
     membersCanCreateProjects: z.boolean().optional(),
     membersCanViewTimeline: z.boolean().optional(),
+    membersCanEditActivities: z.boolean().optional(),
     membersCanEditTags: z.boolean().optional(),
     membersCanDeleteTags: z.boolean().optional(),
   })

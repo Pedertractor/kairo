@@ -21,7 +21,9 @@ import { api } from '@/lib/api-handler'
 import { CardTimeBudget } from '@/components/card-time-budget'
 import { canFinishStatus } from '@/lib/card-status'
 import { getIntegrationSourceLabel } from '@/lib/integration-source'
+import { canEditTeamActivities } from '@/lib/team-permissions'
 import type { ActivityResponse, ActivitySummary } from '@/types/card'
+import type { TeamResponse, TeamSummary } from '@/types/team'
 
 export function ActivityDetailPage() {
   const navigate = useNavigate()
@@ -30,6 +32,7 @@ export function ActivityDetailPage() {
     activityId: string
   }>()
   const [activity, setActivity] = useState<ActivitySummary | null>(null)
+  const [team, setTeam] = useState<TeamSummary | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
   const [isEditTitleDialogOpen, setIsEditTitleDialogOpen] = useState(false)
@@ -86,7 +89,38 @@ export function ActivityDetailPage() {
     [loadActivity],
   )
 
+  useEffect(() => {
+    if (!teamId) {
+      setTeam(null)
+      return
+    }
+
+    let cancelled = false
+
+    async function loadTeam() {
+      try {
+        const data = await api<TeamResponse>(`/teams/${teamId}`, {
+          toastOnError: false,
+        })
+        if (!cancelled) {
+          setTeam(data.team)
+        }
+      } catch {
+        if (!cancelled) {
+          setTeam(null)
+        }
+      }
+    }
+
+    void loadTeam()
+
+    return () => {
+      cancelled = true
+    }
+  }, [teamId])
+
   const reloadActivity = loadActivity
+  const canEdit = team ? canEditTeamActivities(team) : false
 
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-6">
@@ -109,15 +143,17 @@ export function ActivityDetailPage() {
             <div className="flex items-start justify-between gap-4">
               <div className="flex min-w-0 items-center gap-2">
                 <h1 className="text-2xl font-bold">{activity.title}</h1>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="Editar título"
-                  onClick={() => setIsEditTitleDialogOpen(true)}
-                >
-                  <Pencil />
-                </Button>
+                {canEdit ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Editar título"
+                    onClick={() => setIsEditTitleDialogOpen(true)}
+                  >
+                    <Pencil />
+                  </Button>
+                ) : null}
               </div>
               {teamId ? (
                 <div className="flex shrink-0 items-center gap-0.5">
@@ -148,20 +184,24 @@ export function ActivityDetailPage() {
                   tag={activity.tag}
                   className="text-sm"
                   aria-label={`Alterar etiqueta de ${activity.title}`}
-                  onClick={() => setIsEditTagDialogOpen(true)}
+                  onClick={
+                    canEdit ? () => setIsEditTagDialogOpen(true) : undefined
+                  }
                 />
               ) : (
                 <span className="text-sm text-muted-foreground">Sem etiqueta</span>
               )}
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Editar etiqueta"
-                onClick={() => setIsEditTagDialogOpen(true)}
-              >
-                <Pencil />
-              </Button>
+              {canEdit ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Editar etiqueta"
+                  onClick={() => setIsEditTagDialogOpen(true)}
+                >
+                  <Pencil />
+                </Button>
+              ) : null}
             </div>
             {activity.description ? (
               <p className="whitespace-pre-wrap text-muted-foreground">

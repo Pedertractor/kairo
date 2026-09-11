@@ -361,12 +361,29 @@ export class CardService {
       complexityLevel?: ComplexityLevel | null;
     },
   ): Promise<ActivitySummary> {
-    await this.assertTeamMember(teamId, userId);
+    const membership = await this.assertTeamMember(teamId, userId);
 
     const card = await this.cardRepository.findActivityById(activityId);
 
     if (!card || card.teamId !== teamId || card.type !== 'ACTIVITY') {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    const hasEditFields =
+      data.title !== undefined ||
+      data.tagId !== undefined ||
+      data.description !== undefined ||
+      data.estimatedHours !== undefined ||
+      data.clientId !== undefined ||
+      data.machineId !== undefined ||
+      data.assignedToId !== undefined ||
+      data.complexityLevel !== undefined;
+
+    if (hasEditFields) {
+      assertTeamAdminOrFlag(
+        membership.role,
+        membership.team.membersCanEditActivities,
+      );
     }
 
     if (data.tagId) {

@@ -51,6 +51,7 @@ interface TeamActivitiesSectionProps {
   teamId: string;
   members: TeamMemberSummary[];
   canCreate: boolean;
+  canEditActivities: boolean;
   canEditTags: boolean;
   canDeleteTags: boolean;
 }
@@ -59,6 +60,7 @@ export function TeamActivitiesSection({
   teamId,
   members,
   canCreate,
+  canEditActivities,
   canEditTags,
   canDeleteTags,
 }: TeamActivitiesSectionProps) {
@@ -564,7 +566,11 @@ export function TeamActivitiesSection({
                       tag={activity.tag}
                       className='pointer-events-auto max-w-28'
                       aria-label={`Alterar etiqueta de ${activity.title}`}
-                      onClick={() => setActivityToEditTag(activity)}
+                      onClick={
+                        canEditActivities
+                          ? () => setActivityToEditTag(activity)
+                          : undefined
+                      }
                     />
                   ) : null}
                   <button
