@@ -51,12 +51,16 @@ interface TeamActivitiesSectionProps {
   teamId: string;
   members: TeamMemberSummary[];
   canCreate: boolean;
+  canEditTags: boolean;
+  canDeleteTags: boolean;
 }
 
 export function TeamActivitiesSection({
   teamId,
   members,
   canCreate,
+  canEditTags,
+  canDeleteTags,
 }: TeamActivitiesSectionProps) {
   const { isActivityCurrent } = useActiveTimer();
   const [activities, setActivities] = useState<ActivitySummary[]>([]);
@@ -197,6 +201,8 @@ export function TeamActivitiesSection({
       <ManageTagsDialog
         teamId={teamId}
         tags={tags}
+        canEdit={canEditTags}
+        canDelete={canDeleteTags}
         open={isManageTagsDialogOpen}
         onOpenChange={setIsManageTagsDialogOpen}
         onCreated={(tag) => {

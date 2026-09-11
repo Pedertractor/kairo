@@ -27,6 +27,8 @@ export interface TeamSummary {
   membersCanCreateActivities: boolean
   membersCanCreateProjects: boolean
   membersCanViewTimeline: boolean
+  membersCanEditTags: boolean
+  membersCanDeleteTags: boolean
   createdAt: string
 }
 
@@ -49,6 +51,8 @@ export interface UpdateTeamInput {
   membersCanCreateActivities?: boolean
   membersCanCreateProjects?: boolean
   membersCanViewTimeline?: boolean
+  membersCanEditTags?: boolean
+  membersCanDeleteTags?: boolean
 }
 
 export interface AddTeamMemberInput {

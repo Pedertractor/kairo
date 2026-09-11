@@ -17,3 +17,15 @@ export function canViewTeamTimeline(
 ) {
   return team.role === 'ADMIN' || team.membersCanViewTimeline
 }
+
+export function canEditTeamTags(
+  team: Pick<TeamSummary, 'role' | 'membersCanEditTags'>,
+) {
+  return team.role === 'ADMIN' || team.membersCanEditTags
+}
+
+export function canDeleteTeamTags(
+  team: Pick<TeamSummary, 'role' | 'membersCanDeleteTags'>,
+) {
+  return team.role === 'ADMIN' || team.membersCanDeleteTags
+}

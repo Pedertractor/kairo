@@ -26,6 +26,8 @@ import type {
 interface ManageTagsDialogProps {
   teamId: string
   tags: TagSummary[]
+  canEdit: boolean
+  canDelete: boolean
   open: boolean
   onOpenChange: (open: boolean) => void
   onCreated: (tag: TagSummary) => void
@@ -73,6 +75,8 @@ function TagColorPicker({
 export function ManageTagsDialog({
   teamId,
   tags,
+  canEdit,
+  canDelete,
   open,
   onOpenChange,
   onCreated,
@@ -145,7 +149,7 @@ export function ManageTagsDialog({
   async function handleSaveEdit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (!editingTagId) {
+    if (!canEdit || !editingTagId) {
       return
     }
 
@@ -184,7 +188,7 @@ export function ManageTagsDialog({
   }
 
   async function handleConfirmDelete() {
-    if (!tagToDelete) {
+    if (!canDelete || !tagToDelete) {
       return
     }
 
@@ -228,8 +232,13 @@ export function ManageTagsDialog({
           <DialogHeader>
             <DialogTitle>Etiquetas</DialogTitle>
             <DialogDescription>
-              Crie, edite ou exclua etiquetas para organizar as atividades desta
-              equipe.
+              {canEdit && canDelete
+                ? 'Crie, edite ou exclua etiquetas para organizar as atividades desta equipe.'
+                : canEdit
+                  ? 'Crie ou edite etiquetas para organizar as atividades desta equipe.'
+                  : canDelete
+                    ? 'Crie ou exclua etiquetas para organizar as atividades desta equipe.'
+                    : 'Crie etiquetas para organizar as atividades desta equipe.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -321,28 +330,34 @@ export function ManageTagsDialog({
                       className="flex items-center justify-between gap-2 rounded-lg border px-3 py-2"
                     >
                       <ActivityTagBadge tag={tag} />
-                      <div className="flex shrink-0 items-center gap-0.5">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label={`Editar etiqueta ${tag.name}`}
-                          disabled={isBusy}
-                          onClick={() => startEditing(tag)}
-                        >
-                          <Pencil />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label={`Excluir etiqueta ${tag.name}`}
-                          disabled={isBusy}
-                          onClick={() => setTagToDelete(tag)}
-                        >
-                          <Trash2 />
-                        </Button>
-                      </div>
+                      {canEdit || canDelete ? (
+                        <div className="flex shrink-0 items-center gap-0.5">
+                          {canEdit ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label={`Editar etiqueta ${tag.name}`}
+                              disabled={isBusy}
+                              onClick={() => startEditing(tag)}
+                            >
+                              <Pencil />
+                            </Button>
+                          ) : null}
+                          {canDelete ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label={`Excluir etiqueta ${tag.name}`}
+                              disabled={isBusy}
+                              onClick={() => setTagToDelete(tag)}
+                            >
+                              <Trash2 />
+                            </Button>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </li>
                   )
                 })}

@@ -39,7 +39,7 @@ async function main() {
   } else {
     console.log(
       `Users table has ${existingCount} row(s) — creating missing admins only (no updates)`,
-    );
+    ); 
   }
 
   const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 10);

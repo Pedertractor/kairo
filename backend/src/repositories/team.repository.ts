@@ -116,6 +116,8 @@ export class TeamRepository {
       membersCanCreateActivities?: boolean;
       membersCanCreateProjects?: boolean;
       membersCanViewTimeline?: boolean;
+      membersCanEditTags?: boolean;
+      membersCanDeleteTags?: boolean;
     },
   ) {
     return this.prisma.team.update({
@@ -133,6 +135,12 @@ export class TeamRepository {
           : {}),
         ...(data.membersCanViewTimeline !== undefined
           ? { membersCanViewTimeline: data.membersCanViewTimeline }
+          : {}),
+        ...(data.membersCanEditTags !== undefined
+          ? { membersCanEditTags: data.membersCanEditTags }
+          : {}),
+        ...(data.membersCanDeleteTags !== undefined
+          ? { membersCanDeleteTags: data.membersCanDeleteTags }
           : {}),
       },
       include: memberInclude,

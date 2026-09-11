@@ -4,7 +4,10 @@ import { TeamRepository } from '../repositories/team.repository.js';
 import type { TagSummary } from '../types/tag.types.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
-import { assertTeamMembership } from '../utils/team-access.js';
+import {
+  assertTeamAdminOrFlag,
+  assertTeamMembership,
+} from '../utils/team-access.js';
 
 function toTagSummary(tag: Tag): TagSummary {
   return {
@@ -28,7 +31,7 @@ export class TagService {
       teamId,
       userId,
     );
-    assertTeamMembership(membership);
+    return assertTeamMembership(membership);
   }
 
   async list(teamId: string, userId: string): Promise<TagSummary[]> {
@@ -62,7 +65,8 @@ export class TagService {
     userId: string,
     data: { name?: string; color?: string },
   ): Promise<TagSummary> {
-    await this.assertTeamMember(teamId, userId);
+    const membership = await this.assertTeamMember(teamId, userId);
+    assertTeamAdminOrFlag(membership.role, membership.team.membersCanEditTags);
 
     const tag = await this.tagRepository.findById(tagId);
 
@@ -90,7 +94,11 @@ export class TagService {
     tagId: string,
     userId: string,
   ): Promise<TagSummary> {
-    await this.assertTeamMember(teamId, userId);
+    const membership = await this.assertTeamMember(teamId, userId);
+    assertTeamAdminOrFlag(
+      membership.role,
+      membership.team.membersCanDeleteTags,
+    );
 
     const tag = await this.tagRepository.findById(tagId);
 
