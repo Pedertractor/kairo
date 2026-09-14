@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pencil } from 'lucide-react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { BackButton } from '@/components/back-button';
 import { EditTeamDialog } from '@/components/edit-team-dialog';
+import { ProjectCountBadge } from '@/components/project-count-badge';
 import { ReactivateTeamDialog } from '@/components/reactivate-team-dialog';
 import { TeamActivitiesSection } from '@/components/team-activities-section';
 import { TeamDocumentsSection } from '@/components/team-documents-section';
@@ -14,14 +15,8 @@ import { TeamTimelineSection } from '@/components/team-timeline-section';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/lib/api-handler';
-import { CARD_STATUSES, STATUS_LABELS } from '@/lib/card-status';
 import { canCreateTeamActivities, canCreateTeamProjects, canDeleteTeamTags, canEditTeamActivities, canEditTeamTags, canViewTeamTimeline } from '@/lib/team-permissions';
 import type { ProjectSummary, ProjectsListResponse } from '@/types/card';
 import type { TeamResponse, TeamSummary } from '@/types/team';
@@ -69,57 +64,6 @@ function resolveTeamTab(tab: TeamTab | null, team: TeamSummary): TeamTab {
   }
 
   return requested;
-}
-
-function ProjectTabCount({ projects }: { projects: ProjectSummary[] }) {
-  const statusCounts = useMemo(
-    () =>
-      CARD_STATUSES.map((status) => ({
-        status,
-        label: STATUS_LABELS[status],
-        count: projects.filter((project) => project.status === status).length,
-      })).filter((item) => item.count > 0),
-    [projects],
-  );
-
-  return (
-    <Tooltip>
-      <TooltipTrigger
-        delay={200}
-        render={
-          <span className='inline-flex items-center'>
-            Projetos
-            <span
-              className='ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-muted px-1.5 py-0.5 text-[11px] leading-none font-semibold tabular-nums text-muted-foreground'
-              aria-label={`${projects.length} ${projects.length === 1 ? 'projeto' : 'projetos'}`}
-            >
-              {projects.length}
-            </span>
-          </span>
-        }
-      />
-      <TooltipContent
-        side='bottom'
-        className='rounded-xl border border-border bg-card px-3 py-2 text-card-foreground shadow-lg [&>svg]:hidden'
-      >
-        {projects.length === 0 ? (
-          <p>Nenhum projeto nesta equipe.</p>
-        ) : (
-          <ul className='min-w-40 space-y-1'>
-            {statusCounts.map((item) => (
-              <li
-                key={item.status}
-                className='flex items-center justify-between gap-6 text-xs'
-              >
-                <span>{item.label}</span>
-                <span className='font-semibold tabular-nums'>{item.count}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </TooltipContent>
-    </Tooltip>
-  );
 }
 
 export function TeamDetailPage() {
@@ -327,7 +271,12 @@ export function TeamDetailPage() {
                 value='projetos'
                 className='inline-flex items-center data-[state=active]:border-sidebar-primary data-[state=active]:text-sidebar-primary'
               >
-                <ProjectTabCount projects={projects} />
+                <ProjectCountBadge
+                  projects={projects}
+                  emptyLabel='Nenhum projeto nesta equipe.'
+                >
+                  Projetos
+                </ProjectCountBadge>
               </TabsTrigger>
               <TabsTrigger
                 value='membros'
