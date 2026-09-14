@@ -32,6 +32,9 @@ export async function teamRoutes(app: FastifyInstance) {
       absenceRepository,
       new CostCenterRepository(app.prisma),
       new ShiftService(new ShiftRepository(app.prisma)),
+      new TimeEntryRepository(app.prisma),
+      new TaskRepository(app.prisma),
+      new CardRepository(app.prisma),
     ),
   );
 

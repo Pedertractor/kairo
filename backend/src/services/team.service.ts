@@ -1,7 +1,10 @@
 import { TeamRole } from '../generated/client.js';
 import { AbsenceRepository } from '../repositories/absence.repository.js';
+import { CardRepository } from '../repositories/card.repository.js';
 import { CostCenterRepository } from '../repositories/cost-center.repository.js';
+import { TaskRepository } from '../repositories/task.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
+import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
 import { UserRepository } from '../repositories/user.repository.js';
 import type { CostCenterSummary } from '../types/cost-center.types.js';
 import type { TeamMemberSummary, TeamSummary, TeamUserOption } from '../types/team.types.js';
@@ -10,6 +13,7 @@ import { MENSAGENS } from '../utils/response.js';
 import { assertTeamMembership } from '../utils/team-access.js';
 import { AbsenceService } from './absence.service.js';
 import type { CurrentShift, ShiftService } from './shift.service.js';
+import { stopUnfinishedTimeEntriesForUser } from './stop-user-time-entries.js';
 
 type TeamWithMembers = {
   id: string;
@@ -109,6 +113,9 @@ export class TeamService {
     private readonly absenceRepository: AbsenceRepository,
     private readonly costCenterRepository: CostCenterRepository,
     private readonly shiftService: ShiftService,
+    private readonly timeEntryRepository: TimeEntryRepository,
+    private readonly taskRepository: TaskRepository,
+    private readonly cardRepository: CardRepository,
   ) {}
 
   private async loadCurrentAbsenceByUserIds(
@@ -251,6 +258,13 @@ export class TeamService {
       }
     }
 
+    await stopUnfinishedTimeEntriesForUser(
+      this.timeEntryRepository,
+      this.taskRepository,
+      this.cardRepository,
+      targetUserId,
+      { teamId },
+    );
     await this.teamRepository.deleteMember(teamId, targetUserId);
 
     return this.getTeamForMember(teamId, actorUserId);

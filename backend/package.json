@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "test": "tsx --test src/utils/work-availability.test.ts src/utils/shift.test.ts src/services/absence.service.test.ts",
+    "test": "tsx --test src/utils/work-availability.test.ts src/utils/shift.test.ts src/services/absence.service.test.ts src/services/stop-user-time-entries.test.ts",
     "start": "node dist/server.js",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",

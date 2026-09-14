@@ -14,8 +14,7 @@ import type { EmployeeLookupResult } from '../types/employee.types.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 import { toEmployeeId, toSafeUser } from '../utils/user.js';
-import { releaseActivityIfIdle } from './card-status-sync.js';
-import { releaseTaskIfIdle } from './task-status-sync.js';
+import { stopUnfinishedTimeEntriesForUser } from './stop-user-time-entries.js';
 
 type UserRecord = {
   id: string;
@@ -44,28 +43,6 @@ export class UserService {
     private readonly cardRepository: CardRepository,
     private readonly shiftService: ShiftService,
   ) {}
-
-  /** Closes a leftover running timer so it never holds a task open. */
-  private async stopActiveTimer(userId: string): Promise<void> {
-    const activeEntry =
-      await this.timeEntryRepository.findActiveByUserId(userId);
-
-    if (!activeEntry) {
-      return;
-    }
-
-    await this.timeEntryRepository.stopEntry(activeEntry, new Date());
-    await releaseTaskIfIdle(
-      this.timeEntryRepository,
-      this.taskRepository,
-      activeEntry.taskId,
-    );
-    await releaseActivityIfIdle(
-      this.timeEntryRepository,
-      this.cardRepository,
-      activeEntry.cardId,
-    );
-  }
 
   private async getActorOrThrow(actorUserId: string) {
     const actor = await this.userRepository.findById(actorUserId);
@@ -333,7 +310,12 @@ export class UserService {
 
     const updated = await this.userRepository.setActive(targetUserId, false);
     await this.refreshTokenRepository.revokeAllForUser(targetUserId);
-    await this.stopActiveTimer(targetUserId);
+    await stopUnfinishedTimeEntriesForUser(
+      this.timeEntryRepository,
+      this.taskRepository,
+      this.cardRepository,
+      targetUserId,
+    );
     return this.toSafeUserWithShift(updated);
   }
 
