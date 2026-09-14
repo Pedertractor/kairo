@@ -3,6 +3,10 @@ import { Search } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { CardTimeBudget } from '@/components/card-time-budget'
+import {
+  ProjectCountBadge,
+  ProjectStatusInline,
+} from '@/components/project-count-badge'
 import { CreateProjectDialog } from '@/components/create-project-dialog'
 import { FilterField, ResponsiveFilters } from '@/components/responsive-filters'
 import { DeleteProjectDialog } from '@/components/delete-project-dialog'
@@ -109,8 +113,17 @@ export function ProjetosPage() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Projetos</h1>
-          <p className="text-sm text-muted-foreground">
-            Projetos das suas equipes.
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+            <span>Projetos das suas equipes.</span>
+            {!isLoading ? (
+              <>
+                <ProjectCountBadge
+                  projects={projects}
+                  emptyLabel="Nenhum projeto nas suas equipes."
+                />
+                <ProjectStatusInline projects={projects} />
+              </>
+            ) : null}
           </p>
         </div>
         {canCreateProject ? (

@@ -42,6 +42,29 @@ export class TimeEntryRepository {
     });
   }
 
+  findUnfinishedByUserId(userId: string) {
+    return this.prisma.timeEntry.findMany({
+      where: {
+        userId,
+        endedAt: null,
+      },
+      orderBy: { startedAt: 'desc' },
+      include: {
+        card: {
+          select: { id: true, teamId: true },
+        },
+        task: {
+          select: {
+            id: true,
+            card: {
+              select: { id: true, teamId: true },
+            },
+          },
+        },
+      },
+    });
+  }
+
   findActiveManyByCardId(cardId: string) {
     return this.prisma.timeEntry.findMany({
       where: { cardId, endedAt: null, type: 'TIMER' },

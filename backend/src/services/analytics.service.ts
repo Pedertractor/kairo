@@ -15,7 +15,18 @@ import { formatDateKey, parseDayBounds } from '../utils/app-timezone.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 import { getEntryDurationSeconds } from '../utils/time-entry-duration.js';
-import { calculateAvailabilitySeconds } from '../utils/work-availability.js';
+import {
+  allocateAvailabilitySeconds,
+  buildTeamAllocationSegments,
+  getOpenAvailabilityIntervals,
+} from '../utils/work-availability.js';
+
+function resolveEntryTeamId(entry: {
+  card: { teamId: string } | null;
+  task: { card: { teamId: string } } | null;
+}): string | null {
+  return entry.card?.teamId ?? entry.task?.card.teamId ?? null;
+}
 
 const CARD_STATUSES: CardStatus[] = [
   'TODO',
@@ -157,6 +168,8 @@ export class AnalyticsService {
       shiftPeriods,
       overviewCards,
       overviewTasks,
+      allocationEntries,
+      lastEntriesBefore,
     ] = await Promise.all([
       this.repository.findEntriesForTeams(
         scopedTeamIds,
@@ -203,6 +216,12 @@ export class AnalyticsService {
         scopedTeamIds,
         options.employeeId,
       ),
+      this.repository.findEntriesForUsers(
+        employeeIds,
+        periodStart,
+        periodEnd,
+      ),
+      this.repository.findLastEntriesBefore(employeeIds, periodStart),
     ]);
     const now = new Date();
     const absencesByEmployee = new Map<
@@ -237,17 +256,57 @@ export class AnalyticsService {
       shiftsByEmployee.set(period.userId, list);
     }
 
+    const carryOverTeamByEmployee = new Map<string, string>();
+
+    for (const entry of lastEntriesBefore) {
+      const teamId = resolveEntryTeamId(entry);
+
+      if (teamId) {
+        carryOverTeamByEmployee.set(entry.userId, teamId);
+      }
+    }
+
+    const allocationEntriesByEmployee = new Map<
+      string,
+      Array<{ startedAt: Date; teamId: string }>
+    >();
+
+    for (const entry of allocationEntries) {
+      const teamId = resolveEntryTeamId(entry);
+
+      if (!teamId) {
+        continue;
+      }
+
+      const list = allocationEntriesByEmployee.get(entry.userId) ?? [];
+      list.push({ startedAt: entry.startedAt, teamId });
+      allocationEntriesByEmployee.set(entry.userId, list);
+    }
+
+    const scopedTeamIdSet = new Set(scopedTeamIds);
     const availabilityByEmployee = new Map<string, number>();
 
     for (const employeeId of employeeIds) {
+      const openIntervals = getOpenAvailabilityIntervals(
+        absencesByEmployee.get(employeeId) ?? [],
+        periodStart,
+        periodEnd,
+        now,
+        shiftsByEmployee.get(employeeId) ?? [],
+      );
+      const segments = buildTeamAllocationSegments(
+        periodStart,
+        periodEnd,
+        carryOverTeamByEmployee.get(employeeId) ?? null,
+        allocationEntriesByEmployee.get(employeeId) ?? [],
+      );
+
       availabilityByEmployee.set(
         employeeId,
-        calculateAvailabilitySeconds(
-          absencesByEmployee.get(employeeId) ?? [],
-          periodStart,
-          periodEnd,
-          now,
-          shiftsByEmployee.get(employeeId) ?? [],
+        allocateAvailabilitySeconds(
+          openIntervals,
+          segments,
+          scopedTeamIdSet,
         ),
       );
     }

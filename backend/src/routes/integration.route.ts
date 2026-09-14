@@ -46,6 +46,9 @@ export async function integrationRoutes(app: FastifyInstance) {
       absenceRepository,
       new CostCenterRepository(app.prisma),
       shiftService,
+      new TimeEntryRepository(app.prisma),
+      new TaskRepository(app.prisma),
+      new CardRepository(app.prisma),
     ),
     new TagService(
       new TagRepository(app.prisma),

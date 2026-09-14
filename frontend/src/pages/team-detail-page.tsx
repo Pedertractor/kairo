@@ -3,6 +3,7 @@ import { Pencil } from 'lucide-react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { BackButton } from '@/components/back-button';
 import { EditTeamDialog } from '@/components/edit-team-dialog';
+import { ProjectCountBadge } from '@/components/project-count-badge';
 import { ReactivateTeamDialog } from '@/components/reactivate-team-dialog';
 import { TeamActivitiesSection } from '@/components/team-activities-section';
 import { TeamDocumentsSection } from '@/components/team-documents-section';
@@ -17,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/lib/api-handler';
 import { canCreateTeamActivities, canCreateTeamProjects, canDeleteTeamTags, canEditTeamActivities, canEditTeamTags, canViewTeamTimeline } from '@/lib/team-permissions';
+import type { ProjectSummary, ProjectsListResponse } from '@/types/card';
 import type { TeamResponse, TeamSummary } from '@/types/team';
 
 type TeamTab =
@@ -73,6 +75,7 @@ export function TeamDetailPage() {
   const userIdFromUrl = searchParams.get('userId') ?? undefined;
   const openedAsSingleTeam = searchParams.get('unica') === '1';
   const [team, setTeam] = useState<TeamResponse['team'] | null>(null);
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isReactivateDialogOpen, setIsReactivateDialogOpen] = useState(false);
@@ -115,6 +118,36 @@ export function TeamDetailPage() {
     }
 
     void loadTeam();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [teamId]);
+
+  useEffect(() => {
+    if (!teamId) {
+      setProjects([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadProjects() {
+      try {
+        const data = await api<ProjectsListResponse>(
+          `/teams/${teamId}/projects`,
+        );
+        if (!cancelled) {
+          setProjects(data.projects);
+        }
+      } catch {
+        if (!cancelled) {
+          setProjects([]);
+        }
+      }
+    }
+
+    void loadProjects();
 
     return () => {
       cancelled = true;
@@ -236,9 +269,14 @@ export function TeamDetailPage() {
               </TabsTrigger>
               <TabsTrigger
                 value='projetos'
-                className='data-[state=active]:border-sidebar-primary data-[state=active]:text-sidebar-primary'
+                className='inline-flex items-center data-[state=active]:border-sidebar-primary data-[state=active]:text-sidebar-primary'
               >
-                Projetos
+                <ProjectCountBadge
+                  projects={projects}
+                  emptyLabel='Nenhum projeto nesta equipe.'
+                >
+                  Projetos
+                </ProjectCountBadge>
               </TabsTrigger>
               <TabsTrigger
                 value='membros'
@@ -302,6 +340,7 @@ export function TeamDetailPage() {
               <TeamProjectsSection
                 teamId={team.id}
                 canCreate={canCreateTeamProjects(team)}
+                onProjectsChange={setProjects}
               />
             </TabsContent>
 

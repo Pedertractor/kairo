@@ -95,6 +95,58 @@ export class AnalyticsRepository {
     });
   }
 
+  /**
+   * All time entries for the given users in [periodStart, periodEnd), on any
+   * team. Used to detect mid-period team ownership switches for availability.
+   */
+  findEntriesForUsers(
+    userIds: string[],
+    periodStart: Date,
+    periodEnd: Date,
+  ) {
+    if (userIds.length === 0) {
+      return Promise.resolve([]);
+    }
+
+    return this.prisma.timeEntry.findMany({
+      where: {
+        userId: { in: userIds },
+        startedAt: { gte: periodStart, lt: periodEnd },
+      },
+      orderBy: { startedAt: 'asc' },
+      select: {
+        userId: true,
+        startedAt: true,
+        card: { select: { teamId: true } },
+        task: { select: { card: { select: { teamId: true } } } },
+      },
+    });
+  }
+
+  /**
+   * Latest time entry per user before periodStart (carry-over team ownership).
+   */
+  findLastEntriesBefore(userIds: string[], periodStart: Date) {
+    if (userIds.length === 0) {
+      return Promise.resolve([]);
+    }
+
+    return this.prisma.timeEntry.findMany({
+      where: {
+        userId: { in: userIds },
+        startedAt: { lt: periodStart },
+      },
+      distinct: ['userId'],
+      orderBy: [{ userId: 'asc' }, { startedAt: 'desc' }],
+      select: {
+        userId: true,
+        startedAt: true,
+        card: { select: { teamId: true } },
+        task: { select: { card: { select: { teamId: true } } } },
+      },
+    });
+  }
+
   findEntriesForProject(projectId: string) {
     return this.prisma.timeEntry.findMany({
       where: {
