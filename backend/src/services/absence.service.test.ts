@@ -206,24 +206,20 @@ describe('AbsenceService creation rules', () => {
     assert.equal(created.length, 1);
   });
 
-  it('rejects an absence for today after the user already started a time entry', async () => {
+  it('allows an absence for today after the user already started a time entry', async () => {
     const today = formatDateKey(new Date());
-    const { service } = createService({ hasTimeEntry: true });
+    const { service, created } = createService({ hasTimeEntry: true });
 
-    await assert.rejects(
-      () =>
-        service.createForActor(
-          'user-1',
-          'user-1',
-          isoAt(today, 6, 15),
-          isoAt(today, 10, 0),
-        ),
-      (error: unknown) => {
-        assert.ok(error instanceof AppError);
-        assert.equal(error.message, MENSAGENS.AUSENCIA_HOJE_APOS_APONTAMENTO);
-        return true;
-      },
+    await service.createForActor(
+      'user-1',
+      'user-1',
+      isoAt(today, 13, 0),
+      isoAt(today, 17, 0),
     );
+
+    assert.equal(created.length, 1);
+    assert.equal(created[0]?.startedAt.toISOString(), isoAt(today, 13, 0));
+    assert.equal(created[0]?.endedAt?.toISOString(), isoAt(today, 17, 0));
   });
 
   it('allows an absence for today when the user has not started a time entry yet', async () => {

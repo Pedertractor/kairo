@@ -90,8 +90,6 @@ export const MENSAGENS = {
     'Apenas ausências futuras podem ser canceladas',
   AUSENCIA_PASSADA_SEM_APONTAMENTO:
     'Só é possível registrar uma ausência passada quando há apontamento naquele dia',
-  AUSENCIA_HOJE_APOS_APONTAMENTO:
-    'A ausência de hoje deve ser registrada antes do primeiro apontamento do usuário',
   AUSENCIA_CRIADA_SUCESSO: 'Ausência criada com sucesso',
   AUSENCIA_CANCELADA_SUCESSO: 'Ausência futura cancelada com sucesso',
   APONTAMENTO_ATUALIZADO_SUCESSO: 'Apontamento atualizado com sucesso',

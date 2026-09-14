@@ -268,7 +268,7 @@ export class AbsenceService {
     const startDateKey = formatDateKey(startedAt);
     const todayKey = formatDateKey(now);
 
-    if (startDateKey > todayKey) {
+    if (startDateKey >= todayKey) {
       return;
     }
 
@@ -279,12 +279,8 @@ export class AbsenceService {
       dayEnd,
     );
 
-    if (startDateKey < todayKey && !hasTimeEntry) {
+    if (!hasTimeEntry) {
       throw new AppError(400, MENSAGENS.AUSENCIA_PASSADA_SEM_APONTAMENTO);
-    }
-
-    if (startDateKey === todayKey && hasTimeEntry) {
-      throw new AppError(400, MENSAGENS.AUSENCIA_HOJE_APOS_APONTAMENTO);
     }
   }
 
