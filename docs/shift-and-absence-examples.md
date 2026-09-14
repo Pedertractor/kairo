@@ -103,3 +103,30 @@ Team admins see and create absences only for members of teams they administer. A
 - 09:00 onward counts as work. Occupation is not charged for the cancelled remainder 09:00–10:00.
 
 If they start a time entry when no absence covers that instant, the absence records are left unchanged.
+
+---
+
+## 7. Multi-team availability (Analytics)
+
+A person in more than one team does **not** get 8h 48min of disponibilidade on every team. Capacity follows the team of their **last TimeEntry**.
+
+**Rule**
+
+- The last apontamento (including previous days) owns disponibilidade until the person starts an entry on another team.
+- Ownership switches at the new entry’s `startedAt`. Remaining capacity from that instant goes to the new team.
+- If the person never pointed, no team receives those hours (`0` available).
+- Logged hours stay team-scoped (only entries on the viewed team).
+
+**Example**
+
+- Shift: 06:15–15:03
+- Last entry on Friday was on Team A
+- Monday: first entry on Team B starts at 13:00
+
+| Team | Available window |
+| --- | --- |
+| Team A | 06:15–13:00 (includes morning idle) |
+| Team B | 13:00–15:03 |
+| Other team they belong to but never “own” | `0` |
+
+This applies on Analytics (`/analytics`). The admin Painel still counts each person once globally.
