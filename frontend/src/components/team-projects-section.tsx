@@ -34,11 +34,13 @@ const VISIBILITY_ALL = 'all'
 interface TeamProjectsSectionProps {
   teamId: string
   canCreate: boolean
+  onProjectsChange?: (projects: ProjectSummary[]) => void
 }
 
 export function TeamProjectsSection({
   teamId,
   canCreate,
+  onProjectsChange,
 }: TeamProjectsSectionProps) {
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -59,10 +61,11 @@ export function TeamProjectsSection({
         `/teams/${teamId}/projects`,
       )
       setProjects(data.projects)
+      onProjectsChange?.(data.projects)
     } finally {
       setIsLoading(false)
     }
-  }, [teamId])
+  }, [teamId, onProjectsChange])
 
   useEffect(() => {
     void loadProjects()

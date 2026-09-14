@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pencil } from 'lucide-react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { BackButton } from '@/components/back-button';
@@ -14,9 +14,16 @@ import { TeamTimelineSection } from '@/components/team-timeline-section';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/lib/api-handler';
+import { CARD_STATUSES, STATUS_LABELS } from '@/lib/card-status';
 import { canCreateTeamActivities, canCreateTeamProjects, canDeleteTeamTags, canEditTeamActivities, canEditTeamTags, canViewTeamTimeline } from '@/lib/team-permissions';
+import type { ProjectSummary, ProjectsListResponse } from '@/types/card';
 import type { TeamResponse, TeamSummary } from '@/types/team';
 
 type TeamTab =
@@ -64,6 +71,57 @@ function resolveTeamTab(tab: TeamTab | null, team: TeamSummary): TeamTab {
   return requested;
 }
 
+function ProjectTabCount({ projects }: { projects: ProjectSummary[] }) {
+  const statusCounts = useMemo(
+    () =>
+      CARD_STATUSES.map((status) => ({
+        status,
+        label: STATUS_LABELS[status],
+        count: projects.filter((project) => project.status === status).length,
+      })).filter((item) => item.count > 0),
+    [projects],
+  );
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        delay={200}
+        render={
+          <span className='inline-flex items-center'>
+            Projetos
+            <span
+              className='ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-muted px-1.5 py-0.5 text-[11px] leading-none font-semibold tabular-nums text-muted-foreground'
+              aria-label={`${projects.length} ${projects.length === 1 ? 'projeto' : 'projetos'}`}
+            >
+              {projects.length}
+            </span>
+          </span>
+        }
+      />
+      <TooltipContent
+        side='bottom'
+        className='rounded-xl border border-border bg-card px-3 py-2 text-card-foreground shadow-lg [&>svg]:hidden'
+      >
+        {projects.length === 0 ? (
+          <p>Nenhum projeto nesta equipe.</p>
+        ) : (
+          <ul className='min-w-40 space-y-1'>
+            {statusCounts.map((item) => (
+              <li
+                key={item.status}
+                className='flex items-center justify-between gap-6 text-xs'
+              >
+                <span>{item.label}</span>
+                <span className='font-semibold tabular-nums'>{item.count}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 export function TeamDetailPage() {
   const { teamId } = useParams<{ teamId: string }>();
   const { refreshUser } = useAuth();
@@ -73,6 +131,7 @@ export function TeamDetailPage() {
   const userIdFromUrl = searchParams.get('userId') ?? undefined;
   const openedAsSingleTeam = searchParams.get('unica') === '1';
   const [team, setTeam] = useState<TeamResponse['team'] | null>(null);
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isReactivateDialogOpen, setIsReactivateDialogOpen] = useState(false);
@@ -115,6 +174,36 @@ export function TeamDetailPage() {
     }
 
     void loadTeam();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [teamId]);
+
+  useEffect(() => {
+    if (!teamId) {
+      setProjects([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadProjects() {
+      try {
+        const data = await api<ProjectsListResponse>(
+          `/teams/${teamId}/projects`,
+        );
+        if (!cancelled) {
+          setProjects(data.projects);
+        }
+      } catch {
+        if (!cancelled) {
+          setProjects([]);
+        }
+      }
+    }
+
+    void loadProjects();
 
     return () => {
       cancelled = true;
@@ -236,9 +325,9 @@ export function TeamDetailPage() {
               </TabsTrigger>
               <TabsTrigger
                 value='projetos'
-                className='data-[state=active]:border-sidebar-primary data-[state=active]:text-sidebar-primary'
+                className='inline-flex items-center data-[state=active]:border-sidebar-primary data-[state=active]:text-sidebar-primary'
               >
-                Projetos
+                <ProjectTabCount projects={projects} />
               </TabsTrigger>
               <TabsTrigger
                 value='membros'
@@ -302,6 +391,7 @@ export function TeamDetailPage() {
               <TeamProjectsSection
                 teamId={team.id}
                 canCreate={canCreateTeamProjects(team)}
+                onProjectsChange={setProjects}
               />
             </TabsContent>
 
