@@ -43,19 +43,12 @@ export function useHomeData(selectedDate: string) {
     null,
   )
   const [recentItems, setRecentItems] = useState<RecentWorkItem[]>([])
-  const [isLoadingToday, setIsLoadingToday] = useState(true)
   const [isLoadingTimeline, setIsLoadingTimeline] = useState(true)
   const [isLoadingRecent, setIsLoadingRecent] = useState(true)
 
   const loadToday = useCallback(async (force = false) => {
-    setIsLoadingToday(true)
-
-    try {
-      const data = await fetchDayDashboard(todayKey, force)
-      setTodayDashboard(data)
-    } finally {
-      setIsLoadingToday(false)
-    }
+    const data = await fetchDayDashboard(todayKey, force)
+    setTodayDashboard(data)
   }, [todayKey])
 
   const loadTimelineDay = useCallback(
