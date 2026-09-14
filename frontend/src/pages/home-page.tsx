@@ -3,7 +3,6 @@ import { Plus } from 'lucide-react';
 
 import { DayTimeline } from '@/components/day-timeline';
 import { HomeDashboardHeader } from '@/components/home-dashboard-header';
-import { HomeStatsCards } from '@/components/home-stats-cards';
 import { NoTeamMessage } from '@/components/no-team-message';
 import { RecentWorkItemsCard } from '@/components/recent-work-items-card';
 import { StartRecentWorkDialog } from '@/components/start-recent-work-dialog';
@@ -19,10 +18,8 @@ export function HomePage() {
   const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date()));
   const [startDialogOpen, setStartDialogOpen] = useState(false);
   const {
-    todayStats,
     timelineBlocks,
     recentItems,
-    isLoadingToday,
     isLoadingTimeline,
     isLoadingRecent,
   } = useHomeData(selectedDate);
@@ -45,8 +42,6 @@ export function HomePage() {
             onDateChange={setSelectedDate}
             isLoading={isLoadingTimeline}
           />
-
-          <HomeStatsCards stats={todayStats} isLoading={isLoadingToday} />
 
           <StartRecentWorkDialog
             open={startDialogOpen}

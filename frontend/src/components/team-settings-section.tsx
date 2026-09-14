@@ -24,6 +24,9 @@ export function TeamSettingsSection({
       | 'membersCanCreateActivities'
       | 'membersCanCreateProjects'
       | 'membersCanViewTimeline'
+      | 'membersCanEditActivities'
+      | 'membersCanEditTags'
+      | 'membersCanDeleteTags'
     >,
     value: boolean,
   ) {
@@ -73,6 +76,26 @@ export function TeamSettingsSection({
 
         <Field orientation="horizontal">
           <FieldContent>
+            <FieldLabel htmlFor="members-can-edit-activities">
+              Todos podem editar atividades
+            </FieldLabel>
+            <FieldDescription>
+              Quando desativado, apenas administradores da equipe podem editar
+              dados das atividades. Status e exclusão continuam disponíveis.
+            </FieldDescription>
+          </FieldContent>
+          <Switch
+            id="members-can-edit-activities"
+            checked={team.membersCanEditActivities}
+            disabled={pendingField !== null}
+            onCheckedChange={(checked) =>
+              void updateFlag('membersCanEditActivities', checked)
+            }
+          />
+        </Field>
+
+        <Field orientation="horizontal">
+          <FieldContent>
             <FieldLabel htmlFor="members-can-create-projects">
               Todos podem criar projetos
             </FieldLabel>
@@ -107,6 +130,46 @@ export function TeamSettingsSection({
             disabled={pendingField !== null}
             onCheckedChange={(checked) =>
               void updateFlag('membersCanViewTimeline', checked)
+            }
+          />
+        </Field>
+
+        <Field orientation="horizontal">
+          <FieldContent>
+            <FieldLabel htmlFor="members-can-edit-tags">
+              Todos podem editar etiquetas
+            </FieldLabel>
+            <FieldDescription>
+              Quando desativado, apenas administradores da equipe podem editar
+              etiquetas.
+            </FieldDescription>
+          </FieldContent>
+          <Switch
+            id="members-can-edit-tags"
+            checked={team.membersCanEditTags}
+            disabled={pendingField !== null}
+            onCheckedChange={(checked) =>
+              void updateFlag('membersCanEditTags', checked)
+            }
+          />
+        </Field>
+
+        <Field orientation="horizontal">
+          <FieldContent>
+            <FieldLabel htmlFor="members-can-delete-tags">
+              Todos podem excluir etiquetas
+            </FieldLabel>
+            <FieldDescription>
+              Quando desativado, apenas administradores da equipe podem excluir
+              etiquetas.
+            </FieldDescription>
+          </FieldContent>
+          <Switch
+            id="members-can-delete-tags"
+            checked={team.membersCanDeleteTags}
+            disabled={pendingField !== null}
+            onCheckedChange={(checked) =>
+              void updateFlag('membersCanDeleteTags', checked)
             }
           />
         </Field>
