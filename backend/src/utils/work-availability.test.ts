@@ -158,6 +158,65 @@ describe('calculateAvailabilitySeconds — late start and absences', () => {
 
     assert.equal(availabilitySeconds, 4 * 3600);
   });
+
+  it('discounts a short closed absence instead of refilling the 8h 48min cap', () => {
+    const now = at(12, 0);
+    const availabilitySeconds = calculateAvailabilitySeconds(
+      [{ startedAt: at(8, 0), endedAt: at(8, 15) }],
+      at(0, 0),
+      zonedDateTimeToUtc('2026-07-11'),
+      now,
+      shiftForDay(),
+    );
+
+    assert.equal(availabilitySeconds, DAILY_AVAILABILITY_SECONDS - 15 * 60);
+  });
+
+  it('discounts a 15min absence on a longer shift instead of backfilling later hours', () => {
+    const availabilitySeconds = calculateAvailabilitySeconds(
+      [{ startedAt: at(8, 0), endedAt: at(8, 15) }],
+      at(0, 0),
+      zonedDateTimeToUtc('2026-07-11'),
+      at(18, 0),
+      shiftForDay(6 * 60, 18 * 60),
+    );
+
+    assert.equal(availabilitySeconds, DAILY_AVAILABILITY_SECONDS - 15 * 60);
+  });
+
+  it('discounts a 15min absence when the person has no shift recorded', () => {
+    const availabilitySeconds = calculateAvailabilitySeconds(
+      [{ startedAt: at(8, 0), endedAt: at(8, 15) }],
+      at(0, 0),
+      zonedDateTimeToUtc('2026-07-11'),
+      at(12, 0),
+    );
+
+    assert.equal(availabilitySeconds, DAILY_AVAILABILITY_SECONDS - 15 * 60);
+  });
+
+  it('discounts a same-day afternoon absence when the person has no shift', () => {
+    const availabilitySeconds = calculateAvailabilitySeconds(
+      [{ startedAt: at(14, 0), endedAt: at(14, 15) }],
+      at(0, 0),
+      zonedDateTimeToUtc('2026-07-11'),
+      at(16, 0),
+    );
+
+    assert.equal(availabilitySeconds, DAILY_AVAILABILITY_SECONDS - 15 * 60);
+  });
+
+  it('does not discount an absence that falls after the capped 8h 48min window', () => {
+    const availabilitySeconds = calculateAvailabilitySeconds(
+      [{ startedAt: at(16, 0), endedAt: at(16, 15) }],
+      at(0, 0),
+      zonedDateTimeToUtc('2026-07-11'),
+      at(18, 0),
+      shiftForDay(6 * 60, 18 * 60),
+    );
+
+    assert.equal(availabilitySeconds, DAILY_AVAILABILITY_SECONDS);
+  });
 });
 
 describe('team-scoped availability allocation', () => {
@@ -310,6 +369,18 @@ describe('team-scoped availability allocation', () => {
     // Cap keeps the first 8h48 of the 12h window (06:00–14:48)
     assert.equal(forA, 6 * 3600); // 06:00–12:00
     assert.equal(forB, 2 * 3600 + 48 * 60); // 12:00–14:48
+  });
+
+  it('keeps a 15min hole in team-scoped intervals instead of refilling the cap', () => {
+    const open = openForDay([{ startedAt: at(8, 0), endedAt: at(8, 15) }]);
+    const segments = buildTeamAllocationSegments(periodStart, periodEnd, TEAM_A, [
+      { startedAt: at(9, 0), teamId: TEAM_A },
+    ]);
+
+    assert.equal(
+      allocateAvailabilitySeconds(open, segments, [TEAM_A]),
+      DAILY_AVAILABILITY_SECONDS - 15 * 60,
+    );
   });
 
   it('ignores teams outside the scoped set', () => {

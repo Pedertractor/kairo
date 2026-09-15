@@ -4,6 +4,7 @@ import 'dayjs/locale/pt-br';
 import { Minus, Plus } from 'lucide-react';
 
 import { TeamTimelineBlock } from '@/components/team-timeline-block';
+import { TimelineAbsenceBand } from '@/components/timeline-absence-band';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -12,11 +13,15 @@ import { toDateKey } from '@/lib/date';
 import { formatCurrentTime } from '@/lib/format-time';
 import {
   formatDayMinutes,
+  getTimelineIntervalStyle,
   getVisibleTimelineRange,
 } from '@/lib/timeline-day';
 import { layoutOverlappingBlocks } from '@/lib/timeline-overlap-layout';
 import { cn } from '@/lib/utils';
-import type { TeamDayTimelineBlock } from '@/types/time-entry';
+import type {
+  TeamDayAbsenceBlock,
+  TeamDayTimelineBlock,
+} from '@/types/time-entry';
 
 dayjs.locale('pt-br');
 
@@ -34,6 +39,7 @@ const NOW_LINE_LIVE_LEAD_PX = 0;
 
 interface TeamDayTimelineProps {
   blocks: TeamDayTimelineBlock[];
+  absences?: TeamDayAbsenceBlock[];
   selectedDate: string;
   onDateChange: (date: string) => void;
   isLoading: boolean;
@@ -138,8 +144,11 @@ function buildTicks(
   return ticks;
 }
 
+const COLUMN_GAP_PX = 4;
+
 export function TeamDayTimeline({
   blocks,
+  absences = [],
   selectedDate,
   onDateChange,
   isLoading,
@@ -162,7 +171,7 @@ export function TeamDayTimeline({
 
   const hourHeight = BASE_HOUR_HEIGHT * zoom;
   const { rangeStart, rangeEnd } = getVisibleTimelineRange(
-    blocks,
+    [...blocks, ...absences],
     selectedDate,
     now,
   );
@@ -175,8 +184,12 @@ export function TeamDayTimeline({
   );
 
   const memberColorMap = useMemo(
-    () => buildMemberColorMap(blocks.map((block) => block.userId)),
-    [blocks],
+    () =>
+      buildMemberColorMap([
+        ...blocks.map((block) => block.userId),
+        ...absences.map((absence) => absence.userId),
+      ]),
+    [absences, blocks],
   );
 
   const memberLegend = useMemo(() => {
@@ -184,6 +197,12 @@ export function TeamDayTimeline({
 
     for (const block of blocks) {
       members.set(block.userId, block.userName);
+    }
+
+    for (const absence of absences) {
+      if (!members.has(absence.userId)) {
+        members.set(absence.userId, absence.userName);
+      }
     }
 
     return [...members.entries()]
@@ -202,7 +221,7 @@ export function TeamDayTimeline({
         } => member.colors !== undefined,
       )
       .sort((left, right) => left.userName.localeCompare(right.userName));
-  }, [blocks, memberColorMap]);
+  }, [absences, blocks, memberColorMap]);
 
   const memberColumnMap = useMemo(
     () =>
@@ -543,6 +562,41 @@ export function TeamDayTimeline({
                     />
                   ))}
 
+                  {absences.map((absence) => {
+                    const style = getTimelineIntervalStyle(
+                      absence.startedAt,
+                      absence.endedAt,
+                      selectedDate,
+                      now,
+                      rangeStart,
+                      rangeEnd,
+                      hourHeight,
+                      TIMELINE_EDGE_PADDING,
+                    );
+                    const memberColumn = memberColumnMap.get(absence.userId);
+
+                    if (!style || memberColumn === undefined) {
+                      return null;
+                    }
+
+                    const widthPercent = 100 / memberLegend.length;
+                    const leftPercent = memberColumn * widthPercent;
+
+                    return (
+                      <TimelineAbsenceBand
+                        key={absence.id}
+                        startedAt={absence.startedAt}
+                        endedAt={absence.endedAt}
+                        selectedDate={selectedDate}
+                        top={style.top}
+                        height={style.height}
+                        userName={absence.userName}
+                        left={`calc(${leftPercent}% + ${COLUMN_GAP_PX / 2}px)`}
+                        width={`calc(${widthPercent}% - ${COLUMN_GAP_PX}px)`}
+                      />
+                    );
+                  })}
+
                   {laidOutBlocks.map((layout) => {
                     const top = minutesToTop(layout.startMinutes);
                     const height = Math.max(
@@ -613,7 +667,7 @@ export function TeamDayTimeline({
                     </div>
                   ) : null}
 
-                  {blocks.length === 0 ? (
+                  {blocks.length === 0 && absences.length === 0 ? (
                     <div className='absolute inset-0 flex items-center justify-center'>
                       <p className='text-sm text-muted-foreground'>
                         Nenhum apontamento neste dia.
@@ -627,10 +681,23 @@ export function TeamDayTimeline({
         )}
 
         {!isLoading ? (
-          <p className='mt-2 text-[11px] text-muted-foreground'>
-            Com o mouse sobre o gráfico, use Ctrl + scroll (ou Alt + scroll) para
-            ampliar no ponteiro.
-          </p>
+          <div className='mt-2 flex flex-wrap items-center justify-between gap-2'>
+            {absences.length > 0 ? (
+              <p className='inline-flex items-center gap-1.5 text-[11px] text-muted-foreground'>
+                <span
+                  className='size-2.5 shrink-0 rounded-sm border border-amber-500/40 bg-amber-500/30'
+                  aria-hidden
+                />
+                Ausente
+              </p>
+            ) : (
+              <span />
+            )}
+            <p className='text-[11px] text-muted-foreground'>
+              Com o mouse sobre o gráfico, use Ctrl + scroll (ou Alt + scroll) para
+              ampliar no ponteiro.
+            </p>
+          </div>
         ) : null}
       </CardContent>
     </Card>

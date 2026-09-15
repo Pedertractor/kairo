@@ -51,6 +51,18 @@ export class AbsenceService {
     return this.absenceRepository.findCoveringOn(userId, now);
   }
 
+  findOverlappingForUsers(
+    userIds: string[],
+    rangeStart: Date,
+    rangeEndExclusive: Date,
+  ) {
+    return this.absenceRepository.findOverlappingRange(
+      userIds,
+      rangeStart,
+      rangeEndExclusive,
+    );
+  }
+
   async endCoveringAbsenceAt(userId: string, at: Date): Promise<void> {
     const covering = await this.absenceRepository.findCoveringOn(userId, at);
 

@@ -34,10 +34,12 @@ import {
 import { canCreateTeamProjects } from '@/lib/team-permissions'
 import { cn } from '@/lib/utils'
 import type { CardStatus, ProjectSummary, ProjectsListResponse } from '@/types/card'
-import type { TeamsListResponse } from '@/types/team'
+import type { TeamSummary, TeamsListResponse } from '@/types/team'
 
 const ALL_STATUSES = 'ALL' as const
 type StatusFilter = CardStatus | typeof ALL_STATUSES
+
+const ALL_TEAMS = 'ALL' as const
 
 const VISIBILITY_ACTIVE = 'active'
 const VISIBILITY_ALL = 'all'
@@ -60,7 +62,9 @@ export function ProjetosPage() {
     useState<ProjectSummary | null>(null)
   const [nameFilter, setNameFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(ALL_STATUSES)
+  const [teamFilter, setTeamFilter] = useState<string>(ALL_TEAMS)
   const [visibilityFilter, setVisibilityFilter] = useState(VISIBILITY_ACTIVE)
+  const [teams, setTeams] = useState<TeamSummary[]>([])
   const [canCreateProject, setCanCreateProject] = useState(false)
 
   const loadProjects = useCallback(async () => {
@@ -72,6 +76,9 @@ export function ProjetosPage() {
         api<TeamsListResponse>('/teams'),
       ])
       setProjects(projectsData.projects)
+      setTeams(
+        [...teamsData.teams].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
+      )
       setCanCreateProject(teamsData.teams.some(canCreateTeamProjects))
     } finally {
       setIsLoading(false)
@@ -96,13 +103,18 @@ export function ProjetosPage() {
         query === '' || project.title.toLowerCase().includes(query)
       const matchesStatus =
         statusFilter === ALL_STATUSES || project.status === statusFilter
+      const matchesTeam =
+        teamFilter === ALL_TEAMS || project.teamId === teamFilter
 
-      return matchesName && matchesStatus
+      return matchesName && matchesStatus && matchesTeam
     })
-  }, [projects, nameFilter, statusFilter, visibilityFilter])
+  }, [projects, nameFilter, statusFilter, teamFilter, visibilityFilter])
 
+  const showTeamFilter = teams.length > 1
   const hasSheetFilters =
-    statusFilter !== ALL_STATUSES || visibilityFilter !== VISIBILITY_ACTIVE
+    statusFilter !== ALL_STATUSES ||
+    visibilityFilter !== VISIBILITY_ACTIVE ||
+    (showTeamFilter && teamFilter !== ALL_TEAMS)
   const hasActiveFilters = nameFilter.trim() !== '' || hasSheetFilters
   const hasFinishedHidden =
     visibilityFilter === VISIBILITY_ACTIVE &&
@@ -211,6 +223,46 @@ export function ProjetosPage() {
                   </Select>
                 </FilterField>
 
+                {showTeamFilter ? (
+                  <FilterField
+                    id={`${idPrefix}-team`}
+                    label="Filtrar por equipe"
+                    className={itemClassName}
+                  >
+                    <Select
+                      value={teamFilter}
+                      onValueChange={(value) =>
+                        setTeamFilter(value ?? ALL_TEAMS)
+                      }
+                    >
+                      <SelectTrigger
+                        id={`${idPrefix}-team`}
+                        className="w-full"
+                        aria-label="Filtrar por equipe"
+                      >
+                        <SelectValue placeholder="Equipe">
+                          {(selectedValue) =>
+                            selectedValue === ALL_TEAMS
+                              ? 'Todas as equipes'
+                              : teams.find((team) => team.id === selectedValue)
+                                  ?.name
+                          }
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={ALL_TEAMS}>
+                          Todas as equipes
+                        </SelectItem>
+                        {teams.map((team) => (
+                          <SelectItem key={team.id} value={team.id}>
+                            {team.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FilterField>
+                ) : null}
+
                 <FilterField
                   id={`${idPrefix}-status`}
                   label="Filtrar por status"
@@ -271,7 +323,9 @@ export function ProjetosPage() {
             {hasFinishedHidden && !hasActiveFilters
               ? 'Há projetos concluídos ocultos. Selecione "Todos" para exibi-los.'
               : hasActiveFilters
-                ? 'Tente ajustar os filtros de busca ou status.'
+                ? showTeamFilter
+                  ? 'Tente ajustar os filtros de busca, equipe ou status.'
+                  : 'Tente ajustar os filtros de busca ou status.'
                 : 'Os projetos das suas equipes aparecerão aqui.'}
           </p>
         </div>

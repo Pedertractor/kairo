@@ -33,6 +33,10 @@ import {
   assertTeamMembership,
 } from '../utils/team-access.js';
 import { getEntryDurationSeconds } from '../utils/time-entry-duration.js';
+import {
+  mapAbsencesToDayBlocks,
+  mapAbsencesToTeamDayBlocks,
+} from '../utils/timeline-absences.js';
 import { AbsenceService } from './absence.service.js';
 import { releaseActivityIfIdle } from './card-status-sync.js';
 import { releaseTaskIfIdle } from './task-status-sync.js';
@@ -910,9 +914,10 @@ export class TimeEntryService {
     const { dayStart: prevStart, dayEnd: prevEnd } =
       parseDayBounds(previousDate);
 
-    const [entries, previousEntries] = await Promise.all([
+    const [entries, previousEntries, absencePeriods] = await Promise.all([
       this.timeEntryRepository.findOverlappingDay(userId, dayStart, dayEnd),
       this.timeEntryRepository.findOverlappingDay(userId, prevStart, prevEnd),
+      this.absenceService.findOverlappingForUsers([userId], dayStart, dayEnd),
     ]);
 
     let loggedSeconds = 0;
@@ -957,6 +962,12 @@ export class TimeEntryService {
     const blocks = entries
       .map((entry) => mapDayEntryToBlock(entry, dayStart, dayEnd, now))
       .filter((block): block is DayTimelineBlock => block !== null);
+    const absences = mapAbsencesToDayBlocks(
+      absencePeriods,
+      dayStart,
+      dayEnd,
+      now,
+    );
 
     return {
       date: targetDate,
@@ -966,6 +977,7 @@ export class TimeEntryService {
         uniqueCategories: categories.size,
       },
       blocks,
+      absences,
     };
   }
 
@@ -987,8 +999,9 @@ export class TimeEntryService {
     const previousDate = shiftDateKey(targetDate, -1);
     const { dayStart: prevStart, dayEnd: prevEnd } =
       parseDayBounds(previousDate);
+    const memberIds = membership.team.members.map((member) => member.user.id);
 
-    const [entries, previousEntries] = await Promise.all([
+    const [entries, previousEntries, absencePeriods] = await Promise.all([
       this.timeEntryRepository.findOverlappingDayByTeamId(
         teamId,
         dayStart,
@@ -999,6 +1012,7 @@ export class TimeEntryService {
         prevStart,
         prevEnd,
       ),
+      this.absenceService.findOverlappingForUsers(memberIds, dayStart, dayEnd),
     ]);
 
     let loggedSeconds = 0;
@@ -1038,6 +1052,18 @@ export class TimeEntryService {
     const blocks = entries
       .map((entry) => mapTeamDayEntryToBlock(entry, dayStart, dayEnd, now))
       .filter((block): block is TeamDayTimelineBlock => block !== null);
+    const absences = mapAbsencesToTeamDayBlocks(
+      absencePeriods.map((period) => ({
+        id: period.id,
+        userId: period.userId,
+        userName: period.user.name,
+        startedAt: period.startedAt,
+        endedAt: period.endedAt,
+      })),
+      dayStart,
+      dayEnd,
+      now,
+    );
 
     return {
       date: targetDate,
@@ -1047,6 +1073,7 @@ export class TimeEntryService {
         activeMembers: activeMemberIds.size,
       },
       blocks,
+      absences,
     };
   }
 }

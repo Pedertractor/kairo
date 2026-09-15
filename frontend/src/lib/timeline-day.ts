@@ -32,6 +32,34 @@ export function formatDayMinutes(minutes: number): string {
   return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`
 }
 
+export function getTimelineIntervalStyle(
+  startedAt: string,
+  endedAt: string | null,
+  selectedDate: string,
+  now: Date,
+  rangeStart: number,
+  rangeEnd: number,
+  hourHeight: number,
+  edgePadding: number,
+): { top: number; height: number } | null {
+  const start = Math.max(
+    getMinutesOnSelectedDay(startedAt, selectedDate),
+    rangeStart,
+  )
+  const end = endedAt
+    ? Math.min(getMinutesOnSelectedDay(endedAt, selectedDate), rangeEnd)
+    : Math.min(getMinutesOnSelectedDay(now.toISOString(), selectedDate), rangeEnd)
+
+  if (end <= start) {
+    return null
+  }
+
+  return {
+    top: edgePadding + ((start - rangeStart) / 60) * hourHeight,
+    height: Math.max(((end - start) / 60) * hourHeight, 3),
+  }
+}
+
 export function getVisibleTimelineRange(
   blocks: Array<{ startedAt: string; endedAt: string | null }>,
   selectedDate: string,

@@ -74,10 +74,17 @@ export interface DayDashboardStats {
   uniqueCategories: number;
 }
 
+export interface DayAbsenceBlock {
+  id: string;
+  startedAt: string;
+  endedAt: string | null;
+}
+
 export interface DayDashboard {
   date: string;
   stats: DayDashboardStats;
   blocks: DayTimelineBlock[];
+  absences: DayAbsenceBlock[];
 }
 
 export interface TeamDayTimelineBlock extends DayTimelineBlock {
@@ -91,10 +98,16 @@ export interface TeamDayDashboardStats {
   activeMembers: number;
 }
 
+export interface TeamDayAbsenceBlock extends DayAbsenceBlock {
+  userId: string;
+  userName: string;
+}
+
 export interface TeamDayDashboard {
   date: string;
   stats: TeamDayDashboardStats;
   blocks: TeamDayTimelineBlock[];
+  absences: TeamDayAbsenceBlock[];
 }
 
 export interface TaskTimeEntrySummary {

@@ -89,53 +89,43 @@ function getPeriodDaySlices(
   return slices;
 }
 
-/**
- * Absent seconds inside a single day slice, merging overlapping absences.
- * Expects `absences` sorted by `startedAt` so the merge is a single pass.
- */
-function absentSecondsInSlice(
-  absences: AbsenceInterval[],
+function buildDayCapacityWindow(
   slice: DaySlice,
-  nowMs: number,
-): number {
-  let totalMilliseconds = 0;
-  let currentStart: number | null = null;
-  let currentEnd = 0;
+  shift: ShiftPeriodInterval | null,
+): { window: TimeInterval; dailyCapacitySeconds: number } | null {
+  const rawShiftSeconds = shift
+    ? (shift.endMinutes - shift.startMinutes) * 60
+    : DAILY_AVAILABILITY_SECONDS;
+  const dailyCapacitySeconds = Math.min(
+    DAILY_AVAILABILITY_SECONDS,
+    rawShiftSeconds,
+  );
 
-  for (const absence of absences) {
-    const start = Math.max(absence.startedAt.getTime(), slice.start);
-
-    if (start >= slice.end) {
-      break;
-    }
-
-    const end = Math.min(absence.endedAt?.getTime() ?? nowMs, slice.end);
-
-    if (end <= start) {
-      continue;
-    }
-
-    if (currentStart === null) {
-      currentStart = start;
-      currentEnd = end;
-      continue;
-    }
-
-    if (start <= currentEnd) {
-      currentEnd = Math.max(currentEnd, end);
-      continue;
-    }
-
-    totalMilliseconds += currentEnd - currentStart;
-    currentStart = start;
-    currentEnd = end;
+  if (dailyCapacitySeconds <= 0) {
+    return null;
   }
 
-  if (currentStart !== null) {
-    totalMilliseconds += currentEnd - currentStart;
+  const { dayStart } = parseDayBounds(slice.dateKey);
+  const dayStartMs = dayStart.getTime();
+  const windowStart = shift
+    ? dayStartMs + shift.startMinutes * 60_000
+    : slice.start;
+  const windowEnd = shift
+    ? dayStartMs + shift.endMinutes * 60_000
+    : slice.end;
+
+  const window: TimeInterval = {
+    start: Math.max(slice.start, windowStart),
+    // Use the full scheduled shift, not elapsed time. Capacity is the day's
+    // shift (capped at 8h 48min), even if the turn has just started.
+    end: Math.min(slice.end, windowEnd),
+  };
+
+  if (window.start >= window.end) {
+    return null;
   }
 
-  return Math.floor(totalMilliseconds / 1000);
+  return { window, dailyCapacitySeconds };
 }
 
 function resolveShiftForDay(
@@ -293,7 +283,8 @@ function sortShifts(shifts: ShiftPeriodInterval[]): ShiftPeriodInterval[] {
 
 /**
  * Per-day open availability intervals after absences, with the daily 8h 48min
- * cap applied once by trimming from the end of each day.
+ * cap applied first so a later stretch of the shift cannot refill hours that
+ * an absence already removed.
  */
 export function getOpenAvailabilityIntervals(
   absences: AbsenceInterval[],
@@ -310,47 +301,55 @@ export function getOpenAvailabilityIntervals(
 
   for (const slice of slices) {
     const { dayStart, dayEnd } = parseDayBounds(slice.dateKey);
-    const dayStartMs = dayStart.getTime();
-    const dayEndMs = dayEnd.getTime();
-    const shift = resolveShiftForDay(sortedShifts, dayStartMs, dayEndMs);
-
-    const rawShiftSeconds = shift
-      ? (shift.endMinutes - shift.startMinutes) * 60
-      : DAILY_AVAILABILITY_SECONDS;
-    const dailyCapacitySeconds = Math.min(
-      DAILY_AVAILABILITY_SECONDS,
-      rawShiftSeconds,
+    const shift = resolveShiftForDay(
+      sortedShifts,
+      dayStart.getTime(),
+      dayEnd.getTime(),
     );
+    const capacity = buildDayCapacityWindow(slice, shift);
 
-    if (dailyCapacitySeconds <= 0) {
-      continue;
-    }
-
-    const windowStart = shift
-      ? dayStartMs + shift.startMinutes * 60_000
-      : slice.start;
-    const windowEnd = shift
-      ? dayStartMs + shift.endMinutes * 60_000
-      : slice.end;
-
-    const window: TimeInterval = {
-      start: Math.max(slice.start, windowStart),
-      // Use the full scheduled shift, not elapsed time. Capacity is the day's
-      // shift (capped at 8h 48min), even if the turn has just started.
-      end: Math.min(slice.end, windowEnd),
-    };
-
-    if (window.start >= window.end) {
+    if (!capacity) {
       continue;
     }
 
     const absenceIntervals = mergeAbsenceIntervals(
       sortedAbsences,
-      window,
+      capacity.window,
       nowMs,
     );
-    const dayOpen = subtractIntervals(window, absenceIntervals);
-    open.push(...trimIntervalsToCapacity(dayOpen, dailyCapacitySeconds));
+
+    if (!shift) {
+      // No shift: any same-day absence reduces the 8h 48min budget. Trim the
+      // remaining day so later hours cannot refill what the absence removed.
+      const absentSeconds = Math.min(
+        capacity.dailyCapacitySeconds,
+        absenceIntervals.reduce(
+          (total, interval) => total + intervalSeconds(interval),
+          0,
+        ),
+      );
+      open.push(
+        ...trimIntervalsToCapacity(
+          subtractIntervals(capacity.window, absenceIntervals),
+          capacity.dailyCapacitySeconds - absentSeconds,
+        ),
+      );
+      continue;
+    }
+
+    const cappedWindows = trimIntervalsToCapacity(
+      [capacity.window],
+      capacity.dailyCapacitySeconds,
+    );
+
+    for (const window of cappedWindows) {
+      open.push(
+        ...subtractIntervals(
+          window,
+          mergeAbsenceIntervals(sortedAbsences, window, nowMs),
+        ),
+      );
+    }
   }
 
   return open;
@@ -363,71 +362,13 @@ export function calculateAvailabilitySeconds(
   now = new Date(),
   shifts: ShiftPeriodInterval[] = [],
 ): number {
-  const slices = getPeriodDaySlices(periodStart, periodEndExclusive);
-  const sortedAbsences = sortAbsences(absences);
-  const sortedShifts = sortShifts(shifts);
-  const nowMs = now.getTime();
-  let availabilitySeconds = 0;
-
-  for (const slice of slices) {
-    const { dayStart, dayEnd } = parseDayBounds(slice.dateKey);
-    const dayStartMs = dayStart.getTime();
-    const dayEndMs = dayEnd.getTime();
-    const shift = resolveShiftForDay(sortedShifts, dayStartMs, dayEndMs);
-
-    const rawShiftSeconds = shift
-      ? (shift.endMinutes - shift.startMinutes) * 60
-      : DAILY_AVAILABILITY_SECONDS;
-    const dailyCapacitySeconds = Math.min(
-      DAILY_AVAILABILITY_SECONDS,
-      rawShiftSeconds,
-    );
-
-    if (dailyCapacitySeconds <= 0) {
-      continue;
-    }
-
-    const windowStart = shift
-      ? dayStartMs + shift.startMinutes * 60_000
-      : slice.start;
-    const windowEnd = shift
-      ? dayStartMs + shift.endMinutes * 60_000
-      : slice.end;
-
-    const effectiveSlice: DaySlice = {
-      start: Math.max(slice.start, windowStart),
-      // Use the full scheduled shift, not elapsed time. Capacity is the day's
-      // shift (capped at 8h 48min), even if the turn has just started.
-      end: Math.min(slice.end, windowEnd),
-      dateKey: slice.dateKey,
-    };
-
-    if (effectiveSlice.start >= effectiveSlice.end) {
-      continue;
-    }
-
-    if (sortedAbsences.length === 0) {
-      const openSeconds = Math.floor(
-        (effectiveSlice.end - effectiveSlice.start) / 1000,
-      );
-      availabilitySeconds += Math.min(dailyCapacitySeconds, openSeconds);
-      continue;
-    }
-
-    const absentSeconds = Math.min(
-      dailyCapacitySeconds,
-      absentSecondsInSlice(sortedAbsences, effectiveSlice, nowMs),
-    );
-
-    const openSeconds = Math.floor(
-      (effectiveSlice.end - effectiveSlice.start) / 1000,
-    );
-    const capacityInPeriod = Math.min(dailyCapacitySeconds, openSeconds);
-
-    availabilitySeconds += capacityInPeriod - absentSeconds;
-  }
-
-  return availabilitySeconds;
+  return getOpenAvailabilityIntervals(
+    absences,
+    periodStart,
+    periodEndExclusive,
+    now,
+    shifts,
+  ).reduce((total, interval) => total + intervalSeconds(interval), 0);
 }
 
 /**
