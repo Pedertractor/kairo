@@ -60,15 +60,17 @@ export class UserRepository {
     });
   }
 
-  findAll() {
+  findAll(options?: { active?: boolean }) {
     return this.prisma.user.findMany({
+      where: options?.active !== undefined ? { active: options.active } : undefined,
       orderBy: [{ active: 'desc' }, { name: 'asc' }],
     });
   }
 
-  findManagedByTeamAdmin(leaderUserId: string) {
+  findManagedByTeamAdmin(leaderUserId: string, options?: { active?: boolean }) {
     return this.prisma.user.findMany({
       where: {
+        ...(options?.active !== undefined ? { active: options.active } : {}),
         memberships: {
           some: {
             team: {
@@ -166,6 +168,25 @@ export class UserRepository {
     return this.prisma.user.update({
       where: { id },
       data: { active },
+    });
+  }
+
+  restore(
+    id: string,
+    data: {
+      name: string;
+      role: UserRole;
+      passwordHash: string;
+    },
+  ) {
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        ...data,
+        active: true,
+        firstLogin: true,
+        absent: false,
+      },
     });
   }
 

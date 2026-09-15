@@ -10,6 +10,7 @@ export interface ExternalEmployee {
   secondEntry?: string | null;
   firstExit?: string | null;
   secondExit?: string | null;
+  active?: boolean;
   status?: boolean;
 }
 
