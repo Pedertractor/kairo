@@ -20,6 +20,7 @@ export interface ActivityMachineSummary {
 export interface ActivitySummary {
   id: string;
   teamId: string;
+  teamName?: string;
   title: string;
   description: string | null;
   status: CardStatus;

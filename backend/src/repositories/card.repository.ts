@@ -67,6 +67,24 @@ export class CardRepository {
     });
   }
 
+  findActivitiesByUserId(userId: string) {
+    return this.prisma.card.findMany({
+      where: {
+        type: 'ACTIVITY' as CardType,
+        deletedAt: null,
+        team: {
+          active: true,
+          members: { some: { userId } },
+        },
+      },
+      include: {
+        ...activityTagInclude,
+        team: { select: { id: true, name: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   findActivityById(activityId: string) {
     return this.prisma.card.findFirst({
       where: { id: activityId, deletedAt: null },

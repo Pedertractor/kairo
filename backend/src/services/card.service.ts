@@ -29,6 +29,7 @@ type CardWithRelations = Card & {
   createdBy?: { id: string; name: string } | null;
   assignedTo?: { id: string; name: string } | null;
   deletedBy?: { id: string; name: string } | null;
+  team?: { id: string; name: string } | null;
 };
 
 function toActivityTag(
@@ -76,10 +77,14 @@ function toActivitySummary(
   card: CardWithRelations,
   loggedSeconds = 0,
   isFavorite = false,
+  teamName?: string,
 ): ActivitySummary {
+  const resolvedTeamName = teamName ?? card.team?.name;
+
   return {
     id: card.id,
     teamId: card.teamId,
+    ...(resolvedTeamName ? { teamName: resolvedTeamName } : {}),
     title: card.title,
     description: card.description,
     status: card.status,
@@ -232,6 +237,24 @@ export class CardService {
         card,
         loggedByCard.get(card.id) ?? 0,
         favoriteIds.has(card.id),
+      ),
+    );
+  }
+
+  async listAllActivities(userId: string): Promise<ActivitySummary[]> {
+    const cards = await this.cardRepository.findActivitiesByUserId(userId);
+    const cardIds = cards.map((card) => card.id);
+    const [loggedByCard, favoriteIds] = await Promise.all([
+      this.timeEntryRepository.getLoggedSecondsByCardIds(cardIds),
+      this.getFavoriteCardIdSet(userId, cardIds),
+    ]);
+
+    return cards.map((card) =>
+      toActivitySummary(
+        card,
+        loggedByCard.get(card.id) ?? 0,
+        favoriteIds.has(card.id),
+        card.team.name,
       ),
     );
   }

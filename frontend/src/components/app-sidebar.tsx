@@ -17,6 +17,7 @@ import {
   ChartNoAxesCombinedIcon,
   CalendarOffIcon,
   ClockIcon,
+  ClipboardListIcon,
   FolderKanbanIcon,
   HomeIcon,
   LayoutDashboardIcon,
@@ -39,6 +40,11 @@ const baseNavItems = [
     title: 'Equipes',
     url: '/equipes',
     icon: <UsersIcon />,
+  },
+  {
+    title: 'Atividades',
+    url: '/atividades',
+    icon: <ClipboardListIcon />,
   },
   {
     title: 'Projetos',

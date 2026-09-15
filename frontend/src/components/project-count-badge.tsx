@@ -7,13 +7,13 @@ import {
 } from '@/components/ui/tooltip'
 import { CARD_STATUSES, STATUS_LABELS } from '@/lib/card-status'
 import { cn } from '@/lib/utils'
-import type { ProjectSummary } from '@/types/card'
+import type { CardStatus } from '@/types/card'
 
-export function getProjectStatusCounts(projects: ProjectSummary[]) {
+export function getProjectStatusCounts(items: { status: CardStatus }[]) {
   return CARD_STATUSES.map((status) => ({
     status,
     label: STATUS_LABELS[status],
-    count: projects.filter((project) => project.status === status).length,
+    count: items.filter((item) => item.status === status).length,
   })).filter((item) => item.count > 0)
 }
 
@@ -21,10 +21,14 @@ export function ProjectCountBadge({
   projects,
   emptyLabel,
   children,
+  itemLabel = 'projeto',
+  itemLabelPlural = 'projetos',
 }: {
-  projects: ProjectSummary[]
+  projects: { status: CardStatus }[]
   emptyLabel: string
   children?: ReactNode
+  itemLabel?: string
+  itemLabelPlural?: string
 }) {
   const statusCounts = useMemo(
     () => getProjectStatusCounts(projects),
@@ -43,7 +47,7 @@ export function ProjectCountBadge({
                 'inline-flex min-w-5 items-center justify-center rounded-full bg-muted px-1.5 py-0.5 text-[11px] leading-none font-semibold tabular-nums text-muted-foreground',
                 children ? 'ml-1.5' : null,
               )}
-              aria-label={`${projects.length} ${projects.length === 1 ? 'projeto' : 'projetos'}`}
+              aria-label={`${projects.length} ${projects.length === 1 ? itemLabel : itemLabelPlural}`}
             >
               {projects.length}
             </span>
@@ -77,7 +81,7 @@ export function ProjectCountBadge({
 export function ProjectStatusInline({
   projects,
 }: {
-  projects: ProjectSummary[]
+  projects: { status: CardStatus }[]
 }) {
   const statusCounts = useMemo(
     () => getProjectStatusCounts(projects),
