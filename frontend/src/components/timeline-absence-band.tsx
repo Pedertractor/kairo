@@ -5,33 +5,34 @@ import {
 } from '@/components/ui/tooltip'
 import { formatTimeRange } from '@/lib/format-time'
 import { cn } from '@/lib/utils'
-import type { DayTimelineBlock } from '@/types/time-entry'
 
 const INLINE_TITLE_MIN_HEIGHT = 26
 const INLINE_TIME_MIN_HEIGHT = 46
 
-interface TimelineBlockProps {
-  block: DayTimelineBlock
+interface TimelineAbsenceBandProps {
+  startedAt: string
+  endedAt: string | null
   selectedDate: string
   top: number
   height: number
-  colors: { bar: string; subtext: string }
+  userName?: string
+  left?: string
+  width?: string
 }
 
-export function TimelineBlock({
-  block,
+export function TimelineAbsenceBand({
+  startedAt,
+  endedAt,
   selectedDate,
   top,
   height,
-  colors,
-}: TimelineBlockProps) {
+  userName,
+  left,
+  width,
+}: TimelineAbsenceBandProps) {
   const showTitle = height >= INLINE_TITLE_MIN_HEIGHT
   const showTime = height >= INLINE_TIME_MIN_HEIGHT
-  const timeRange = formatTimeRange(
-    block.startedAt,
-    block.endedAt,
-    selectedDate,
-  )
+  const timeRange = formatTimeRange(startedAt, endedAt, selectedDate)
 
   return (
     <Tooltip>
@@ -39,12 +40,18 @@ export function TimelineBlock({
         render={
           <div
             className={cn(
-              'absolute right-0 left-0 z-[1] overflow-hidden rounded-sm transition-shadow hover:ring-2 hover:ring-sidebar-primary/25',
-              colors.bar,
-              showTitle ? 'px-3' : 'px-0.5',
+              'absolute z-0 overflow-hidden rounded-sm border border-amber-500/40 bg-amber-500/20 text-amber-950 dark:text-amber-50',
+              showTitle ? 'px-2' : 'px-0.5',
               showTime ? 'py-2' : showTitle ? 'flex items-center py-0.5' : '',
             )}
-            style={{ top, height }}
+            style={{
+              top,
+              height,
+              left: left ?? 0,
+              width: width ?? '100%',
+              backgroundImage:
+                'repeating-linear-gradient(-45deg, transparent, transparent 5px, rgb(245 158 11 / 0.14) 5px, rgb(245 158 11 / 0.14) 10px)',
+            }}
           >
             {showTitle ? (
               <>
@@ -54,10 +61,10 @@ export function TimelineBlock({
                     showTime ? 'text-sm' : 'text-xs',
                   )}
                 >
-                  {block.title}
+                  Ausente
                 </p>
                 {showTime ? (
-                  <p className={cn('truncate text-xs leading-tight', colors.subtext)}>
+                  <p className="truncate text-xs leading-tight text-amber-900/75 dark:text-amber-50/75">
                     {timeRange}
                   </p>
                 ) : null}
@@ -73,7 +80,10 @@ export function TimelineBlock({
         className="rounded-xl border border-border bg-card px-3 py-2 text-card-foreground shadow-lg [&>svg]:hidden"
       >
         <div className="space-y-0.5">
-          <p className="max-w-48 text-sm font-semibold">{block.title}</p>
+          <p className="text-sm font-semibold">Ausente</p>
+          {userName ? (
+            <p className="text-xs text-muted-foreground">{userName}</p>
+          ) : null}
           <p className="text-xs text-muted-foreground">{timeRange}</p>
         </div>
       </TooltipContent>

@@ -63,6 +63,7 @@ import type {
   WorkItemStatusOverview,
 } from '@/types/analytics';
 import type {
+  TeamDayAbsenceBlock,
   TeamDayDashboard,
   TeamDayTimelineBlock,
 } from '@/types/time-entry';
@@ -231,6 +232,9 @@ export function AnalyticsPage() {
   const [timelineBlocks, setTimelineBlocks] = useState<TeamDayTimelineBlock[]>(
     [],
   );
+  const [timelineAbsences, setTimelineAbsences] = useState<
+    TeamDayAbsenceBlock[]
+  >([]);
   const [isLoadingTimeline, setIsLoadingTimeline] = useState(false);
   const [availabilityOpen, setAvailabilityOpen] = useState(true);
   const [overviewOpen, setOverviewOpen] = useState(true);
@@ -318,6 +322,7 @@ export function AnalyticsPage() {
   const loadEmployeeTimeline = useCallback(async () => {
     if (!selectedTimeline) {
       setTimelineBlocks([]);
+      setTimelineAbsences([]);
       return;
     }
 
@@ -333,8 +338,14 @@ export function AnalyticsPage() {
           (block) => block.userId === selectedTimeline.employeeId,
         ),
       );
+      setTimelineAbsences(
+        (data.absences ?? []).filter(
+          (absence) => absence.userId === selectedTimeline.employeeId,
+        ),
+      );
     } catch {
       setTimelineBlocks([]);
+      setTimelineAbsences([]);
     } finally {
       setIsLoadingTimeline(false);
     }
@@ -888,7 +899,7 @@ export function AnalyticsPage() {
                 Timeline de {selectedTimeline.employeeName}
               </h2>
               <p className='text-sm text-muted-foreground'>
-                Apenas os apontamentos deste funcionário no dia selecionado.
+                Apontamentos e ausências deste funcionário no dia selecionado.
               </p>
             </div>
 
@@ -919,6 +930,7 @@ export function AnalyticsPage() {
 
           <TeamDayTimeline
             blocks={timelineBlocks}
+            absences={timelineAbsences}
             selectedDate={timelineDate}
             onDateChange={setTimelineDate}
             isLoading={isLoadingTimeline}

@@ -19,6 +19,7 @@ export function HomePage() {
   const [startDialogOpen, setStartDialogOpen] = useState(false);
   const {
     timelineBlocks,
+    timelineAbsences,
     recentItems,
     isLoadingTimeline,
     isLoadingRecent,
@@ -38,6 +39,7 @@ export function HomePage() {
 
           <DayTimeline
             blocks={timelineBlocks}
+            absences={timelineAbsences}
             selectedDate={selectedDate}
             onDateChange={setSelectedDate}
             isLoading={isLoadingTimeline}

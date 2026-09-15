@@ -103,6 +103,7 @@ export function useHomeData(selectedDate: string) {
   return {
     todayKey,
     timelineBlocks: timelineDashboard?.blocks ?? [],
+    timelineAbsences: timelineDashboard?.absences ?? [],
     recentItems,
     isLoadingTimeline,
     isLoadingRecent,

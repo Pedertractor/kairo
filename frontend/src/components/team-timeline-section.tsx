@@ -82,11 +82,16 @@ export function TeamTimelineSection({
   const timelineDashboard =
     selectedDate === todayKey ? todayDashboard : otherDayDashboard;
   const allBlocks = timelineDashboard?.blocks ?? [];
+  const allAbsences = timelineDashboard?.absences ?? [];
   const timelineBlocks = userId
     ? allBlocks.filter((block) => block.userId === userId)
     : allBlocks;
+  const timelineAbsences = userId
+    ? allAbsences.filter((absence) => absence.userId === userId)
+    : allAbsences;
   const filteredUserName = userId
-    ? allBlocks.find((block) => block.userId === userId)?.userName
+    ? allBlocks.find((block) => block.userId === userId)?.userName ??
+      allAbsences.find((absence) => absence.userId === userId)?.userName
     : undefined;
   const timelineLoading =
     selectedDate === todayKey ? isLoadingToday : isLoadingTimeline;
@@ -115,6 +120,7 @@ export function TeamTimelineSection({
 
       <TeamDayTimeline
         blocks={timelineBlocks}
+        absences={timelineAbsences}
         selectedDate={selectedDate}
         onDateChange={setSelectedDate}
         isLoading={timelineLoading}

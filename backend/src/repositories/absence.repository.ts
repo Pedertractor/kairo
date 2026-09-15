@@ -83,9 +83,11 @@ export class AbsenceRepository {
         OR: [{ endedAt: null }, { endedAt: { gt: rangeStart } }],
       },
       select: {
+        id: true,
         userId: true,
         startedAt: true,
         endedAt: true,
+        user: { select: { name: true } },
       },
     });
   }

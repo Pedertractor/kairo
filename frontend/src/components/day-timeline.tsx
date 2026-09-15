@@ -6,6 +6,7 @@ import { Minus, Plus } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
+import { TimelineAbsenceBand } from '@/components/timeline-absence-band'
 import { TimelineBlock } from '@/components/timeline-block'
 import {
   buildActivityColorMap,
@@ -16,10 +17,11 @@ import { formatCurrentTime } from '@/lib/format-time'
 import {
   formatDayMinutes,
   getMinutesOnSelectedDay,
+  getTimelineIntervalStyle,
   getVisibleTimelineRange,
 } from '@/lib/timeline-day'
 import { cn } from '@/lib/utils'
-import type { DayTimelineBlock } from '@/types/time-entry'
+import type { DayAbsenceBlock, DayTimelineBlock } from '@/types/time-entry'
 
 dayjs.locale('pt-br')
 
@@ -37,6 +39,7 @@ const NOW_LINE_LIVE_LEAD_PX = 0
 
 interface DayTimelineProps {
   blocks: DayTimelineBlock[]
+  absences?: DayAbsenceBlock[]
   selectedDate: string
   onDateChange: (date: string) => void
   isLoading: boolean
@@ -136,29 +139,16 @@ function getBlockStyle(
   rangeStart: number,
   rangeEnd: number,
 ): { top: number; height: number } | null {
-  const start = Math.max(
-    getMinutesOnSelectedDay(block.startedAt, selectedDate),
+  return getTimelineIntervalStyle(
+    block.startedAt,
+    block.endedAt,
+    selectedDate,
+    now,
     rangeStart,
+    rangeEnd,
+    hourHeight,
+    TIMELINE_EDGE_PADDING,
   )
-  const end = block.endedAt
-    ? Math.min(
-        getMinutesOnSelectedDay(block.endedAt, selectedDate),
-        rangeEnd,
-      )
-    : Math.min(
-        getMinutesOnSelectedDay(now.toISOString(), selectedDate),
-        rangeEnd,
-      )
-
-  if (end <= start) {
-    return null
-  }
-
-  const top =
-    TIMELINE_EDGE_PADDING + ((start - rangeStart) / 60) * hourHeight
-  const height = Math.max(((end - start) / 60) * hourHeight, 3)
-
-  return { top, height }
 }
 
 function getBlockColors(
@@ -184,6 +174,7 @@ function getBlockColors(
 
 export function DayTimeline({
   blocks,
+  absences = [],
   selectedDate,
   onDateChange,
   isLoading,
@@ -201,7 +192,7 @@ export function DayTimeline({
 
   const hourHeight = BASE_HOUR_HEIGHT * zoom
   const { rangeStart, rangeEnd } = getVisibleTimelineRange(
-    blocks,
+    [...blocks, ...absences],
     selectedDate,
     now,
   )
@@ -459,6 +450,34 @@ export function DayTimeline({
                   />
                 ))}
 
+                {absences.map((absence) => {
+                  const style = getTimelineIntervalStyle(
+                    absence.startedAt,
+                    absence.endedAt,
+                    selectedDate,
+                    now,
+                    rangeStart,
+                    rangeEnd,
+                    hourHeight,
+                    TIMELINE_EDGE_PADDING,
+                  )
+
+                  if (!style) {
+                    return null
+                  }
+
+                  return (
+                    <TimelineAbsenceBand
+                      key={absence.id}
+                      startedAt={absence.startedAt}
+                      endedAt={absence.endedAt}
+                      selectedDate={selectedDate}
+                      top={style.top}
+                      height={style.height}
+                    />
+                  )
+                })}
+
                 {blocks.map((block) => {
                   const style = getBlockStyle(
                     block,
@@ -520,7 +539,7 @@ export function DayTimeline({
                   </div>
                 ) : null}
 
-                {blocks.length === 0 ? (
+                {blocks.length === 0 && absences.length === 0 ? (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <p className="text-sm text-muted-foreground">
                       Nenhum apontamento neste dia.
@@ -533,10 +552,23 @@ export function DayTimeline({
         )}
 
         {!isLoading ? (
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            Com o mouse sobre o gráfico, use Ctrl + scroll (ou Alt + scroll) para
-            ampliar no ponteiro.
-          </p>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+            {absences.length > 0 ? (
+              <p className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <span
+                  className="size-2.5 shrink-0 rounded-sm border border-amber-500/40 bg-amber-500/30"
+                  aria-hidden
+                />
+                Ausente
+              </p>
+            ) : (
+              <span />
+            )}
+            <p className="text-[11px] text-muted-foreground">
+              Com o mouse sobre o gráfico, use Ctrl + scroll (ou Alt + scroll) para
+              ampliar no ponteiro.
+            </p>
+          </div>
         ) : null}
       </CardContent>
     </Card>
