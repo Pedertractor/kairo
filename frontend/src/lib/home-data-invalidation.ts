@@ -14,6 +14,7 @@ export function subscribeHomeDataInvalidation(listener: Listener) {
 
 export function invalidateHomeData() {
   invalidateCache('day:')
+  invalidateCache('admin-teams-day:')
   invalidateCache('recent')
   listeners.forEach((listener) => listener())
 }

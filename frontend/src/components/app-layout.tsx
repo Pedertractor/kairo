@@ -36,7 +36,7 @@ function AppLayoutContent({
   return (
     <>
       <AppSidebar />
-      <SidebarInset className="min-h-svh">
+      <SidebarInset className="min-h-svh min-w-0">
         {hideHeader ? null : (
           <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
             <div className="flex items-center gap-2 px-6 lg:px-10">
@@ -57,7 +57,7 @@ function AppLayoutContent({
         )}
         <main
           className={cn(
-            'flex flex-1 flex-col px-6 pb-6 lg:px-10',
+            'flex min-w-0 flex-1 flex-col px-6 pb-6 lg:px-10',
             hideHeader && 'pt-6',
             hasTimerBar && 'pb-20',
             mainClassName,

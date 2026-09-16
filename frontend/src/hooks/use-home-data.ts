@@ -35,7 +35,11 @@ function fetchRecentItems(force = false) {
   )
 }
 
-export function useHomeData(selectedDate: string) {
+export function useHomeData(
+  selectedDate: string,
+  options?: { loadTimeline?: boolean },
+) {
+  const loadTimeline = options?.loadTimeline ?? true
   const todayKey = useMemo(() => toDateKey(new Date()), [])
 
   const [todayDashboard, setTodayDashboard] = useState<DayDashboard | null>(null)
@@ -47,13 +51,18 @@ export function useHomeData(selectedDate: string) {
   const [isLoadingRecent, setIsLoadingRecent] = useState(true)
 
   const loadToday = useCallback(async (force = false) => {
+    if (!loadTimeline) {
+      setTodayDashboard(null)
+      return
+    }
+
     const data = await fetchDayDashboard(todayKey, force)
     setTodayDashboard(data)
-  }, [todayKey])
+  }, [loadTimeline, todayKey])
 
   const loadTimelineDay = useCallback(
     async (force = false) => {
-      if (selectedDate === todayKey) {
+      if (!loadTimeline || selectedDate === todayKey) {
         setOtherDayDashboard(null)
         setIsLoadingTimeline(false)
         return
@@ -68,7 +77,7 @@ export function useHomeData(selectedDate: string) {
         setIsLoadingTimeline(false)
       }
     },
-    [selectedDate, todayKey],
+    [loadTimeline, selectedDate, todayKey],
   )
 
   const loadRecent = useCallback(async (force = false) => {
