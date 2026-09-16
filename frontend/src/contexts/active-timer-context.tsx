@@ -39,6 +39,7 @@ interface ActiveTimerContextValue {
   startTaskTimer: (projectId: string, taskId: string) => Promise<void>;
   pauseTimer: () => Promise<void>;
   resumeTimer: () => Promise<void>;
+  dismissPausedTimer: () => void;
   isActivityActive: (activityId: string) => boolean;
   isTaskActive: (taskId: string) => boolean;
   isActivityPaused: (activityId: string) => boolean;
@@ -286,6 +287,7 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
       startTaskTimer,
       pauseTimer,
       resumeTimer,
+      dismissPausedTimer: clearPausedTarget,
       isActivityActive,
       isTaskActive,
       isActivityPaused,
@@ -303,6 +305,7 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
       startTaskTimer,
       pauseTimer,
       resumeTimer,
+      clearPausedTarget,
       isActivityActive,
       isTaskActive,
       isActivityPaused,

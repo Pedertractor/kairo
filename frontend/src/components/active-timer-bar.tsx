@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Pause, Play } from 'lucide-react';
+import { Pause, Play, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -17,6 +17,7 @@ export function ActiveTimerBar() {
     isStarting,
     pauseTimer,
     resumeTimer,
+    dismissPausedTimer,
   } = useActiveTimer();
   const elapsedSeconds = useElapsedSeconds();
 
@@ -107,17 +108,29 @@ export function ActiveTimerBar() {
                 <Pause />
               </Button>
             ) : (
-              <Button
-                type='button'
-                size='sm'
-                variant='outline'
-                className='border-sidebar-primary/40 bg-background/60 hover:bg-background/90'
-                aria-label='Retomar timer'
-                disabled={isStarting}
-                onClick={() => void resumeTimer()}
-              >
-                <Play />
-              </Button>
+              <>
+                <Button
+                  type='button'
+                  size='sm'
+                  variant='outline'
+                  className='border-sidebar-primary/40 bg-background/60 hover:bg-background/90'
+                  aria-label='Retomar timer'
+                  disabled={isStarting}
+                  onClick={() => void resumeTimer()}
+                >
+                  <Play />
+                </Button>
+                <Button
+                  type='button'
+                  size='icon-sm'
+                  variant='ghost'
+                  className='text-sidebar-primary/70 hover:bg-background/60 hover:text-sidebar-primary'
+                  aria-label='Fechar widget'
+                  onClick={dismissPausedTimer}
+                >
+                  <X />
+                </Button>
+              </>
             )}
           </div>
         </div>
