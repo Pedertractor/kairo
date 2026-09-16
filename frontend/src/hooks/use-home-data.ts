@@ -37,9 +37,10 @@ function fetchRecentItems(force = false) {
 
 export function useHomeData(
   selectedDate: string,
-  options?: { loadTimeline?: boolean },
+  options?: { loadTimeline?: boolean; loadRecent?: boolean },
 ) {
   const loadTimeline = options?.loadTimeline ?? true
+  const loadRecentItems = options?.loadRecent ?? true
   const todayKey = useMemo(() => toDateKey(new Date()), [])
 
   const [todayDashboard, setTodayDashboard] = useState<DayDashboard | null>(null)
@@ -81,6 +82,12 @@ export function useHomeData(
   )
 
   const loadRecent = useCallback(async (force = false) => {
+    if (!loadRecentItems) {
+      setRecentItems([])
+      setIsLoadingRecent(false)
+      return
+    }
+
     setIsLoadingRecent(true)
 
     try {
@@ -89,7 +96,7 @@ export function useHomeData(
     } finally {
       setIsLoadingRecent(false)
     }
-  }, [])
+  }, [loadRecentItems])
 
   const refreshAll = useCallback(async () => {
     await Promise.all([loadToday(true), loadTimelineDay(true), loadRecent(true)])

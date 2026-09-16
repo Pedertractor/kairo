@@ -296,7 +296,7 @@ export function TeamDayTimeline({
     if (hasUntagged) {
       legend.push({
         id: 'untagged',
-        name: 'Sem tag',
+        name: 'Sem etiqueta',
         color: UNTAGGED_BLOCK_COLOR,
       });
     }

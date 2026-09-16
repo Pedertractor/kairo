@@ -20,13 +20,18 @@ export function HomePage() {
   const [startDialogOpen, setStartDialogOpen] = useState(false);
   const hasTeams = user?.hasTeams ?? false;
   const hasOwnedTeams = user?.hasOwnedTeams ?? false;
+  const isLeader = user?.role === 'LEADER';
+  const showRecentActivities = !hasOwnedTeams && !isLeader;
   const {
     timelineBlocks,
     timelineAbsences,
     recentItems,
     isLoadingTimeline,
     isLoadingRecent,
-  } = useHomeData(selectedDate, { loadTimeline: !hasOwnedTeams });
+  } = useHomeData(selectedDate, {
+    loadTimeline: !hasOwnedTeams,
+    loadRecent: showRecentActivities,
+  });
   const { hasTimerBar } = useActiveTimer();
 
   return (
@@ -37,7 +42,9 @@ export function HomePage() {
         <NoTeamMessage />
       ) : (
         <>
-          <RecentWorkItemsCard items={recentItems} isLoading={isLoadingRecent} />
+          {showRecentActivities ? (
+            <RecentWorkItemsCard items={recentItems} isLoading={isLoadingRecent} />
+          ) : null}
 
           {hasOwnedTeams ? (
             <AdminTeamsDayTimeline />
