@@ -237,6 +237,7 @@ export function AnalyticsPage() {
   const [availabilityOpen, setAvailabilityOpen] = useState(true);
   const [finishedActivitiesOpen, setFinishedActivitiesOpen] = useState(true);
   const [overviewOpen, setOverviewOpen] = useState(true);
+  const [showAllTimeOverview, setShowAllTimeOverview] = useState(false);
   const [tagsOpen, setTagsOpen] = useState(true);
   const [clientsOpen, setClientsOpen] = useState(true);
   const [clientViewMode, setClientViewMode] = useState<ClientViewMode>('list');
@@ -259,6 +260,12 @@ export function AnalyticsPage() {
         activityTypes: data.activityTypes ?? [],
         clients: data.clients ?? [],
         activityOverview: data.activityOverview ?? {
+          activities: emptyWorkItemOverview(),
+          projects: emptyWorkItemOverview(),
+          tasks: emptyWorkItemOverview(),
+          byTag: [],
+        },
+        activityOverviewAllTime: data.activityOverviewAllTime ?? {
           activities: emptyWorkItemOverview(),
           projects: emptyWorkItemOverview(),
           tasks: emptyWorkItemOverview(),
@@ -400,6 +407,11 @@ export function AnalyticsPage() {
     [dashboard?.clients],
   );
   const activityOverview = dashboard?.activityOverview ?? null;
+  const activityOverviewAllTime = dashboard?.activityOverviewAllTime ?? null;
+  const displayedActivityOverview = showAllTimeOverview
+    ? activityOverviewAllTime
+    : activityOverview;
+  const activityOverviewScope = showAllTimeOverview ? 'allTime' : 'period';
   const memberFinishedActivities =
     dashboard?.memberFinishedActivities ?? [];
   const tagOptions = useMemo<TagFilterOption[]>(
@@ -914,11 +926,33 @@ export function AnalyticsPage() {
           </div>
         }
         title='Atividades por tipo e status'
-        description='Todas as atividades, projetos e tarefas das equipes filtradas, com o status atual de cada um. Considera todo o histórico, e não apenas o que foi criado no período; o período filtrado aparece como destaque "criadas no período".'
+        description={
+          showAllTimeOverview
+            ? 'Histórico completo das equipes filtradas, com o status atual de cada item. O período filtrado aparece como destaque "criadas no período".'
+            : 'Atividades, projetos e tarefas criados no período filtrado, com o status atual de cada um. Marque "Histórico completo" para ver todo o cadastro.'
+        }
+        toolbar={
+          <label
+            htmlFor='activity-overview-all-time'
+            className='flex cursor-pointer items-center gap-2 text-sm'
+          >
+            <input
+              id='activity-overview-all-time'
+              type='checkbox'
+              checked={showAllTimeOverview}
+              onChange={(event) =>
+                setShowAllTimeOverview(event.target.checked)
+              }
+              className='size-4 accent-primary'
+            />
+            Histórico completo
+          </label>
+        }
       >
         <AnalyticsActivityOverview
-          overview={activityOverview}
+          overview={displayedActivityOverview}
           isLoading={isLoading}
+          scope={activityOverviewScope}
         />
       </AnalyticsSection>
 

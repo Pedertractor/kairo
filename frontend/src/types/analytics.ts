@@ -149,6 +149,7 @@ export interface AnalyticsDashboard {
   activityTypes: ActivityTypeAnalytics[]
   clients: ClientAnalytics[]
   activityOverview: ActivityOverview
+  activityOverviewAllTime: ActivityOverview
   allTimeTotals: AnalyticsAllTimeTotals
   memberFinishedActivities: MemberFinishedActivityAnalytics[]
 }
