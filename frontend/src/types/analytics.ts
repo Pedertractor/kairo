@@ -111,6 +111,26 @@ export interface AnalyticsAllTimeTotals {
   taskCount: number
 }
 
+export type AnalyticsComplexityLevel =
+  | 'BAIXA'
+  | 'MEDIA'
+  | 'ALTA'
+  | 'MUITO_ALTA'
+
+export interface MemberFinishedActivityComplexity {
+  complexityLevel: AnalyticsComplexityLevel | null
+  count: number
+  weightedScore: number
+}
+
+export interface MemberFinishedActivityAnalytics {
+  employeeId: string
+  employeeName: string
+  activityCount: number
+  weightedScore: number
+  byComplexity: MemberFinishedActivityComplexity[]
+}
+
 export interface AnalyticsDashboard {
   startDate: string
   endDate: string
@@ -130,4 +150,5 @@ export interface AnalyticsDashboard {
   clients: ClientAnalytics[]
   activityOverview: ActivityOverview
   allTimeTotals: AnalyticsAllTimeTotals
+  memberFinishedActivities: MemberFinishedActivityAnalytics[]
 }

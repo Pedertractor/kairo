@@ -264,6 +264,29 @@ export class AnalyticsRepository {
     });
   }
 
+  findFinishedActivitiesForPeriod(
+    teamIds: string[],
+    periodStart: Date,
+    periodEnd: Date,
+    employeeId?: string,
+  ) {
+    return this.prisma.card.findMany({
+      where: {
+        teamId: { in: teamIds },
+        type: 'ACTIVITY',
+        status: 'DONE',
+        deletedAt: null,
+        updatedAt: { gte: periodStart, lt: periodEnd },
+        assignedToId: employeeId ? employeeId : { not: null },
+      },
+      select: {
+        assignedToId: true,
+        assignedTo: { select: { id: true, name: true } },
+        complexityLevel: true,
+      },
+    });
+  }
+
   findTasksForClientAnalytics(
     teamIds: string[],
     periodStart: Date,

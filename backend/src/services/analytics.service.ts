@@ -1,4 +1,4 @@
-import type { CardStatus } from '../generated/client.js';
+import type { CardStatus, ComplexityLevel } from '../generated/client.js';
 import { AbsenceRepository } from '../repositories/absence.repository.js';
 import { AnalyticsRepository } from '../repositories/analytics.repository.js';
 import { ShiftRepository } from '../repositories/shift.repository.js';
@@ -10,6 +10,7 @@ import type {
   AnalyticsEmployeeOption,
   ClientAnalytics,
   EmployeeDayAnalytics,
+  MemberFinishedActivityAnalytics,
 } from '../types/analytics.types.js';
 import { formatDateKey, parseDayBounds } from '../utils/app-timezone.js';
 import { AppError } from '../utils/errors.js';
@@ -36,6 +37,24 @@ const CARD_STATUSES: CardStatus[] = [
   'CANCELED',
 ];
 const NONE_TAG_KEY = '__none__';
+const COMPLEXITY_WEIGHTS: Record<ComplexityLevel, number> = {
+  BAIXA: 1,
+  MEDIA: 2,
+  ALTA: 3,
+  MUITO_ALTA: 4,
+};
+const UNSET_COMPLEXITY_WEIGHT = 1;
+const COMPLEXITY_ORDER: Array<ComplexityLevel | null> = [
+  'BAIXA',
+  'MEDIA',
+  'ALTA',
+  'MUITO_ALTA',
+  null,
+];
+
+function complexityWeight(level: ComplexityLevel | null): number {
+  return level ? COMPLEXITY_WEIGHTS[level] : UNSET_COMPLEXITY_WEIGHT;
+}
 
 function emptyStatusCounts(): Map<CardStatus, number> {
   return new Map(CARD_STATUSES.map((status) => [status, 0]));
@@ -170,6 +189,7 @@ export class AnalyticsService {
       overviewTasks,
       allocationEntries,
       lastEntriesBefore,
+      finishedActivities,
     ] = await Promise.all([
       this.repository.findEntriesForTeams(
         scopedTeamIds,
@@ -222,6 +242,12 @@ export class AnalyticsService {
         periodEnd,
       ),
       this.repository.findLastEntriesBefore(employeeIds, periodStart),
+      this.repository.findFinishedActivitiesForPeriod(
+        scopedTeamIds,
+        periodStart,
+        periodEnd,
+        options.employeeId,
+      ),
     ]);
     const now = new Date();
     const absencesByEmployee = new Map<
@@ -597,6 +623,77 @@ export class AnalyticsService {
       taskCount: overviewTasks.length,
     };
 
+    const finishedByEmployee = new Map<
+      string,
+      {
+        employeeName: string;
+        activityCount: number;
+        weightedScore: number;
+        byComplexity: Map<string, { count: number; weightedScore: number }>;
+      }
+    >();
+
+    for (const activity of finishedActivities) {
+      const employeeId = activity.assignedToId;
+
+      if (!employeeId || !employeesById.has(employeeId)) {
+        continue;
+      }
+
+      const weight = complexityWeight(activity.complexityLevel);
+      const complexityKey = activity.complexityLevel ?? '__none__';
+      const current = finishedByEmployee.get(employeeId) ?? {
+        employeeName:
+          activity.assignedTo?.name ?? employeesById.get(employeeId)?.name ?? '',
+        activityCount: 0,
+        weightedScore: 0,
+        byComplexity: new Map(),
+      };
+      const complexityBucket = current.byComplexity.get(complexityKey) ?? {
+        count: 0,
+        weightedScore: 0,
+      };
+
+      current.activityCount += 1;
+      current.weightedScore += weight;
+      complexityBucket.count += 1;
+      complexityBucket.weightedScore += weight;
+      current.byComplexity.set(complexityKey, complexityBucket);
+      finishedByEmployee.set(employeeId, current);
+    }
+
+    const memberFinishedActivities: MemberFinishedActivityAnalytics[] = [
+      ...finishedByEmployee.entries(),
+    ]
+      .map(([employeeId, bucket]) => ({
+        employeeId,
+        employeeName: bucket.employeeName,
+        activityCount: bucket.activityCount,
+        weightedScore: bucket.weightedScore,
+        byComplexity: COMPLEXITY_ORDER.filter((level) =>
+          bucket.byComplexity.has(level ?? '__none__'),
+        ).map((level) => {
+          const complexityBucket = bucket.byComplexity.get(
+            level ?? '__none__',
+          ) ?? { count: 0, weightedScore: 0 };
+
+          return {
+            complexityLevel: level,
+            count: complexityBucket.count,
+            weightedScore: complexityBucket.weightedScore,
+          };
+        }),
+      }))
+      .sort((a, b) => {
+        if (b.weightedScore !== a.weightedScore) {
+          return b.weightedScore - a.weightedScore;
+        }
+        if (b.activityCount !== a.activityCount) {
+          return b.activityCount - a.activityCount;
+        }
+        return a.employeeName.localeCompare(b.employeeName);
+      });
+
     for (const task of clientTasks) {
       const bucket = ensureClientBucket(
         task.card.clientId,
@@ -788,6 +885,7 @@ export class AnalyticsService {
       clients,
       activityOverview,
       allTimeTotals,
+      memberFinishedActivities,
     };
   }
 }
