@@ -44,6 +44,11 @@ function extractEmployees(body: unknown): ExternalEmployee[] {
   return [];
 }
 
+function isExternalEmployeeActive(employee: ExternalEmployee): boolean {
+  const flag = employee.active ?? employee.status;
+  return flag === true;
+}
+
 function toShiftInfo(employee: ExternalEmployee): EmployeeShiftInfo | null {
   if (!employee?.cardNumber) {
     return null;
@@ -84,6 +89,10 @@ export class EmployeeService {
 
       if (!employee?.name) {
         throw new AppError(404, MENSAGENS.FUNCIONARIO_NAO_ENCONTRADO);
+      }
+
+      if (!isExternalEmployeeActive(employee)) {
+        throw new AppError(404, MENSAGENS.FUNCIONARIO_INATIVO);
       }
 
       return {

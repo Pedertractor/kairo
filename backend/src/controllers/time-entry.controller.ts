@@ -4,6 +4,7 @@ import { UserRepository } from '../repositories/user.repository.js';
 import { activityParamSchema, teamIdParamSchema } from '../schemas/card.schema.js';
 import { taskParamSchema } from '../schemas/task.schema.js';
 import {
+  adminTeamsDayDashboardQuerySchema,
   dayDashboardQuerySchema,
   listTaskTimeEntriesQuerySchema,
   listTeamTimeEntriesQuerySchema,
@@ -290,6 +291,29 @@ export class TimeEntryController {
         params.data.teamId,
         request.user.sub,
         query.data.date,
+      );
+
+      return sendSuccess(reply, dashboard);
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  getAdminTeamsDayDashboard = async (
+    request: FastifyRequest,
+    reply: FastifyReply,
+  ) => {
+    try {
+      const query = adminTeamsDayDashboardQuerySchema.safeParse(request.query);
+
+      if (!query.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const dashboard = await this.service.getAdminTeamsDayDashboard(
+        request.user.sub,
+        query.data.date,
+        query.data.teamId,
       );
 
       return sendSuccess(reply, dashboard);

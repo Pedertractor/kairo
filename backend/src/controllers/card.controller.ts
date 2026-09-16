@@ -115,6 +115,16 @@ export class CardController {
     }
   };
 
+  listAllActivities = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const activities = await this.service.listAllActivities(request.user.sub);
+
+      return sendSuccess(reply, { activities });
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
   listProjects = async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const parsed = teamIdParamSchema.safeParse(request.params);

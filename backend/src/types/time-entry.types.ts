@@ -90,6 +90,17 @@ export interface DayDashboard {
 export interface TeamDayTimelineBlock extends DayTimelineBlock {
   userId: string;
   userName: string;
+  teamName?: string;
+}
+
+export interface AdminTeamsTimelineTeam {
+  id: string;
+  name: string;
+}
+
+export interface AdminTeamsTimelineMember {
+  userId: string;
+  userName: string;
 }
 
 export interface TeamDayDashboardStats {
@@ -108,6 +119,11 @@ export interface TeamDayDashboard {
   stats: TeamDayDashboardStats;
   blocks: TeamDayTimelineBlock[];
   absences: TeamDayAbsenceBlock[];
+}
+
+export interface AdminTeamsDayDashboard extends TeamDayDashboard {
+  teams: AdminTeamsTimelineTeam[];
+  members: AdminTeamsTimelineMember[];
 }
 
 export interface TaskTimeEntrySummary {

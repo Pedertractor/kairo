@@ -96,6 +96,9 @@ export function TeamTimelineBlock({
         <div className='space-y-0.5'>
           <p className='max-w-48 text-sm font-semibold'>{block.title}</p>
           <p className='text-xs text-muted-foreground'>{block.userName}</p>
+          {block.teamName ? (
+            <p className='text-xs text-muted-foreground'>{block.teamName}</p>
+          ) : null}
           <p className='text-xs text-muted-foreground'>{timeRange}</p>
           {block.tag ? (
             <ActivityTagBadge tag={block.tag} className='mt-1' />

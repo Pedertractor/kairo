@@ -112,7 +112,9 @@ export function TeamsPage() {
             </div>
           ) : teams.length === 0 ? (
             filter === 'ativas' ? (
-              <NoTeamMessage />
+              <NoTeamMessage
+                onCreateTeam={() => setIsCreateDialogOpen(true)}
+              />
             ) : (
               <p className="text-sm text-muted-foreground">
                 Nenhuma equipe inativa.

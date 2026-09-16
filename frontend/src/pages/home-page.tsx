@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 
+import { AdminTeamsDayTimeline } from '@/components/admin-teams-day-timeline';
 import { DayTimeline } from '@/components/day-timeline';
 import { HomeDashboardHeader } from '@/components/home-dashboard-header';
 import { NoTeamMessage } from '@/components/no-team-message';
@@ -17,15 +18,21 @@ export function HomePage() {
   const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date()));
   const [startDialogOpen, setStartDialogOpen] = useState(false);
+  const hasTeams = user?.hasTeams ?? false;
+  const hasOwnedTeams = user?.hasOwnedTeams ?? false;
+  const isLeader = user?.role === 'LEADER';
+  const showRecentActivities = !hasOwnedTeams && !isLeader;
   const {
     timelineBlocks,
     timelineAbsences,
     recentItems,
     isLoadingTimeline,
     isLoadingRecent,
-  } = useHomeData(selectedDate);
+  } = useHomeData(selectedDate, {
+    loadTimeline: !hasOwnedTeams,
+    loadRecent: showRecentActivities,
+  });
   const { hasTimerBar } = useActiveTimer();
-  const hasTeams = user?.hasTeams ?? false;
 
   return (
     <div className='relative flex min-w-0 flex-1 flex-col gap-5 pb-4'>
@@ -35,15 +42,21 @@ export function HomePage() {
         <NoTeamMessage />
       ) : (
         <>
-          <RecentWorkItemsCard items={recentItems} isLoading={isLoadingRecent} />
+          {showRecentActivities ? (
+            <RecentWorkItemsCard items={recentItems} isLoading={isLoadingRecent} />
+          ) : null}
 
-          <DayTimeline
-            blocks={timelineBlocks}
-            absences={timelineAbsences}
-            selectedDate={selectedDate}
-            onDateChange={setSelectedDate}
-            isLoading={isLoadingTimeline}
-          />
+          {hasOwnedTeams ? (
+            <AdminTeamsDayTimeline />
+          ) : (
+            <DayTimeline
+              blocks={timelineBlocks}
+              absences={timelineAbsences}
+              selectedDate={selectedDate}
+              onDateChange={setSelectedDate}
+              isLoading={isLoadingTimeline}
+            />
+          )}
 
           <StartRecentWorkDialog
             open={startDialogOpen}

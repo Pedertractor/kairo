@@ -15,6 +15,7 @@ import type {
   RecentWorkItem,
   RecentWorkItemKind,
   TaskTimeEntrySummary,
+  AdminTeamsDayDashboard,
   TeamDayDashboard,
   TeamDayTimelineBlock,
   TeamTimeEntrySummary,
@@ -250,6 +251,7 @@ function mapTeamDayEntryToBlock(
   dayStart: Date,
   dayEnd: Date,
   now: Date,
+  teamNameById?: Map<string, string>,
 ): TeamDayTimelineBlock | null {
   const mapped = mapDayEntryToBlock(entry, dayStart, dayEnd, now);
 
@@ -261,6 +263,89 @@ function mapTeamDayEntryToBlock(
     ...mapped,
     userId: entry.user.id,
     userName: entry.user.name,
+    teamName: teamNameById?.get(mapped.teamId),
+  };
+}
+
+function assembleTeamDayDashboard(
+  targetDate: string,
+  entries: TeamDayEntry[],
+  previousEntries: TeamDayEntry[],
+  absencePeriods: Array<{
+    id: string;
+    userId: string;
+    user: { name: string };
+    startedAt: Date;
+    endedAt: Date | null;
+  }>,
+  dayStart: Date,
+  dayEnd: Date,
+  prevStart: Date,
+  prevEnd: Date,
+  now: Date,
+  teamNameById?: Map<string, string>,
+): TeamDayDashboard {
+  let loggedSeconds = 0;
+  const activeMemberIds = new Set<string>();
+
+  for (const entry of entries) {
+    const entryEnd = entry.endedAt ?? now;
+    loggedSeconds += getOverlapSeconds(
+      entry.startedAt,
+      entryEnd,
+      dayStart,
+      dayEnd,
+    );
+    activeMemberIds.add(entry.userId);
+  }
+
+  let previousLoggedSeconds = 0;
+
+  for (const entry of previousEntries) {
+    const entryEnd = entry.endedAt ?? now;
+    previousLoggedSeconds += getOverlapSeconds(
+      entry.startedAt,
+      entryEnd,
+      prevStart,
+      prevEnd,
+    );
+  }
+
+  const changePercent =
+    previousLoggedSeconds > 0
+      ? Math.round(
+          ((loggedSeconds - previousLoggedSeconds) / previousLoggedSeconds) *
+            100,
+        )
+      : null;
+
+  const blocks = entries
+    .map((entry) =>
+      mapTeamDayEntryToBlock(entry, dayStart, dayEnd, now, teamNameById),
+    )
+    .filter((block): block is TeamDayTimelineBlock => block !== null);
+  const absences = mapAbsencesToTeamDayBlocks(
+    absencePeriods.map((period) => ({
+      id: period.id,
+      userId: period.userId,
+      userName: period.user.name,
+      startedAt: period.startedAt,
+      endedAt: period.endedAt,
+    })),
+    dayStart,
+    dayEnd,
+    now,
+  );
+
+  return {
+    date: targetDate,
+    stats: {
+      loggedSeconds,
+      changePercent,
+      activeMembers: activeMemberIds.size,
+    },
+    blocks,
+    absences,
   };
 }
 
@@ -1015,65 +1100,137 @@ export class TimeEntryService {
       this.absenceService.findOverlappingForUsers(memberIds, dayStart, dayEnd),
     ]);
 
-    let loggedSeconds = 0;
-    const activeMemberIds = new Set<string>();
-
-    for (const entry of entries) {
-      const entryEnd = entry.endedAt ?? now;
-      loggedSeconds += getOverlapSeconds(
-        entry.startedAt,
-        entryEnd,
-        dayStart,
-        dayEnd,
-      );
-      activeMemberIds.add(entry.userId);
-    }
-
-    let previousLoggedSeconds = 0;
-
-    for (const entry of previousEntries) {
-      const entryEnd = entry.endedAt ?? now;
-      previousLoggedSeconds += getOverlapSeconds(
-        entry.startedAt,
-        entryEnd,
-        prevStart,
-        prevEnd,
-      );
-    }
-
-    const changePercent =
-      previousLoggedSeconds > 0
-        ? Math.round(
-            ((loggedSeconds - previousLoggedSeconds) / previousLoggedSeconds) *
-              100,
-          )
-        : null;
-
-    const blocks = entries
-      .map((entry) => mapTeamDayEntryToBlock(entry, dayStart, dayEnd, now))
-      .filter((block): block is TeamDayTimelineBlock => block !== null);
-    const absences = mapAbsencesToTeamDayBlocks(
-      absencePeriods.map((period) => ({
-        id: period.id,
-        userId: period.userId,
-        userName: period.user.name,
-        startedAt: period.startedAt,
-        endedAt: period.endedAt,
-      })),
+    return assembleTeamDayDashboard(
+      targetDate,
+      entries,
+      previousEntries,
+      absencePeriods,
       dayStart,
       dayEnd,
+      prevStart,
+      prevEnd,
       now,
+    );
+  }
+
+  async getAdminTeamsDayDashboard(
+    userId: string,
+    date?: string,
+    teamId?: string,
+  ): Promise<AdminTeamsDayDashboard> {
+    const memberships = await this.teamRepository.findMembershipsByUserId(
+      userId,
+      { active: true, adminOnly: true },
+    );
+    const teams = memberships
+      .map((membership) => ({
+        id: membership.team.id,
+        name: membership.team.name,
+      }))
+      .sort((left, right) => left.name.localeCompare(right.name, 'pt-BR'));
+
+    const selectedMemberships = teamId
+      ? memberships.filter((membership) => membership.team.id === teamId)
+      : memberships;
+
+    if (teamId && selectedMemberships.length === 0) {
+      throw new AppError(403, MENSAGENS.PROIBIDO);
+    }
+
+    const targetDate = date ?? formatDateKey(new Date());
+    const teamNameById = new Map(teams.map((team) => [team.id, team.name]));
+    const membersById = new Map<
+      string,
+      { userId: string; userName: string }
+    >();
+    const adminIds = new Set<string>();
+
+    for (const membership of selectedMemberships) {
+      for (const member of membership.team.members) {
+        if (member.role === TeamRole.ADMIN) {
+          adminIds.add(member.user.id);
+        }
+      }
+    }
+
+    for (const membership of selectedMemberships) {
+      for (const member of membership.team.members) {
+        if (
+          member.role !== TeamRole.MEMBER ||
+          adminIds.has(member.user.id) ||
+          membersById.has(member.user.id)
+        ) {
+          continue;
+        }
+
+        membersById.set(member.user.id, {
+          userId: member.user.id,
+          userName: member.user.name,
+        });
+      }
+    }
+
+    const members = [...membersById.values()].sort((left, right) =>
+      left.userName.localeCompare(right.userName, 'pt-BR'),
+    );
+
+    if (selectedMemberships.length === 0) {
+      return {
+        date: targetDate,
+        stats: {
+          loggedSeconds: 0,
+          changePercent: null,
+          activeMembers: 0,
+        },
+        blocks: [],
+        absences: [],
+        teams,
+        members,
+      };
+    }
+
+    const { dayStart, dayEnd } = parseDayBounds(targetDate);
+    const now = new Date();
+    const previousDate = shiftDateKey(targetDate, -1);
+    const { dayStart: prevStart, dayEnd: prevEnd } =
+      parseDayBounds(previousDate);
+    const selectedTeamIds = selectedMemberships.map(
+      (membership) => membership.team.id,
+    );
+    const memberIds = members.map((member) => member.userId);
+
+    const memberIdSet = new Set(memberIds);
+    const [entries, previousEntries, absencePeriods] = await Promise.all([
+      this.timeEntryRepository.findOverlappingDayByTeamId(
+        selectedTeamIds,
+        dayStart,
+        dayEnd,
+      ),
+      this.timeEntryRepository.findOverlappingDayByTeamId(
+        selectedTeamIds,
+        prevStart,
+        prevEnd,
+      ),
+      this.absenceService.findOverlappingForUsers(memberIds, dayStart, dayEnd),
+    ]);
+
+    const dashboard = assembleTeamDayDashboard(
+      targetDate,
+      entries.filter((entry) => memberIdSet.has(entry.userId)),
+      previousEntries.filter((entry) => memberIdSet.has(entry.userId)),
+      absencePeriods,
+      dayStart,
+      dayEnd,
+      prevStart,
+      prevEnd,
+      now,
+      teamNameById,
     );
 
     return {
-      date: targetDate,
-      stats: {
-        loggedSeconds,
-        changePercent,
-        activeMembers: activeMemberIds.size,
-      },
-      blocks,
-      absences,
+      ...dashboard,
+      teams,
+      members,
     };
   }
 }

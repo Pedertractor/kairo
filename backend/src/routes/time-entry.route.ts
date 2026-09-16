@@ -64,6 +64,11 @@ export async function timeEntryRoutes(app: FastifyInstance) {
     controller.updateUserTimeEntry,
   );
   app.get(
+    '/time-entries/admin-teams/day',
+    { preHandler: [app.authenticate] },
+    controller.getAdminTeamsDayDashboard,
+  );
+  app.get(
     '/time-entries/day',
     { preHandler: [app.authenticate] },
     controller.getDayDashboard,

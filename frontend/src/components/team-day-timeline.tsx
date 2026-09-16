@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
 import { Minus, Plus } from 'lucide-react';
@@ -8,7 +8,12 @@ import { TimelineAbsenceBand } from '@/components/timeline-absence-band';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { buildMemberColorMap, buildTagColorScheme } from '@/lib/member-colors';
+import {
+  UNTAGGED_BLOCK_COLOR,
+  buildMemberColorMap,
+  buildTagColorScheme,
+  untaggedBlockColorScheme,
+} from '@/lib/member-colors';
 import { toDateKey } from '@/lib/date';
 import { formatCurrentTime } from '@/lib/format-time';
 import {
@@ -19,6 +24,7 @@ import {
 import { layoutOverlappingBlocks } from '@/lib/timeline-overlap-layout';
 import { cn } from '@/lib/utils';
 import type {
+  AdminTeamsTimelineMember,
   TeamDayAbsenceBlock,
   TeamDayTimelineBlock,
 } from '@/types/time-entry';
@@ -40,12 +46,15 @@ const NOW_LINE_LIVE_LEAD_PX = 0;
 interface TeamDayTimelineProps {
   blocks: TeamDayTimelineBlock[];
   absences?: TeamDayAbsenceBlock[];
+  members?: AdminTeamsTimelineMember[];
   selectedDate: string;
   onDateChange: (date: string) => void;
   isLoading: boolean;
   showDateOptions?: boolean;
   /** Colors each block by its activity tag, falling back to the member color. */
   colorBlocksByTag?: boolean;
+  title?: string;
+  headerExtra?: ReactNode;
 }
 
 interface DateOption {
@@ -145,15 +154,20 @@ function buildTicks(
 }
 
 const COLUMN_GAP_PX = 4;
+const MEMBER_COLUMN_MIN_WIDTH_PX = 96;
+const TIME_GUTTER_PX = 64;
 
 export function TeamDayTimeline({
-  blocks,
-  absences = [],
+  blocks: rawBlocks,
+  absences: rawAbsences = [],
+  members,
   selectedDate,
   onDateChange,
   isLoading,
   showDateOptions = true,
   colorBlocksByTag = false,
+  title = 'Timeline do Dia',
+  headerExtra,
 }: TeamDayTimelineProps) {
   const dateOptions = useMemo(
     () => buildDateOptions(selectedDate),
@@ -168,6 +182,24 @@ export function TeamDayTimeline({
   const isHoveringRef = useRef(false);
 
   zoomRef.current = zoom;
+
+  const blocks = useMemo(() => {
+    if (!members) {
+      return rawBlocks;
+    }
+
+    const allowedIds = new Set(members.map((member) => member.userId));
+    return rawBlocks.filter((block) => allowedIds.has(block.userId));
+  }, [members, rawBlocks]);
+
+  const absences = useMemo(() => {
+    if (!members) {
+      return rawAbsences;
+    }
+
+    const allowedIds = new Set(members.map((member) => member.userId));
+    return rawAbsences.filter((absence) => allowedIds.has(absence.userId));
+  }, [members, rawAbsences]);
 
   const hourHeight = BASE_HOUR_HEIGHT * zoom;
   const { rangeStart, rangeEnd } = getVisibleTimelineRange(
@@ -185,27 +217,37 @@ export function TeamDayTimeline({
 
   const memberColorMap = useMemo(
     () =>
-      buildMemberColorMap([
-        ...blocks.map((block) => block.userId),
-        ...absences.map((absence) => absence.userId),
-      ]),
-    [absences, blocks],
+      buildMemberColorMap(
+        members
+          ? members.map((member) => member.userId)
+          : [
+              ...blocks.map((block) => block.userId),
+              ...absences.map((absence) => absence.userId),
+            ],
+      ),
+    [absences, blocks, members],
   );
 
   const memberLegend = useMemo(() => {
-    const members = new Map<string, string>();
+    const legendMembers = new Map<string, string>();
 
-    for (const block of blocks) {
-      members.set(block.userId, block.userName);
-    }
+    if (members) {
+      for (const member of members) {
+        legendMembers.set(member.userId, member.userName);
+      }
+    } else {
+      for (const block of blocks) {
+        legendMembers.set(block.userId, block.userName);
+      }
 
-    for (const absence of absences) {
-      if (!members.has(absence.userId)) {
-        members.set(absence.userId, absence.userName);
+      for (const absence of absences) {
+        if (!legendMembers.has(absence.userId)) {
+          legendMembers.set(absence.userId, absence.userName);
+        }
       }
     }
 
-    return [...members.entries()]
+    return [...legendMembers.entries()]
       .map(([userId, userName]) => ({
         userId,
         userName,
@@ -220,8 +262,8 @@ export function TeamDayTimeline({
           colors: NonNullable<ReturnType<typeof memberColorMap.get>>;
         } => member.colors !== undefined,
       )
-      .sort((left, right) => left.userName.localeCompare(right.userName));
-  }, [absences, blocks, memberColorMap]);
+      .sort((left, right) => left.userName.localeCompare(right.userName, 'pt-BR'));
+  }, [absences, blocks, memberColorMap, members]);
 
   const memberColumnMap = useMemo(
     () =>
@@ -237,16 +279,29 @@ export function TeamDayTimeline({
     }
 
     const tags = new Map<string, { id: string; name: string; color: string }>();
+    let hasUntagged = false;
 
     for (const block of blocks) {
       if (block.tag) {
         tags.set(block.tag.id, block.tag);
+      } else {
+        hasUntagged = true;
       }
     }
 
-    return [...tags.values()].sort((left, right) =>
-      left.name.localeCompare(right.name),
+    const legend = [...tags.values()].sort((left, right) =>
+      left.name.localeCompare(right.name, 'pt-BR'),
     );
+
+    if (hasUntagged) {
+      legend.push({
+        id: 'untagged',
+        name: 'Sem etiqueta',
+        color: UNTAGGED_BLOCK_COLOR,
+      });
+    }
+
+    return legend;
   }, [blocks, colorBlocksByTag]);
 
   const laidOutBlocks = useMemo(
@@ -382,14 +437,16 @@ export function TeamDayTimeline({
   const nowTop = hasLiveAppointment
     ? minutesToTop(nowLineMinutes) + NOW_LINE_LIVE_LEAD_PX
     : minutesToTop(nowLineMinutes);
+  const contentMinWidth =
+    memberLegend.length > 0
+      ? TIME_GUTTER_PX + memberLegend.length * MEMBER_COLUMN_MIN_WIDTH_PX
+      : undefined;
 
   return (
-    <Card className='gap-0 rounded-2xl border-0 py-5 shadow-sm'>
+    <Card className='min-w-0 max-w-full overflow-hidden gap-0 rounded-2xl border-0 py-5 shadow-sm'>
       <CardHeader className='flex-col items-start gap-3 space-y-0 px-5 pb-4 sm:flex-row sm:items-center sm:justify-between'>
-        <div className='flex min-w-0 items-center gap-3'>
-          <CardTitle className='text-base font-semibold'>
-            Timeline do Dia
-          </CardTitle>
+        <div className='flex min-w-0 flex-wrap items-center gap-3'>
+          <CardTitle className='text-base font-semibold'>{title}</CardTitle>
 
           <div className='flex items-center rounded-full border bg-muted/50 p-0.5'>
             <Button
@@ -418,6 +475,8 @@ export function TeamDayTimeline({
               <Plus className='size-3.5' />
             </Button>
           </div>
+
+          {headerExtra}
         </div>
 
         {showDateOptions ? (
@@ -445,7 +504,7 @@ export function TeamDayTimeline({
         ) : null}
       </CardHeader>
 
-      <CardContent className='px-5'>
+      <CardContent className='min-w-0 overflow-hidden px-5'>
         {isLoading ? (
           <div className='space-y-3'>
             <Skeleton className='h-6 w-full' />
@@ -455,13 +514,33 @@ export function TeamDayTimeline({
           </div>
         ) : (
           <>
-            {memberLegend.length > 1 || (!colorBlocksByTag && memberLegend.length > 0) ? (
+            {tagLegend.length > 0 ? (
+              <div className='mb-3 flex flex-wrap items-center gap-2'>
+                {tagLegend.map((tag) => (
+                  <span
+                    key={tag.id}
+                    className='inline-flex max-w-full items-center gap-1.5 text-xs font-medium text-foreground'
+                    title={tag.name}
+                  >
+                    <span
+                      className='size-2.5 shrink-0 rounded-full'
+                      style={{ backgroundColor: tag.color }}
+                    />
+                    <span className='truncate'>{tag.name}</span>
+                  </span>
+                ))}
+              </div>
+            ) : null}
+
+            <div className='w-full min-w-0 max-w-full overflow-x-auto overscroll-x-contain'>
+              <div className='min-w-full' style={{ minWidth: contentMinWidth }}>
+            {memberLegend.length > 0 ? (
               <div className='mb-3 grid grid-cols-[3rem_minmax(0,1fr)] gap-x-3 sm:grid-cols-[3.25rem_minmax(0,1fr)] sm:gap-x-4'>
-                <div />
+                <div className='sticky left-0 z-20 bg-card' />
                 <div
                   className='grid min-w-0'
                   style={{
-                    gridTemplateColumns: `repeat(${memberLegend.length}, minmax(0, 1fr))`,
+                    gridTemplateColumns: `repeat(${memberLegend.length}, minmax(${MEMBER_COLUMN_MIN_WIDTH_PX}px, 1fr))`,
                   }}
                 >
                   {memberLegend.map((member) => (
@@ -487,24 +566,6 @@ export function TeamDayTimeline({
               </div>
             ) : null}
 
-            {tagLegend.length > 0 ? (
-              <div className='mb-3 flex flex-wrap items-center gap-2'>
-                {tagLegend.map((tag) => (
-                  <span
-                    key={tag.id}
-                    className='inline-flex max-w-full items-center gap-1.5 text-xs font-medium text-foreground'
-                    title={tag.name}
-                  >
-                    <span
-                      className='size-2.5 shrink-0 rounded-full'
-                      style={{ backgroundColor: tag.color }}
-                    />
-                    <span className='truncate'>{tag.name}</span>
-                  </span>
-                ))}
-              </div>
-            ) : null}
-
             <div
               ref={scrollRef}
               className='overflow-y-auto overscroll-contain rounded-lg [touch-action:pan-y]'
@@ -514,7 +575,7 @@ export function TeamDayTimeline({
                 className='grid grid-cols-[3rem_minmax(0,1fr)] gap-x-3 sm:grid-cols-[3.25rem_minmax(0,1fr)] sm:gap-x-4'
                 style={{ height: contentHeight }}
               >
-                <div className='relative shrink-0'>
+                <div className='relative sticky left-0 z-20 shrink-0 bg-card'>
                   {ticks.map((tick) =>
                     tick.label ? (
                       <div
@@ -611,17 +672,19 @@ export function TeamDayTimeline({
                       layout.block.userId,
                     );
 
-                    if (
-                      memberColors === undefined ||
-                      memberColumn === undefined
-                    ) {
+                    if (memberColumn === undefined) {
                       return null;
                     }
 
-                    const colors =
-                      colorBlocksByTag && layout.block.tag
+                    const colors = colorBlocksByTag
+                      ? layout.block.tag?.color
                         ? buildTagColorScheme(layout.block.tag.color)
-                        : memberColors;
+                        : untaggedBlockColorScheme
+                      : memberColors;
+
+                    if (!colors) {
+                      return null;
+                    }
 
                     return (
                       <TeamTimelineBlock
@@ -667,7 +730,9 @@ export function TeamDayTimeline({
                     </div>
                   ) : null}
 
-                  {blocks.length === 0 && absences.length === 0 ? (
+                  {blocks.length === 0 &&
+                  absences.length === 0 &&
+                  memberLegend.length === 0 ? (
                     <div className='absolute inset-0 flex items-center justify-center'>
                       <p className='text-sm text-muted-foreground'>
                         Nenhum apontamento neste dia.
@@ -677,6 +742,8 @@ export function TeamDayTimeline({
                 </div>
               </div>
             </div>
+            </div>
+          </div>
           </>
         )}
 

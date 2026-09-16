@@ -104,6 +104,7 @@ export const MENSAGENS = {
   USUARIO_CRIADO_SUCESSO: 'Usuário criado com sucesso',
   USUARIO_JA_CADASTRADO: 'Este usuário já está cadastrado na aplicação',
   FUNCIONARIO_NAO_ENCONTRADO: 'Funcionário não encontrado na API externa',
+  FUNCIONARIO_INATIVO: 'Este funcionário não está ativo na API externa',
   ERRO_API_EXTERNA: 'Não foi possível consultar a API externa',
   TURNO_INVALIDO:
     'Horário de turno inválido. O fim deve ser posterior ao início',

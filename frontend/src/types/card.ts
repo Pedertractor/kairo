@@ -15,6 +15,7 @@ export type CardStatus =
 export interface ActivitySummary {
   id: string
   teamId: string
+  teamName?: string
   title: string
   description: string | null
   status: CardStatus

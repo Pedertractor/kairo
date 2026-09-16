@@ -36,11 +36,17 @@ import {
   NO_COMPLEXITY,
   isComplexityLevel,
 } from '@/lib/complexity-level'
+import { canCreateTeamActivities } from '@/lib/team-permissions'
 import type { ActivityResponse, CreateActivityInput } from '@/types/card'
 import type { ClientSummary, ClientsListResponse } from '@/types/client'
 import type { MachineSummary, MachinesListResponse } from '@/types/machine'
-import type { TagSummary } from '@/types/tag'
-import type { TeamMemberSummary, TeamResponse } from '@/types/team'
+import type { TagSummary, TagsListResponse } from '@/types/tag'
+import type {
+  TeamMemberSummary,
+  TeamResponse,
+  TeamSummary,
+  TeamsListResponse,
+} from '@/types/team'
 
 const NO_TAG = '__none__'
 
@@ -60,7 +66,7 @@ type MemberComboboxOption = {
 }
 
 interface CreateActivityDialogProps {
-  teamId: string
+  teamId?: string
   open: boolean
   onOpenChange: (open: boolean) => void
   onCreated: () => void
@@ -89,17 +95,22 @@ function toMemberOption(member: TeamMemberSummary): MemberComboboxOption {
 }
 
 export function CreateActivityDialog({
-  teamId,
+  teamId: fixedTeamId,
   open,
   onOpenChange,
   onCreated,
   tags = [],
 }: CreateActivityDialogProps) {
+  const requiresTeamSelection = fixedTeamId === undefined
+  const [teams, setTeams] = useState<TeamSummary[]>([])
+  const [selectedTeamId, setSelectedTeamId] = useState('')
+  const [isLoadingTeams, setIsLoadingTeams] = useState(false)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [estimatedHours, setEstimatedHours] = useState('')
   const [indefiniteTime, setIndefiniteTime] = useState(false)
   const [tagId, setTagId] = useState(NO_TAG)
+  const [loadedTags, setLoadedTags] = useState<TagSummary[]>([])
   const [clients, setClients] = useState<ClientSummary[]>([])
   const [selectedClient, setSelectedClient] =
     useState<ClientComboboxOption | null>(null)
@@ -112,6 +123,8 @@ export function CreateActivityDialog({
   const [members, setMembers] = useState<TeamMemberSummary[]>([])
   const [isLoadingOptions, setIsLoadingOptions] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const teamId = fixedTeamId ?? selectedTeamId
+  const availableTags = requiresTeamSelection ? loadedTags : tags
 
   const clientOptions = useMemo(() => clients.map(toClientOption), [clients])
   const machineOptions = useMemo(
@@ -124,16 +137,47 @@ export function CreateActivityDialog({
   )
 
   function resetForm() {
+    setSelectedTeamId('')
     setTitle('')
     setDescription('')
     setEstimatedHours('')
     setIndefiniteTime(false)
     setTagId(NO_TAG)
+    setLoadedTags([])
     setSelectedClient(null)
     setSelectedMachine(null)
     setSelectedAssignee(null)
     setComplexityLevel(NO_COMPLEXITY)
   }
+
+  useEffect(() => {
+    if (!open || !requiresTeamSelection) {
+      return
+    }
+
+    let cancelled = false
+
+    async function loadTeams() {
+      setIsLoadingTeams(true)
+
+      try {
+        const data = await api<TeamsListResponse>('/teams')
+        if (!cancelled) {
+          setTeams(data.teams.filter(canCreateTeamActivities))
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingTeams(false)
+        }
+      }
+    }
+
+    void loadTeams()
+
+    return () => {
+      cancelled = true
+    }
+  }, [open, requiresTeamSelection])
 
   useEffect(() => {
     if (open) {
@@ -142,12 +186,12 @@ export function CreateActivityDialog({
       setSelectedMachine(null)
       setSelectedAssignee(null)
       setComplexityLevel(NO_COMPLEXITY)
-      setIsLoadingOptions(true)
+      setIsLoadingOptions(Boolean(teamId))
     }
-  }, [open])
+  }, [open, teamId])
 
   useEffect(() => {
-    if (!open) {
+    if (!open || !teamId) {
       return
     }
 
@@ -155,7 +199,7 @@ export function CreateActivityDialog({
 
     async function loadOptions() {
       try {
-        const [clientsData, machinesData, teamData] = await Promise.all([
+        const [clientsData, machinesData, teamData, tagsData] = await Promise.all([
           api<ClientsListResponse>('/clients', { toastOnError: false }).catch(
             () => ({ clients: [] }) as ClientsListResponse,
           ),
@@ -168,12 +212,20 @@ export function CreateActivityDialog({
           api<TeamResponse>(`/teams/${teamId}`, { toastOnError: false }).catch(
             () => null,
           ),
+          requiresTeamSelection
+            ? api<TagsListResponse>(`/teams/${teamId}/tags`, {
+                toastOnError: false,
+              }).catch(() => ({ tags: [] }) as TagsListResponse)
+            : Promise.resolve({ tags: [] } as TagsListResponse),
         ])
 
         if (!cancelled) {
           setClients(clientsData.clients)
           setMachines(machinesData.machines)
           setMembers(teamData?.team.members ?? [])
+          if (requiresTeamSelection) {
+            setLoadedTags(tagsData.tags)
+          }
         }
       } finally {
         if (!cancelled) {
@@ -187,10 +239,15 @@ export function CreateActivityDialog({
     return () => {
       cancelled = true
     }
-  }, [open, teamId])
+  }, [open, teamId, requiresTeamSelection])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+
+    if (!teamId) {
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
@@ -260,11 +317,50 @@ export function CreateActivityDialog({
           <DialogHeader className="shrink-0 pr-8">
             <DialogTitle>Criar nova atividade</DialogTitle>
             <DialogDescription>
-              Preencha os dados para criar uma nova atividade nesta equipe.
+              {requiresTeamSelection
+                ? 'Selecione a equipe e preencha os dados para criar uma nova atividade.'
+                : 'Preencha os dados para criar uma nova atividade nesta equipe.'}
             </DialogDescription>
           </DialogHeader>
 
           <FieldGroup className="-mx-1 min-h-0 w-auto flex-1 overflow-x-hidden overflow-y-auto px-1 py-4">
+            {requiresTeamSelection ? (
+              <Field>
+                <FieldLabel htmlFor="activity-team">Equipe</FieldLabel>
+                <Select
+                  value={selectedTeamId || undefined}
+                  onValueChange={(value) => {
+                    setSelectedTeamId(value ?? '')
+                    setTagId(NO_TAG)
+                    setSelectedMachine(null)
+                    setSelectedAssignee(null)
+                  }}
+                  disabled={isSubmitting || isLoadingTeams}
+                >
+                  <SelectTrigger id="activity-team" className="w-full">
+                    <SelectValue
+                      placeholder={
+                        isLoadingTeams
+                          ? 'Carregando equipes...'
+                          : 'Selecione uma equipe'
+                      }
+                    >
+                      {(value) =>
+                        teams.find((team) => team.id === value)?.name ??
+                        'Selecione uma equipe'
+                      }
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teams.map((team) => (
+                      <SelectItem key={team.id} value={team.id}>
+                        {team.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            ) : null}
             <Field>
               <FieldLabel htmlFor="activity-title">Título</FieldLabel>
               <Input
@@ -292,7 +388,7 @@ export function CreateActivityDialog({
               <Select
                 value={tagId}
                 onValueChange={(value) => setTagId(value ?? NO_TAG)}
-                disabled={isSubmitting}
+                disabled={isSubmitting || !teamId}
               >
                 <SelectTrigger id="activity-tag" className="w-full">
                   <SelectValue placeholder="Sem etiqueta">
@@ -302,7 +398,7 @@ export function CreateActivityDialog({
                         return 'Sem etiqueta'
                       }
 
-                      const tag = tags.find((item) => item.id === value)
+                      const tag = availableTags.find((item) => item.id === value)
                       if (!tag) {
                         return 'Etiqueta'
                       }
@@ -317,7 +413,7 @@ export function CreateActivityDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NO_TAG}>Sem etiqueta</SelectItem>
-                  {tags.map((tag) => (
+                  {availableTags.map((tag) => (
                     <SelectItem key={tag.id} value={tag.id}>
                       <span className="flex items-center gap-2">
                         <span
@@ -518,7 +614,10 @@ export function CreateActivityDialog({
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmitting || !title.trim()}>
+            <Button
+              type="submit"
+              disabled={isSubmitting || !title.trim() || !teamId}
+            >
               {isSubmitting ? 'Criando...' : 'Criar atividade'}
             </Button>
           </DialogFooter>

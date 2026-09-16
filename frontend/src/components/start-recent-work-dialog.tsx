@@ -94,8 +94,8 @@ const TAB_EMPTY: Record<
     title: 'Nenhuma atividade encontrada',
     description:
       'As atividades das suas equipes aparecerão aqui para iniciar o timer.',
-    linkLabel: 'Ir para equipes',
-    linkTo: '/equipes',
+    linkLabel: 'Ir para atividades',
+    linkTo: '/atividades',
   },
 }
 

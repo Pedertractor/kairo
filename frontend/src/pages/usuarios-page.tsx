@@ -95,11 +95,15 @@ export function UsuariosPage() {
   const hasActiveFilter = nameFilter.trim() !== ''
 
   function handleUserUpdated(updatedUser: User) {
-    setUsers((currentUsers) =>
-      currentUsers.map((user) =>
+    setUsers((currentUsers) => {
+      if (!updatedUser.active) {
+        return currentUsers.filter((user) => user.id !== updatedUser.id)
+      }
+
+      return currentUsers.map((user) =>
         user.id === updatedUser.id ? updatedUser : user,
-      ),
-    )
+      )
+    })
   }
 
   function openAction(user: User, action: UserAction) {

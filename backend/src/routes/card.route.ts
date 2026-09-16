@@ -51,6 +51,11 @@ export async function cardRoutes(app: FastifyInstance) {
   );
 
   app.get(
+    '/activities',
+    { preHandler: [app.authenticate] },
+    controller.listAllActivities,
+  );
+  app.get(
     '/projects',
     { preHandler: [app.authenticate] },
     controller.listAllProjects,

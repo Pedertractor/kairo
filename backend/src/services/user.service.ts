@@ -153,19 +153,19 @@ export class UserService {
       }
     }
 
+    const employee = await this.employeeService.getByCardNumberAndUnit(
+      cardNumber,
+      unit,
+    );
+
     const existing = await this.userRepository.findByUnitAndCardNumber(
       unit,
       cardNumber,
     );
 
-    if (existing) {
+    if (existing?.active) {
       throw new AppError(409, MENSAGENS.USUARIO_JA_CADASTRADO);
     }
-
-    const employee = await this.employeeService.getByCardNumberAndUnit(
-      cardNumber,
-      unit,
-    );
 
     const initialShift = employee.shift
       ? {
@@ -176,6 +176,32 @@ export class UserService {
       : null;
 
     const passwordHash = await bcrypt.hash(env.DEFAULT_PASSWORD, 10);
+
+    if (existing) {
+      if (actor.role === UserRole.LEADER && existing.role === UserRole.ADMIN) {
+        throw new AppError(403, MENSAGENS.PROIBIDO);
+      }
+
+      const user = await this.userRepository.restore(existing.id, {
+        name: employee.name,
+        role,
+        passwordHash,
+      });
+
+      if (actor.role === UserRole.LEADER && teamId) {
+        const teamMembership =
+          await this.teamRepository.findMembershipByTeamAndUser(
+            teamId,
+            user.id,
+          );
+
+        if (!teamMembership) {
+          await this.teamRepository.addMember(teamId, user.id, TeamRole.MEMBER);
+        }
+      }
+
+      return this.toSafeUserWithShift(user);
+    }
 
     const createData = {
       employeeId: toEmployeeId(employee.unit, employee.cardNumber),
@@ -203,12 +229,14 @@ export class UserService {
     const actor = await this.getActorOrThrow(actorUserId);
 
     if (actor.role === UserRole.ADMIN) {
-      const users = await this.userRepository.findAll();
+      const users = await this.userRepository.findAll({ active: true });
       return this.toSafeUsers(users);
     }
 
     if (actor.role === UserRole.LEADER) {
-      const users = await this.userRepository.findManagedByTeamAdmin(actorUserId);
+      const users = await this.userRepository.findManagedByTeamAdmin(actorUserId, {
+        active: true,
+      });
       return this.toSafeUsers(users);
     }
 

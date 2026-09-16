@@ -1,4 +1,4 @@
-import type { CardStatus } from '../generated/client.js';
+import type { CardStatus, ComplexityLevel } from '../generated/client.js';
 import { AbsenceRepository } from '../repositories/absence.repository.js';
 import { AnalyticsRepository } from '../repositories/analytics.repository.js';
 import { ShiftRepository } from '../repositories/shift.repository.js';
@@ -10,6 +10,7 @@ import type {
   AnalyticsEmployeeOption,
   ClientAnalytics,
   EmployeeDayAnalytics,
+  MemberFinishedActivityAnalytics,
 } from '../types/analytics.types.js';
 import { formatDateKey, parseDayBounds } from '../utils/app-timezone.js';
 import { AppError } from '../utils/errors.js';
@@ -36,6 +37,24 @@ const CARD_STATUSES: CardStatus[] = [
   'CANCELED',
 ];
 const NONE_TAG_KEY = '__none__';
+const COMPLEXITY_WEIGHTS: Record<ComplexityLevel, number> = {
+  BAIXA: 1,
+  MEDIA: 2,
+  ALTA: 3,
+  MUITO_ALTA: 4,
+};
+const UNSET_COMPLEXITY_WEIGHT = 1;
+const COMPLEXITY_ORDER: Array<ComplexityLevel | null> = [
+  'BAIXA',
+  'MEDIA',
+  'ALTA',
+  'MUITO_ALTA',
+  null,
+];
+
+function complexityWeight(level: ComplexityLevel | null): number {
+  return level ? COMPLEXITY_WEIGHTS[level] : UNSET_COMPLEXITY_WEIGHT;
+}
 
 function emptyStatusCounts(): Map<CardStatus, number> {
   return new Map(CARD_STATUSES.map((status) => [status, 0]));
@@ -170,6 +189,7 @@ export class AnalyticsService {
       overviewTasks,
       allocationEntries,
       lastEntriesBefore,
+      finishedActivities,
     ] = await Promise.all([
       this.repository.findEntriesForTeams(
         scopedTeamIds,
@@ -222,6 +242,12 @@ export class AnalyticsService {
         periodEnd,
       ),
       this.repository.findLastEntriesBefore(employeeIds, periodStart),
+      this.repository.findFinishedActivitiesForPeriod(
+        scopedTeamIds,
+        periodStart,
+        periodEnd,
+        options.employeeId,
+      ),
     ]);
     const now = new Date();
     const absencesByEmployee = new Map<
@@ -472,20 +498,23 @@ export class AnalyticsService {
       bucket.activityCount += 1;
     }
 
-    const activityStatusCounts = emptyStatusCounts();
-    const projectStatusCounts = emptyStatusCounts();
-    const taskStatusCounts = emptyStatusCounts();
-    const overviewTagBuckets = new Map<
-      string,
-      {
-        tagId: string | null;
-        tagName: string;
-        tagColor: string | null;
-        count: number;
-        createdInPeriod: number;
-        statusCounts: Map<CardStatus, number>;
-      }
-    >();
+    type OverviewTagBucket = {
+      tagId: string | null;
+      tagName: string;
+      tagColor: string | null;
+      count: number;
+      createdInPeriod: number;
+      statusCounts: Map<CardStatus, number>;
+    };
+
+    const allTimeActivityStatusCounts = emptyStatusCounts();
+    const allTimeProjectStatusCounts = emptyStatusCounts();
+    const allTimeTaskStatusCounts = emptyStatusCounts();
+    const allTimeTagBuckets = new Map<string, OverviewTagBucket>();
+    const periodActivityStatusCounts = emptyStatusCounts();
+    const periodProjectStatusCounts = emptyStatusCounts();
+    const periodTaskStatusCounts = emptyStatusCounts();
+    const periodTagBuckets = new Map<string, OverviewTagBucket>();
     let activityTotal = 0;
     let projectTotal = 0;
     let activitiesCreatedInPeriod = 0;
@@ -495,35 +524,12 @@ export class AnalyticsService {
     const isCreatedInPeriod = (createdAt: Date) =>
       createdAt >= periodStart && createdAt < periodEnd;
 
-    for (const card of overviewCards) {
-      const createdInPeriod = isCreatedInPeriod(card.createdAt);
-
-      if (card.type === 'PROJECT') {
-        projectTotal += 1;
-        projectStatusCounts.set(
-          card.status,
-          (projectStatusCounts.get(card.status) ?? 0) + 1,
-        );
-
-        if (createdInPeriod) {
-          projectsCreatedInPeriod += 1;
-        }
-
-        continue;
-      }
-
-      activityTotal += 1;
-      activityStatusCounts.set(
-        card.status,
-        (activityStatusCounts.get(card.status) ?? 0) + 1,
-      );
-
-      if (createdInPeriod) {
-        activitiesCreatedInPeriod += 1;
-      }
-
+    const ensureTagBucket = (
+      buckets: Map<string, OverviewTagBucket>,
+      card: (typeof overviewCards)[number],
+    ) => {
       const tagKey = card.tagId ?? NONE_TAG_KEY;
-      const tagBucket = overviewTagBuckets.get(tagKey) ?? {
+      const tagBucket = buckets.get(tagKey) ?? {
         tagId: card.tagId,
         tagName: card.tag?.name ?? 'Sem etiqueta',
         tagColor: card.tag?.color ?? null,
@@ -531,45 +537,12 @@ export class AnalyticsService {
         createdInPeriod: 0,
         statusCounts: emptyStatusCounts(),
       };
-      tagBucket.count += 1;
-      if (createdInPeriod) {
-        tagBucket.createdInPeriod += 1;
-      }
-      tagBucket.statusCounts.set(
-        card.status,
-        (tagBucket.statusCounts.get(card.status) ?? 0) + 1,
-      );
-      overviewTagBuckets.set(tagKey, tagBucket);
-    }
+      buckets.set(tagKey, tagBucket);
+      return tagBucket;
+    };
 
-    for (const task of overviewTasks) {
-      taskStatusCounts.set(
-        task.status,
-        (taskStatusCounts.get(task.status) ?? 0) + 1,
-      );
-
-      if (isCreatedInPeriod(task.createdAt)) {
-        tasksCreatedInPeriod += 1;
-      }
-    }
-
-    const activityOverview: ActivityOverview = {
-      activities: {
-        total: activityTotal,
-        createdInPeriod: activitiesCreatedInPeriod,
-        byStatus: toStatusCounts(activityStatusCounts),
-      },
-      projects: {
-        total: projectTotal,
-        createdInPeriod: projectsCreatedInPeriod,
-        byStatus: toStatusCounts(projectStatusCounts),
-      },
-      tasks: {
-        total: overviewTasks.length,
-        createdInPeriod: tasksCreatedInPeriod,
-        byStatus: toStatusCounts(taskStatusCounts),
-      },
-      byTag: [...overviewTagBuckets.entries()]
+    const toOverviewByTag = (buckets: Map<string, OverviewTagBucket>) =>
+      [...buckets.entries()]
         .map(([key, bucket]) => ({
           tagId: bucket.tagId,
           tagName: bucket.tagName,
@@ -588,7 +561,111 @@ export class AnalyticsService {
           }
           return a.tagName.localeCompare(b.tagName);
         })
-        .map(({ _isNone: _, ...row }) => row),
+        .map(({ _isNone: _, ...row }) => row);
+
+    for (const card of overviewCards) {
+      const createdInPeriod = isCreatedInPeriod(card.createdAt);
+
+      if (card.type === 'PROJECT') {
+        projectTotal += 1;
+        allTimeProjectStatusCounts.set(
+          card.status,
+          (allTimeProjectStatusCounts.get(card.status) ?? 0) + 1,
+        );
+
+        if (createdInPeriod) {
+          projectsCreatedInPeriod += 1;
+          periodProjectStatusCounts.set(
+            card.status,
+            (periodProjectStatusCounts.get(card.status) ?? 0) + 1,
+          );
+        }
+
+        continue;
+      }
+
+      activityTotal += 1;
+      allTimeActivityStatusCounts.set(
+        card.status,
+        (allTimeActivityStatusCounts.get(card.status) ?? 0) + 1,
+      );
+
+      const allTimeTagBucket = ensureTagBucket(allTimeTagBuckets, card);
+      allTimeTagBucket.count += 1;
+      allTimeTagBucket.statusCounts.set(
+        card.status,
+        (allTimeTagBucket.statusCounts.get(card.status) ?? 0) + 1,
+      );
+
+      if (createdInPeriod) {
+        activitiesCreatedInPeriod += 1;
+        allTimeTagBucket.createdInPeriod += 1;
+        periodActivityStatusCounts.set(
+          card.status,
+          (periodActivityStatusCounts.get(card.status) ?? 0) + 1,
+        );
+
+        const periodTagBucket = ensureTagBucket(periodTagBuckets, card);
+        periodTagBucket.count += 1;
+        periodTagBucket.createdInPeriod += 1;
+        periodTagBucket.statusCounts.set(
+          card.status,
+          (periodTagBucket.statusCounts.get(card.status) ?? 0) + 1,
+        );
+      }
+    }
+
+    for (const task of overviewTasks) {
+      allTimeTaskStatusCounts.set(
+        task.status,
+        (allTimeTaskStatusCounts.get(task.status) ?? 0) + 1,
+      );
+
+      if (isCreatedInPeriod(task.createdAt)) {
+        tasksCreatedInPeriod += 1;
+        periodTaskStatusCounts.set(
+          task.status,
+          (periodTaskStatusCounts.get(task.status) ?? 0) + 1,
+        );
+      }
+    }
+
+    const activityOverview: ActivityOverview = {
+      activities: {
+        total: activitiesCreatedInPeriod,
+        createdInPeriod: activitiesCreatedInPeriod,
+        byStatus: toStatusCounts(periodActivityStatusCounts),
+      },
+      projects: {
+        total: projectsCreatedInPeriod,
+        createdInPeriod: projectsCreatedInPeriod,
+        byStatus: toStatusCounts(periodProjectStatusCounts),
+      },
+      tasks: {
+        total: tasksCreatedInPeriod,
+        createdInPeriod: tasksCreatedInPeriod,
+        byStatus: toStatusCounts(periodTaskStatusCounts),
+      },
+      byTag: toOverviewByTag(periodTagBuckets),
+    };
+
+    const activityOverviewAllTime: ActivityOverview = {
+      activities: {
+        total: activityTotal,
+        createdInPeriod: activitiesCreatedInPeriod,
+        byStatus: toStatusCounts(allTimeActivityStatusCounts),
+      },
+      projects: {
+        total: projectTotal,
+        createdInPeriod: projectsCreatedInPeriod,
+        byStatus: toStatusCounts(allTimeProjectStatusCounts),
+      },
+      tasks: {
+        total: overviewTasks.length,
+        createdInPeriod: tasksCreatedInPeriod,
+        byStatus: toStatusCounts(allTimeTaskStatusCounts),
+      },
+      byTag: toOverviewByTag(allTimeTagBuckets),
     };
 
     const allTimeTotals = {
@@ -596,6 +673,77 @@ export class AnalyticsService {
       projectCount: projectTotal,
       taskCount: overviewTasks.length,
     };
+
+    const finishedByEmployee = new Map<
+      string,
+      {
+        employeeName: string;
+        activityCount: number;
+        weightedScore: number;
+        byComplexity: Map<string, { count: number; weightedScore: number }>;
+      }
+    >();
+
+    for (const activity of finishedActivities) {
+      const employeeId = activity.assignedToId;
+
+      if (!employeeId || !employeesById.has(employeeId)) {
+        continue;
+      }
+
+      const weight = complexityWeight(activity.complexityLevel);
+      const complexityKey = activity.complexityLevel ?? '__none__';
+      const current = finishedByEmployee.get(employeeId) ?? {
+        employeeName:
+          activity.assignedTo?.name ?? employeesById.get(employeeId)?.name ?? '',
+        activityCount: 0,
+        weightedScore: 0,
+        byComplexity: new Map(),
+      };
+      const complexityBucket = current.byComplexity.get(complexityKey) ?? {
+        count: 0,
+        weightedScore: 0,
+      };
+
+      current.activityCount += 1;
+      current.weightedScore += weight;
+      complexityBucket.count += 1;
+      complexityBucket.weightedScore += weight;
+      current.byComplexity.set(complexityKey, complexityBucket);
+      finishedByEmployee.set(employeeId, current);
+    }
+
+    const memberFinishedActivities: MemberFinishedActivityAnalytics[] = [
+      ...finishedByEmployee.entries(),
+    ]
+      .map(([employeeId, bucket]) => ({
+        employeeId,
+        employeeName: bucket.employeeName,
+        activityCount: bucket.activityCount,
+        weightedScore: bucket.weightedScore,
+        byComplexity: COMPLEXITY_ORDER.filter((level) =>
+          bucket.byComplexity.has(level ?? '__none__'),
+        ).map((level) => {
+          const complexityBucket = bucket.byComplexity.get(
+            level ?? '__none__',
+          ) ?? { count: 0, weightedScore: 0 };
+
+          return {
+            complexityLevel: level,
+            count: complexityBucket.count,
+            weightedScore: complexityBucket.weightedScore,
+          };
+        }),
+      }))
+      .sort((a, b) => {
+        if (b.weightedScore !== a.weightedScore) {
+          return b.weightedScore - a.weightedScore;
+        }
+        if (b.activityCount !== a.activityCount) {
+          return b.activityCount - a.activityCount;
+        }
+        return a.employeeName.localeCompare(b.employeeName);
+      });
 
     for (const task of clientTasks) {
       const bucket = ensureClientBucket(
@@ -787,7 +935,9 @@ export class AnalyticsService {
       activityTypes,
       clients,
       activityOverview,
+      activityOverviewAllTime,
       allTimeTotals,
+      memberFinishedActivities,
     };
   }
 }

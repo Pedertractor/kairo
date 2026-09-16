@@ -8,6 +8,7 @@ export interface MemberColorScheme {
 }
 
 const GOLDEN_ANGLE_DEGREES = 137.508;
+export const UNTAGGED_BLOCK_COLOR = '#94A3B8';
 
 /** Timeline blocks of tagged activities follow the tag color instead of the member color. */
 export function buildTagColorScheme(tagColor: string): MemberColorScheme {
@@ -18,6 +19,8 @@ export function buildTagColorScheme(tagColor: string): MemberColorScheme {
     textColor: getContrastingTextColor(tagColor),
   };
 }
+
+export const untaggedBlockColorScheme = buildTagColorScheme(UNTAGGED_BLOCK_COLOR);
 
 export function buildMemberColorMap(
   userIds: string[],

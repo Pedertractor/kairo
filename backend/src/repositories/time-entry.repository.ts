@@ -505,17 +505,23 @@ export class TimeEntryRepository {
     return entry !== null;
   }
 
-  findOverlappingDayByTeamId(teamId: string, dayStart: Date, dayEnd: Date) {
+  findOverlappingDayByTeamId(
+    teamId: string | string[],
+    dayStart: Date,
+    dayEnd: Date,
+  ) {
+    const teamFilter = Array.isArray(teamId) ? { in: teamId } : teamId;
+
     return this.prisma.timeEntry.findMany({
       where: {
         AND: [
           {
             OR: [
-              { card: { teamId, deletedAt: null } },
+              { card: { teamId: teamFilter, deletedAt: null } },
               {
                 task: {
                   deletedAt: null,
-                  card: { teamId, deletedAt: null },
+                  card: { teamId: teamFilter, deletedAt: null },
                 },
               },
             ],
