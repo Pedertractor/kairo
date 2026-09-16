@@ -8,7 +8,12 @@ import { TimelineAbsenceBand } from '@/components/timeline-absence-band';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { buildMemberColorMap, buildTagColorScheme } from '@/lib/member-colors';
+import {
+  UNTAGGED_BLOCK_COLOR,
+  buildMemberColorMap,
+  buildTagColorScheme,
+  untaggedBlockColorScheme,
+} from '@/lib/member-colors';
 import { toDateKey } from '@/lib/date';
 import { formatCurrentTime } from '@/lib/format-time';
 import {
@@ -274,16 +279,29 @@ export function TeamDayTimeline({
     }
 
     const tags = new Map<string, { id: string; name: string; color: string }>();
+    let hasUntagged = false;
 
     for (const block of blocks) {
       if (block.tag) {
         tags.set(block.tag.id, block.tag);
+      } else {
+        hasUntagged = true;
       }
     }
 
-    return [...tags.values()].sort((left, right) =>
-      left.name.localeCompare(right.name),
+    const legend = [...tags.values()].sort((left, right) =>
+      left.name.localeCompare(right.name, 'pt-BR'),
     );
+
+    if (hasUntagged) {
+      legend.push({
+        id: 'untagged',
+        name: 'Sem tag',
+        color: UNTAGGED_BLOCK_COLOR,
+      });
+    }
+
+    return legend;
   }, [blocks, colorBlocksByTag]);
 
   const laidOutBlocks = useMemo(
@@ -516,7 +534,7 @@ export function TeamDayTimeline({
 
             <div className='w-full min-w-0 max-w-full overflow-x-auto overscroll-x-contain'>
               <div className='min-w-full' style={{ minWidth: contentMinWidth }}>
-            {memberLegend.length > 1 || (!colorBlocksByTag && memberLegend.length > 0) ? (
+            {memberLegend.length > 0 ? (
               <div className='mb-3 grid grid-cols-[3rem_minmax(0,1fr)] gap-x-3 sm:grid-cols-[3.25rem_minmax(0,1fr)] sm:gap-x-4'>
                 <div className='sticky left-0 z-20 bg-card' />
                 <div
@@ -654,17 +672,19 @@ export function TeamDayTimeline({
                       layout.block.userId,
                     );
 
-                    if (
-                      memberColors === undefined ||
-                      memberColumn === undefined
-                    ) {
+                    if (memberColumn === undefined) {
                       return null;
                     }
 
-                    const colors =
-                      colorBlocksByTag && layout.block.tag
+                    const colors = colorBlocksByTag
+                      ? layout.block.tag?.color
                         ? buildTagColorScheme(layout.block.tag.color)
-                        : memberColors;
+                        : untaggedBlockColorScheme
+                      : memberColors;
+
+                    if (!colors) {
+                      return null;
+                    }
 
                     return (
                       <TeamTimelineBlock
