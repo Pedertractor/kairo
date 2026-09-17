@@ -71,7 +71,6 @@ const ALL = 'all';
 interface SelectedEmployeeTimeline {
   employeeId: string;
   employeeName: string;
-  teamId: string;
 }
 
 type TagFilterOption = {
@@ -331,12 +330,19 @@ export function AnalyticsPage() {
     setIsLoadingTimeline(true);
 
     try {
+      const params = new URLSearchParams({
+        date: timelineDate,
+        userId: selectedTimeline.employeeId,
+      });
+      if (teamId !== ALL) {
+        params.set('teamId', teamId);
+      }
+
       const data = await api<TeamDayDashboard>(
-        `/teams/${selectedTimeline.teamId}/time-entries/day?date=${encodeURIComponent(timelineDate)}`,
-        { toastOnError: false },
+        `/time-entries/admin-teams/day?${params.toString()}`,
       );
       setTimelineBlocks(
-        data.blocks.filter(
+        (data.blocks ?? []).filter(
           (block) => block.userId === selectedTimeline.employeeId,
         ),
       );
@@ -351,7 +357,7 @@ export function AnalyticsPage() {
     } finally {
       setIsLoadingTimeline(false);
     }
-  }, [selectedTimeline, timelineDate]);
+  }, [selectedTimeline, teamId, timelineDate]);
 
   useEffect(() => {
     void loadEmployeeTimeline();
@@ -379,24 +385,18 @@ export function AnalyticsPage() {
   function openEmployeeTimeline(
     nextEmployeeId: string,
     employeeName: string,
-    nextTeamId: string,
+    lastLoggedDate?: string | null,
   ) {
-    if (!nextTeamId) {
-      return;
-    }
-
-    setTimelineDate(endDate);
+    setTimelineDate(lastLoggedDate || endDate);
     setAnalyticsTab('usuarios');
     setSelectedTimeline({
       employeeId: nextEmployeeId,
       employeeName,
-      teamId: nextTeamId,
     });
   }
 
   const summary = dashboard?.summary;
   const selectedProject = dashboard?.selectedProject;
-  const selectedProjectTeamId = selectedProject?.teamId ?? '';
   const periodDayCount = getInclusiveDayCount(startDate, endDate);
   const activityTypes = useMemo(
     () => dashboard?.activityTypes ?? [],
@@ -738,7 +738,9 @@ export function AnalyticsPage() {
                       openEmployeeTimeline(
                         user.employeeId,
                         user.employeeName,
-                        selectedProjectTeamId,
+                        dashboard?.rows.find(
+                          (row) => row.employeeId === user.employeeId,
+                        )?.lastLoggedDate,
                       )
                     }
                   >
@@ -809,7 +811,7 @@ export function AnalyticsPage() {
                           openEmployeeTimeline(
                             row.employeeId,
                             row.employeeName,
-                            row.teamId,
+                            row.lastLoggedDate,
                           )
                         }
                       >
@@ -1061,10 +1063,10 @@ export function AnalyticsPage() {
                                   100,
                               )
                             : 0;
-                        const memberTeamId =
+                        const memberLastLoggedDate =
                           dashboard?.rows.find(
                             (row) => row.employeeId === member.employeeId,
-                          )?.teamId ?? '';
+                          )?.lastLoggedDate ?? null;
 
                         return (
                           <div
@@ -1072,25 +1074,19 @@ export function AnalyticsPage() {
                             className='rounded-xl bg-muted/30 p-3'
                           >
                             <div className='flex items-center justify-between gap-3'>
-                              {memberTeamId ? (
-                                <button
-                                  type='button'
-                                  className='truncate text-sm font-semibold hover:underline'
-                                  onClick={() =>
-                                    openEmployeeTimeline(
-                                      member.employeeId,
-                                      member.employeeName,
-                                      memberTeamId,
-                                    )
-                                  }
-                                >
-                                  {member.employeeName}
-                                </button>
-                              ) : (
-                                <p className='truncate text-sm font-semibold'>
-                                  {member.employeeName}
-                                </p>
-                              )}
+                              <button
+                                type='button'
+                                className='truncate text-sm font-semibold hover:underline'
+                                onClick={() =>
+                                  openEmployeeTimeline(
+                                    member.employeeId,
+                                    member.employeeName,
+                                    memberLastLoggedDate,
+                                  )
+                                }
+                              >
+                                {member.employeeName}
+                              </button>
                               <div className='flex shrink-0 items-center gap-3 text-xs text-muted-foreground'>
                                 <span>
                                   {member.entryCount}{' '}

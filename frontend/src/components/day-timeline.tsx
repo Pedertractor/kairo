@@ -6,12 +6,23 @@ import { Minus, Plus } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { TimelineAbsenceBand } from '@/components/timeline-absence-band'
-import { TimelineBlock } from '@/components/timeline-block'
+import {
+  TimelineBlock,
+  getTimelineBlockDisplayTitle,
+} from '@/components/timeline-block'
 import {
   buildActivityColorMap,
   type ActivityColorScheme,
 } from '@/lib/activity-colors'
+import { buildTagColorScheme } from '@/lib/member-colors'
 import { toDateKey } from '@/lib/date'
 import { formatCurrentTime } from '@/lib/format-time'
 import {
@@ -36,6 +47,23 @@ const ZOOM_OUT_FACTOR = 1 / ZOOM_IN_FACTOR
 const NOW_LINE_LEAD_MINUTES = 8
 /** Pixel gap under a running block — 0 keeps the marker glued to the tip. */
 const NOW_LINE_LIVE_LEAD_PX = 0
+
+const DISPLAY_BY_ACTIVITY = 'activity'
+const DISPLAY_BY_TAG = 'tag'
+
+const DISPLAY_MODE_LABELS = {
+  [DISPLAY_BY_ACTIVITY]: 'Por atividade',
+  [DISPLAY_BY_TAG]: 'Por etiqueta',
+} as const
+
+type TimelineDisplayMode =
+  | typeof DISPLAY_BY_ACTIVITY
+  | typeof DISPLAY_BY_TAG
+
+interface TimelineBlockColors extends ActivityColorScheme {
+  backgroundColor?: string
+  textColor?: string
+}
 
 interface DayTimelineProps {
   blocks: DayTimelineBlock[]
@@ -156,9 +184,18 @@ function getBlockColors(
   isToday: boolean,
   now: Date,
   colorMap: ReturnType<typeof buildActivityColorMap>,
-): ActivityColorScheme {
+  showAsTags: boolean,
+): TimelineBlockColors {
+  const isFuture = isToday && dayjs(block.startedAt).isAfter(dayjs(now))
+
+  if (showAsTags && block.tag) {
+    const scheme = buildTagColorScheme(block.tag.color)
+
+    return isFuture ? { ...scheme, bar: cn(scheme.bar, 'opacity-55') } : scheme
+  }
+
   const scheme = colorMap.get(block.title)
-  const fallback: ActivityColorScheme = {
+  const fallback: TimelineBlockColors = {
     bar: 'bg-blue-700 text-white',
     subtext: 'text-white/80',
   }
@@ -166,8 +203,6 @@ function getBlockColors(
   if (!scheme) {
     return fallback
   }
-
-  const isFuture = isToday && dayjs(block.startedAt).isAfter(dayjs(now))
 
   return isFuture ? scheme.future : scheme.solid
 }
@@ -183,6 +218,9 @@ export function DayTimeline({
   const isToday = selectedDate === toDateKey(new Date())
   const [now, setNow] = useState(() => new Date())
   const [zoom, setZoom] = useState(MIN_ZOOM)
+  const [displayMode, setDisplayMode] =
+    useState<TimelineDisplayMode>(DISPLAY_BY_ACTIVITY)
+  const showAsTags = displayMode === DISPLAY_BY_TAG
   const scrollRef = useRef<HTMLDivElement>(null)
   const zoomRef = useRef(zoom)
   const pointerYRef = useRef(TIMELINE_VIEWPORT_HEIGHT / 2)
@@ -207,6 +245,23 @@ export function DayTimeline({
     () => buildActivityColorMap(blocks.map((block) => block.title)),
     [blocks],
   )
+  const tagLegend = useMemo(() => {
+    if (!showAsTags) {
+      return []
+    }
+
+    const tags = new Map<string, { id: string; name: string; color: string }>()
+
+    for (const block of blocks) {
+      if (block.tag) {
+        tags.set(block.tag.id, block.tag)
+      }
+    }
+
+    return [...tags.values()].sort((left, right) =>
+      left.name.localeCompare(right.name, 'pt-BR'),
+    )
+  }, [blocks, showAsTags])
 
   const minutesToTop = useCallback(
     (minutes: number) =>
@@ -342,7 +397,7 @@ export function DayTimeline({
   return (
     <Card className="gap-0 rounded-2xl border-0 py-5 shadow-sm">
       <CardHeader className="flex-col items-start gap-3 space-y-0 px-5 pb-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-3">
           <CardTitle className="text-base font-semibold">Timeline do Dia</CardTitle>
 
           <div className="flex items-center rounded-full border bg-muted/50 p-0.5">
@@ -372,6 +427,40 @@ export function DayTimeline({
               <Plus className="size-3.5" />
             </Button>
           </div>
+
+          <Select
+            value={displayMode}
+            onValueChange={(value) =>
+              setDisplayMode(
+                value === DISPLAY_BY_TAG ? DISPLAY_BY_TAG : DISPLAY_BY_ACTIVITY,
+              )
+            }
+          >
+            <SelectTrigger
+              id="timeline-display-mode"
+              size="sm"
+              className="h-8 min-w-36"
+              aria-label="Mostrar timeline por"
+            >
+              <SelectValue placeholder={DISPLAY_MODE_LABELS[DISPLAY_BY_ACTIVITY]}>
+                {(value) =>
+                  DISPLAY_MODE_LABELS[
+                    value === DISPLAY_BY_TAG
+                      ? DISPLAY_BY_TAG
+                      : DISPLAY_BY_ACTIVITY
+                  ]
+                }
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={DISPLAY_BY_ACTIVITY}>
+                {DISPLAY_MODE_LABELS[DISPLAY_BY_ACTIVITY]}
+              </SelectItem>
+              <SelectItem value={DISPLAY_BY_TAG}>
+                {DISPLAY_MODE_LABELS[DISPLAY_BY_TAG]}
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="flex shrink-0 rounded-full bg-muted p-1">
@@ -406,11 +495,30 @@ export function DayTimeline({
             <Skeleton className="h-14 w-full" />
           </div>
         ) : (
-          <div
-            ref={scrollRef}
-            className="overflow-y-auto overscroll-contain rounded-lg [touch-action:pan-y]"
-            style={{ height: TIMELINE_VIEWPORT_HEIGHT }}
-          >
+          <>
+            {tagLegend.length > 0 ? (
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                {tagLegend.map((tag) => (
+                  <span
+                    key={tag.id}
+                    className="inline-flex max-w-full items-center gap-1.5 text-xs font-medium text-foreground"
+                    title={tag.name}
+                  >
+                    <span
+                      className="size-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: tag.color }}
+                    />
+                    <span className="truncate">{tag.name}</span>
+                  </span>
+                ))}
+              </div>
+            ) : null}
+
+            <div
+              ref={scrollRef}
+              className="overflow-y-auto overscroll-contain rounded-lg [touch-action:pan-y]"
+              style={{ height: TIMELINE_VIEWPORT_HEIGHT }}
+            >
             <div
               className="grid grid-cols-[3rem_minmax(0,1fr)] gap-x-3 sm:grid-cols-[3.25rem_minmax(0,1fr)] sm:gap-x-4"
               style={{ height: contentHeight }}
@@ -497,6 +605,7 @@ export function DayTimeline({
                     isToday,
                     now,
                     activityColorMap,
+                    showAsTags,
                   )
 
                   return (
@@ -507,6 +616,10 @@ export function DayTimeline({
                       top={style.top}
                       height={style.height}
                       colors={colors}
+                      displayTitle={getTimelineBlockDisplayTitle(
+                        block,
+                        showAsTags,
+                      )}
                     />
                   )
                 })}
@@ -549,6 +662,7 @@ export function DayTimeline({
               </div>
             </div>
           </div>
+          </>
         )}
 
         {!isLoading ? (

@@ -1117,6 +1117,7 @@ export class TimeEntryService {
     userId: string,
     date?: string,
     teamId?: string,
+    memberUserId?: string,
   ): Promise<AdminTeamsDayDashboard> {
     const memberships = await this.teamRepository.findMembershipsByUserId(
       userId,
@@ -1167,6 +1168,30 @@ export class TimeEntryService {
           userId: member.user.id,
           userName: member.user.name,
         });
+      }
+    }
+
+    if (memberUserId) {
+      if (!membersById.has(memberUserId)) {
+        for (const membership of selectedMemberships) {
+          const member = membership.team.members.find(
+            (item) => item.user.id === memberUserId,
+          );
+
+          if (member) {
+            membersById.set(memberUserId, {
+              userId: member.user.id,
+              userName: member.user.name,
+            });
+            break;
+          }
+        }
+      }
+
+      for (const id of [...membersById.keys()]) {
+        if (id !== memberUserId) {
+          membersById.delete(id);
+        }
       }
     }
 

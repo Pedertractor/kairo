@@ -1,3 +1,4 @@
+import { ActivityTagBadge } from '@/components/activity-tag-badge'
 import {
   Tooltip,
   TooltipContent,
@@ -15,7 +16,24 @@ interface TimelineBlockProps {
   selectedDate: string
   top: number
   height: number
-  colors: { bar: string; subtext: string }
+  colors: {
+    bar: string
+    subtext: string
+    backgroundColor?: string
+    textColor?: string
+  }
+  displayTitle?: string
+}
+
+export function getTimelineBlockDisplayTitle(
+  block: DayTimelineBlock,
+  showAsTags: boolean,
+): string {
+  if (showAsTags && block.tag) {
+    return block.tag.name
+  }
+
+  return block.title
 }
 
 export function TimelineBlock({
@@ -24,14 +42,17 @@ export function TimelineBlock({
   top,
   height,
   colors,
+  displayTitle,
 }: TimelineBlockProps) {
   const showTitle = height >= INLINE_TITLE_MIN_HEIGHT
   const showTime = height >= INLINE_TIME_MIN_HEIGHT
+  const title = displayTitle ?? block.title
   const timeRange = formatTimeRange(
     block.startedAt,
     block.endedAt,
     selectedDate,
   )
+  const showOriginalTitle = title !== block.title
 
   return (
     <Tooltip>
@@ -44,7 +65,12 @@ export function TimelineBlock({
               showTitle ? 'px-3' : 'px-0.5',
               showTime ? 'py-2' : showTitle ? 'flex items-center py-0.5' : '',
             )}
-            style={{ top, height }}
+            style={{
+              top,
+              height,
+              backgroundColor: colors.backgroundColor,
+              color: colors.textColor,
+            }}
           >
             {showTitle ? (
               <>
@@ -54,7 +80,7 @@ export function TimelineBlock({
                     showTime ? 'text-sm' : 'text-xs',
                   )}
                 >
-                  {block.title}
+                  {title}
                 </p>
                 {showTime ? (
                   <p className={cn('truncate text-xs leading-tight', colors.subtext)}>
@@ -73,8 +99,14 @@ export function TimelineBlock({
         className="rounded-xl border border-border bg-card px-3 py-2 text-card-foreground shadow-lg [&>svg]:hidden"
       >
         <div className="space-y-0.5">
-          <p className="max-w-48 text-sm font-semibold">{block.title}</p>
+          <p className="max-w-48 text-sm font-semibold">{title}</p>
+          {showOriginalTitle ? (
+            <p className="max-w-48 text-xs text-muted-foreground">{block.title}</p>
+          ) : null}
           <p className="text-xs text-muted-foreground">{timeRange}</p>
+          {block.tag && title !== block.tag.name ? (
+            <ActivityTagBadge tag={block.tag} className="mt-1" />
+          ) : null}
         </div>
       </TooltipContent>
     </Tooltip>
