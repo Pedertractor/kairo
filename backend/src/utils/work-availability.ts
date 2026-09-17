@@ -1,4 +1,9 @@
-import { formatDateKey, parseDayBounds, shiftDateKey } from './app-timezone.js';
+import {
+  formatDateKey,
+  isWeekendDateKey,
+  parseDayBounds,
+  shiftDateKey,
+} from './app-timezone.js';
 
 export const DAILY_AVAILABILITY_SECONDS = 8 * 60 * 60 + 48 * 60;
 
@@ -284,7 +289,7 @@ function sortShifts(shifts: ShiftPeriodInterval[]): ShiftPeriodInterval[] {
 /**
  * Per-day open availability intervals after absences, with the daily 8h 48min
  * cap applied first so a later stretch of the shift cannot refill hours that
- * an absence already removed.
+ * an absence already removed. Saturdays and Sundays contribute no capacity.
  */
 export function getOpenAvailabilityIntervals(
   absences: AbsenceInterval[],
@@ -300,6 +305,10 @@ export function getOpenAvailabilityIntervals(
   const open: TimeInterval[] = [];
 
   for (const slice of slices) {
+    if (isWeekendDateKey(slice.dateKey)) {
+      continue;
+    }
+
     const { dayStart, dayEnd } = parseDayBounds(slice.dateKey);
     const shift = resolveShiftForDay(
       sortedShifts,
