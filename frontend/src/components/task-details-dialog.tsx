@@ -181,7 +181,11 @@ export function TaskDetailsDialog({
         ? { value: task.assignedToId, label: task.assignedToName }
         : null,
     )
-    setLoggedSeconds('loggedSeconds' in task ? task.loggedSeconds : null)
+    setLoggedSeconds(
+      'loggedSeconds' in task && typeof task.loggedSeconds === 'number'
+        ? task.loggedSeconds
+        : null,
+    )
   }, [open, task])
 
   useEffect(() => {

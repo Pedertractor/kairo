@@ -730,9 +730,7 @@ export function TeamDayTimeline({
                     </div>
                   ) : null}
 
-                  {blocks.length === 0 &&
-                  absences.length === 0 &&
-                  memberLegend.length === 0 ? (
+                  {blocks.length === 0 && absences.length === 0 ? (
                     <div className='absolute inset-0 flex items-center justify-center'>
                       <p className='text-sm text-muted-foreground'>
                         Nenhum apontamento neste dia.

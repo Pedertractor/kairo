@@ -365,13 +365,17 @@ export class AnalyticsService {
       );
       current.timeEntryCount += 1;
 
+      const overlapStartMs = Math.max(
+        entry.startedAt.getTime(),
+        periodStart.getTime(),
+      );
       const overlapEndMs = Math.min(
         (entry.endedAt ?? now).getTime(),
-        periodEnd.getTime() - 1,
+        periodEnd.getTime(),
       );
 
-      if (overlapEndMs >= periodStart.getTime()) {
-        const dateKey = formatDateKey(new Date(overlapEndMs));
+      if (overlapEndMs > overlapStartMs) {
+        const dateKey = formatDateKey(new Date(overlapEndMs - 1));
 
         if (!current.lastLoggedDate || dateKey > current.lastLoggedDate) {
           current.lastLoggedDate = dateKey;

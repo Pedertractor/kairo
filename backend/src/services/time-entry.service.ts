@@ -267,6 +267,29 @@ function mapTeamDayEntryToBlock(
   };
 }
 
+function resolveDayEntryTeamId(entry: {
+  card: { teamId: string } | null;
+  task: { card: { teamId: string } } | null;
+}): string | null {
+  return entry.card?.teamId ?? entry.task?.card.teamId ?? null;
+}
+
+function toTeamDayEntriesForUser(
+  entries: DayEntry[],
+  user: { userId: string; userName: string },
+  allowedTeamIds: Set<string>,
+): TeamDayEntry[] {
+  const timelineUser = { id: user.userId, name: user.userName };
+
+  return entries
+    .filter((entry) => {
+      const teamId = resolveDayEntryTeamId(entry);
+
+      return teamId !== null && allowedTeamIds.has(teamId);
+    })
+    .map((entry) => ({ ...entry, user: timelineUser }) as TeamDayEntry);
+}
+
 function assembleTeamDayDashboard(
   targetDate: string,
   entries: TeamDayEntry[],
@@ -1171,27 +1194,27 @@ export class TimeEntryService {
       }
     }
 
-    if (memberUserId) {
-      if (!membersById.has(memberUserId)) {
-        for (const membership of selectedMemberships) {
-          const member = membership.team.members.find(
-            (item) => item.user.id === memberUserId,
-          );
+    let targetedMember: { userId: string; userName: string } | null = null;
 
-          if (member) {
-            membersById.set(memberUserId, {
-              userId: member.user.id,
-              userName: member.user.name,
-            });
-            break;
-          }
+    if (memberUserId) {
+      for (const membership of selectedMemberships) {
+        const member = membership.team.members.find(
+          (item) => item.user.id === memberUserId,
+        );
+
+        if (member) {
+          targetedMember = {
+            userId: member.user.id,
+            userName: member.user.name,
+          };
+          break;
         }
       }
 
-      for (const id of [...membersById.keys()]) {
-        if (id !== memberUserId) {
-          membersById.delete(id);
-        }
+      membersById.clear();
+
+      if (targetedMember) {
+        membersById.set(targetedMember.userId, targetedMember);
       }
     }
 
@@ -1199,7 +1222,7 @@ export class TimeEntryService {
       left.userName.localeCompare(right.userName, 'pt-BR'),
     );
 
-    if (selectedMemberships.length === 0) {
+    if (selectedMemberships.length === 0 || (memberUserId && !targetedMember)) {
       return {
         date: targetDate,
         stats: {
@@ -1222,8 +1245,52 @@ export class TimeEntryService {
     const selectedTeamIds = selectedMemberships.map(
       (membership) => membership.team.id,
     );
-    const memberIds = members.map((member) => member.userId);
 
+    if (targetedMember) {
+      const allowedTeamIds = new Set(selectedTeamIds);
+      const [entries, previousEntries, absencePeriods] = await Promise.all([
+        this.timeEntryRepository.findOverlappingDay(
+          targetedMember.userId,
+          dayStart,
+          dayEnd,
+        ),
+        this.timeEntryRepository.findOverlappingDay(
+          targetedMember.userId,
+          prevStart,
+          prevEnd,
+        ),
+        this.absenceService.findOverlappingForUsers(
+          [targetedMember.userId],
+          dayStart,
+          dayEnd,
+        ),
+      ]);
+
+      const dashboard = assembleTeamDayDashboard(
+        targetDate,
+        toTeamDayEntriesForUser(entries, targetedMember, allowedTeamIds),
+        toTeamDayEntriesForUser(
+          previousEntries,
+          targetedMember,
+          allowedTeamIds,
+        ),
+        absencePeriods,
+        dayStart,
+        dayEnd,
+        prevStart,
+        prevEnd,
+        now,
+        teamNameById,
+      );
+
+      return {
+        ...dashboard,
+        teams,
+        members,
+      };
+    }
+
+    const memberIds = members.map((member) => member.userId);
     const memberIdSet = new Set(memberIds);
     const [entries, previousEntries, absencePeriods] = await Promise.all([
       this.timeEntryRepository.findOverlappingDayByTeamId(

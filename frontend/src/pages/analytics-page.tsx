@@ -3,7 +3,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import {
@@ -19,7 +18,6 @@ import {
   Tags,
   TimerReset,
   Users,
-  X,
 } from 'lucide-react';
 
 import { AnalyticsActivityOverview } from '@/components/analytics-activity-overview';
@@ -28,6 +26,13 @@ import { DatePicker } from '@/components/date-picker';
 import { DateRangePicker } from '@/components/date-range-picker';
 import { TeamDayTimeline } from '@/components/team-day-timeline';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Collapsible,
@@ -241,7 +246,6 @@ export function AnalyticsPage() {
   const [clientsOpen, setClientsOpen] = useState(true);
   const [clientViewMode, setClientViewMode] = useState<ClientViewMode>('list');
   const [analyticsTab, setAnalyticsTab] = useState<AnalyticsTab>('usuarios');
-  const timelineSectionRef = useRef<HTMLElement>(null);
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -320,75 +324,74 @@ export function AnalyticsPage() {
     }
   }, [dashboard, selectedClient]);
 
-  const loadEmployeeTimeline = useCallback(async () => {
+  useEffect(() => {
     if (!selectedTimeline) {
       setTimelineBlocks([]);
       setTimelineAbsences([]);
-      return;
-    }
-
-    setIsLoadingTimeline(true);
-
-    try {
-      const params = new URLSearchParams({
-        date: timelineDate,
-        userId: selectedTimeline.employeeId,
-      });
-      if (teamId !== ALL) {
-        params.set('teamId', teamId);
-      }
-
-      const data = await api<TeamDayDashboard>(
-        `/time-entries/admin-teams/day?${params.toString()}`,
-      );
-      setTimelineBlocks(
-        (data.blocks ?? []).filter(
-          (block) => block.userId === selectedTimeline.employeeId,
-        ),
-      );
-      setTimelineAbsences(
-        (data.absences ?? []).filter(
-          (absence) => absence.userId === selectedTimeline.employeeId,
-        ),
-      );
-    } catch {
-      setTimelineBlocks([]);
-      setTimelineAbsences([]);
-    } finally {
       setIsLoadingTimeline(false);
+      return;
     }
-  }, [selectedTimeline, teamId, timelineDate]);
 
-  useEffect(() => {
+    const employeeId = selectedTimeline.employeeId;
+    let cancelled = false;
+
+    async function loadEmployeeTimeline() {
+      setIsLoadingTimeline(true);
+
+      try {
+        const params = new URLSearchParams({
+          date: timelineDate,
+          userId: employeeId,
+        });
+        if (teamId !== ALL) {
+          params.set('teamId', teamId);
+        }
+
+        const data = await api<TeamDayDashboard>(
+          `/time-entries/admin-teams/day?${params.toString()}`,
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        setTimelineBlocks(
+          (data.blocks ?? []).filter((block) => block.userId === employeeId),
+        );
+        setTimelineAbsences(
+          (data.absences ?? []).filter(
+            (absence) => absence.userId === employeeId,
+          ),
+        );
+      } catch {
+        if (cancelled) {
+          return;
+        }
+
+        setTimelineBlocks([]);
+        setTimelineAbsences([]);
+      } finally {
+        if (!cancelled) {
+          setIsLoadingTimeline(false);
+        }
+      }
+    }
+
     void loadEmployeeTimeline();
-  }, [loadEmployeeTimeline]);
 
-  const previousTimelineEmployeeIdRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!selectedTimeline) {
-      previousTimelineEmployeeIdRef.current = null;
-      return;
-    }
-
-    if (previousTimelineEmployeeIdRef.current === selectedTimeline.employeeId) {
-      return;
-    }
-
-    previousTimelineEmployeeIdRef.current = selectedTimeline.employeeId;
-    timelineSectionRef.current?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'nearest',
-    });
-  }, [selectedTimeline]);
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedTimeline, teamId, timelineDate]);
 
   function openEmployeeTimeline(
     nextEmployeeId: string,
     employeeName: string,
     lastLoggedDate?: string | null,
   ) {
-    setTimelineDate(lastLoggedDate || endDate);
-    setAnalyticsTab('usuarios');
+    setTimelineDate(
+      startDate === endDate ? startDate : lastLoggedDate || endDate,
+    );
     setSelectedTimeline({
       employeeId: nextEmployeeId,
       employeeName,
@@ -867,55 +870,6 @@ export function AnalyticsPage() {
           </div>
         )}
       </AnalyticsSection>
-
-      {selectedTimeline ? (
-        <section ref={timelineSectionRef} className='flex flex-col gap-3'>
-          <div className='flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between'>
-            <div>
-              <h2 className='text-lg font-semibold'>
-                Timeline de {selectedTimeline.employeeName}
-              </h2>
-              <p className='text-sm text-muted-foreground'>
-                Apontamentos e ausências deste funcionário no dia selecionado.
-              </p>
-            </div>
-
-            <div className='flex flex-col gap-2 sm:flex-row sm:items-end'>
-              <div className='flex flex-col gap-1.5 sm:w-44'>
-                <Label htmlFor='timeline-date'>Dia</Label>
-                <DatePicker
-                  id='timeline-date'
-                  date={fromDateKey(timelineDate)}
-                  displayFormat='dd-MM-yy'
-                  onDateChange={(nextDate) => {
-                    if (nextDate) setTimelineDate(toDateKey(nextDate));
-                  }}
-                />
-              </div>
-              <Button
-                type='button'
-                variant='outline'
-                size='sm'
-                className='sm:mb-0.5'
-                onClick={() => setSelectedTimeline(null)}
-              >
-                <X className='size-4' />
-                Fechar
-              </Button>
-            </div>
-          </div>
-
-          <TeamDayTimeline
-            blocks={timelineBlocks}
-            absences={timelineAbsences}
-            selectedDate={timelineDate}
-            onDateChange={setTimelineDate}
-            isLoading={isLoadingTimeline}
-            showDateOptions={false}
-            colorBlocksByTag
-          />
-        </section>
-      ) : null}
         </TabsContent>
 
         <TabsContent value='atividades' className='gap-6'>
@@ -1240,6 +1194,61 @@ export function AnalyticsPage() {
       </AnalyticsSection>
         </TabsContent>
       </Tabs>
+
+      <Dialog
+        open={selectedTimeline !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedTimeline(null);
+          }
+        }}
+      >
+        <DialogContent className='flex max-h-[90vh] max-w-5xl flex-col overflow-hidden'>
+          <DialogHeader>
+            <DialogTitle>
+              Timeline de {selectedTimeline?.employeeName}
+            </DialogTitle>
+            <DialogDescription>
+              Apontamentos e ausências deste funcionário no dia selecionado.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className='flex flex-col gap-1.5 sm:w-44'>
+            <Label htmlFor='timeline-date'>Dia</Label>
+            <DatePicker
+              id='timeline-date'
+              date={fromDateKey(timelineDate)}
+              displayFormat='dd-MM-yy'
+              onDateChange={(nextDate) => {
+                if (nextDate) setTimelineDate(toDateKey(nextDate));
+              }}
+            />
+          </div>
+
+          <div className='min-h-0 flex-1 overflow-y-auto'>
+            <TeamDayTimeline
+              blocks={timelineBlocks}
+              absences={timelineAbsences}
+              members={
+                selectedTimeline
+                  ? [
+                      {
+                        userId: selectedTimeline.employeeId,
+                        userName: selectedTimeline.employeeName,
+                      },
+                    ]
+                  : undefined
+              }
+              selectedDate={timelineDate}
+              onDateChange={setTimelineDate}
+              isLoading={isLoadingTimeline}
+              showDateOptions={false}
+              colorBlocksByTag
+              title='Timeline do dia'
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
