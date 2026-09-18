@@ -9,6 +9,16 @@ export const TAG_COLOR_SWATCHES = [
   '#DB2777',
   '#7C3AED',
   '#475569',
+  '#0284C7',
+  '#0D9488',
+  '#16A34A',
+  '#4F46E5',
+  '#9333EA',
+  '#C026D3',
+  '#E11D48',
+  '#D97706',
+  '#92400E',
+  '#1E3A8A',
 ] as const
 
 export type TagColorSwatch = (typeof TAG_COLOR_SWATCHES)[number]
