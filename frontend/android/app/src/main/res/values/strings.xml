@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">kairo</string>
+    <string name="title_activity_main">kairo</string>
+    <string name="package_name">com.ptractor.kairo</string>
+    <string name="custom_url_scheme">com.ptractor.kairo</string>
+</resources>
