@@ -1,5 +1,6 @@
 import type { ComplexityLevel } from '@/lib/complexity-level'
 import type { MachineSummary } from '@/types/machine'
+import type { ActivityTag } from '@/types/tag'
 
 export type { ComplexityLevel }
 
@@ -13,6 +14,7 @@ export type TaskStatus =
 export interface TaskSummary {
   id: string
   cardId: string
+  teamId: string
   title: string
   description: string | null
   status: TaskStatus
@@ -20,6 +22,7 @@ export interface TaskSummary {
   estimatedHours: string | null
   assignedToId: string | null
   assignedToName: string | null
+  tag: ActivityTag | null
   machine: MachineSummary | null
   sortOrder: number
   isFavorite: boolean
@@ -51,12 +54,16 @@ export interface CreateTaskInput {
   estimatedHours?: number
   machineId?: string
   complexityLevel?: ComplexityLevel
+  tagId?: string
 }
 
 export interface UpdateTaskInput {
   title?: string
   status?: TaskStatus
+  description?: string | null
   machineId?: string | null
+  assignedToId?: string | null
+  tagId?: string | null
   complexityLevel?: ComplexityLevel | null
   estimatedHours?: number | null
 }

@@ -325,6 +325,7 @@ model Tag {
   updatedAt DateTime @updatedAt
 
   cards Card[]
+  tasks Task[]
 
   @@unique([teamId, name])
   @@index([teamId])
@@ -426,6 +427,9 @@ model Task {
   machineId String?
   machine   Machine? @relation(fields: [machineId], references: [id], onDelete: SetNull)
 
+  tagId String?
+  tag   Tag?    @relation(fields: [tagId], references: [id], onDelete: SetNull)
+
   title       String
   description String?
 
@@ -451,6 +455,7 @@ model Task {
   @@index([createdById])
   @@index([assignedToId])
   @@index([machineId])
+  @@index([tagId])
   @@index([deletedAt])
   @@index([deletedAt, status])
   @@index([deletedAt, createdAt])

@@ -1,5 +1,11 @@
 import type { ComplexityLevel, TaskStatus } from '../generated/client.js';
 
+export interface TaskTagSummary {
+  id: string;
+  name: string;
+  color: string;
+}
+
 export interface TaskMachineSummary {
   id: string;
   name: string;
@@ -9,6 +15,7 @@ export interface TaskMachineSummary {
 export interface TaskSummary {
   id: string;
   cardId: string;
+  teamId: string;
   title: string;
   description: string | null;
   status: TaskStatus;
@@ -16,6 +23,7 @@ export interface TaskSummary {
   estimatedHours: string | null;
   assignedToId: string | null;
   assignedToName: string | null;
+  tag: TaskTagSummary | null;
   machine: TaskMachineSummary | null;
   sortOrder: number;
   isFavorite: boolean;

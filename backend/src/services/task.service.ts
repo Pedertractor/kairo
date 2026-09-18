@@ -2,6 +2,7 @@ import type { ComplexityLevel, Task, TaskStatus } from '../generated/client.js';
 import { CardRepository } from '../repositories/card.repository.js';
 import { FavoriteRepository } from '../repositories/favorite.repository.js';
 import { MachineRepository } from '../repositories/machine.repository.js';
+import { TagRepository } from '../repositories/tag.repository.js';
 import { TaskRepository } from '../repositories/task.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
@@ -9,6 +10,7 @@ import type {
   TaskDetail,
   TaskMachineSummary,
   TaskSummary,
+  TaskTagSummary,
 } from '../types/task.types.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
@@ -17,8 +19,24 @@ import { assertTeamMembership } from '../utils/team-access.js';
 type TaskWithRelations = Task & {
   assignedTo: { id: string; name: string } | null;
   createdBy?: { id: string; name: string } | null;
+  tag?: TaskTagSummary | null;
   machine?: TaskMachineSummary | null;
+  card?: { teamId: string } | null;
 };
+
+function toTaskTag(
+  tag: TaskTagSummary | null | undefined,
+): TaskTagSummary | null {
+  if (!tag) {
+    return null;
+  }
+
+  return {
+    id: tag.id,
+    name: tag.name,
+    color: tag.color,
+  };
+}
 
 function toTaskMachine(
   machine: TaskMachineSummary | null | undefined,
@@ -41,6 +59,7 @@ function toTaskSummary(
   return {
     id: task.id,
     cardId: task.cardId,
+    teamId: task.card?.teamId ?? '',
     title: task.title,
     description: task.description,
     status: task.status,
@@ -48,6 +67,7 @@ function toTaskSummary(
     estimatedHours: task.estimatedHours?.toString() ?? null,
     assignedToId: task.assignedToId,
     assignedToName: task.assignedTo?.name ?? null,
+    tag: toTaskTag(task.tag),
     machine: toTaskMachine(task.machine),
     sortOrder: task.sortOrder,
     isFavorite,
@@ -66,13 +86,36 @@ export class TaskService {
     private readonly timeEntryRepository: TimeEntryRepository,
     private readonly favoriteRepository: FavoriteRepository,
     private readonly machineRepository: MachineRepository,
+    private readonly tagRepository: TagRepository,
   ) {}
+
+  private async assertTeamTag(teamId: string, tagId: string) {
+    const tag = await this.tagRepository.findById(tagId);
+
+    if (!tag || tag.teamId !== teamId) {
+      throw new AppError(404, MENSAGENS.TAG_NAO_ENCONTRADA);
+    }
+  }
 
   private async assertMachine(machineId: string) {
     const machine = await this.machineRepository.findById(machineId);
 
     if (!machine) {
       throw new AppError(404, MENSAGENS.MAQUINA_NAO_ENCONTRADA);
+    }
+  }
+
+  private async assertAssigneeIsTeamMember(
+    teamId: string,
+    assignedToId: string,
+  ) {
+    const membership = await this.teamRepository.findMembershipByTeamAndUser(
+      teamId,
+      assignedToId,
+    );
+
+    if (!membership) {
+      throw new AppError(400, MENSAGENS.RESPONSAVEL_NAO_E_MEMBRO);
     }
   }
 
@@ -127,11 +170,16 @@ export class TaskService {
     estimatedHours?: number,
     machineId?: string,
     complexityLevel?: ComplexityLevel,
+    tagId?: string,
   ): Promise<TaskSummary> {
-    await this.assertProjectAccess(projectId, userId);
+    const project = await this.assertProjectAccess(projectId, userId);
 
     if (machineId) {
       await this.assertMachine(machineId);
+    }
+
+    if (tagId) {
+      await this.assertTeamTag(project.teamId, tagId);
     }
 
     const maxSortOrder =
@@ -145,6 +193,7 @@ export class TaskService {
       description,
       estimatedHours,
       machineId,
+      tagId,
       complexityLevel,
       sortOrder: maxSortOrder + 1,
     });
@@ -183,12 +232,15 @@ export class TaskService {
     data: {
       title?: string;
       status?: TaskStatus;
+      description?: string | null;
       machineId?: string | null;
+      assignedToId?: string | null;
+      tagId?: string | null;
       complexityLevel?: ComplexityLevel | null;
       estimatedHours?: number | null;
     },
   ): Promise<TaskDetail> {
-    await this.assertProjectAccess(projectId, userId);
+    const project = await this.assertProjectAccess(projectId, userId);
 
     const task = await this.taskRepository.findById(taskId);
 
@@ -198,6 +250,14 @@ export class TaskService {
 
     if (data.machineId) {
       await this.assertMachine(data.machineId);
+    }
+
+    if (data.assignedToId) {
+      await this.assertAssigneeIsTeamMember(project.teamId, data.assignedToId);
+    }
+
+    if (data.tagId) {
+      await this.assertTeamTag(project.teamId, data.tagId);
     }
 
     if (data.status === 'DONE' && task.status !== 'DONE') {
@@ -214,7 +274,10 @@ export class TaskService {
       title?: string;
       status?: TaskStatus;
       completedAt?: Date | null;
+      description?: string | null;
       machineId?: string | null;
+      assignedToId?: string | null;
+      tagId?: string | null;
       complexityLevel?: ComplexityLevel | null;
       estimatedHours?: number | null;
     } = {};
@@ -223,8 +286,20 @@ export class TaskService {
       updateData.title = data.title;
     }
 
+    if (data.description !== undefined) {
+      updateData.description = data.description;
+    }
+
     if (data.machineId !== undefined) {
       updateData.machineId = data.machineId;
+    }
+
+    if (data.assignedToId !== undefined) {
+      updateData.assignedToId = data.assignedToId;
+    }
+
+    if (data.tagId !== undefined) {
+      updateData.tagId = data.tagId;
     }
 
     if (data.complexityLevel !== undefined) {

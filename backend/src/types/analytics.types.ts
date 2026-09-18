@@ -43,6 +43,7 @@ export interface EmployeeDayAnalytics {
   remainingSeconds: number;
   timeEntryCount: number;
   utilizationPercent: number;
+  lastLoggedDate: string | null;
 }
 
 export interface ActivityTypeMemberAnalytics {

@@ -3,8 +3,11 @@ import { Pencil } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import { BackButton } from '@/components/back-button'
+import { ActivityTagBadge } from '@/components/activity-tag-badge'
 import { DeleteTaskDialog } from '@/components/delete-task-dialog'
 import { EditEstimatedHoursDialog } from '@/components/edit-estimated-hours-dialog'
+import { EditTaskTagDialog } from '@/components/edit-task-tag-dialog'
+import { TaskDetailsDialog } from '@/components/task-details-dialog'
 import { EditTaskTitleDialog } from '@/components/edit-task-title-dialog'
 import { FavoriteButton } from '@/components/favorite-button'
 import { FinishTaskDialog } from '@/components/finish-task-dialog'
@@ -34,6 +37,8 @@ export function TaskDetailPage() {
   const [task, setTask] = useState<TaskDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isEditTitleDialogOpen, setIsEditTitleDialogOpen] = useState(false)
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false)
+  const [isEditTagDialogOpen, setIsEditTagDialogOpen] = useState(false)
   const [isEditHoursDialogOpen, setIsEditHoursDialogOpen] = useState(false)
   const [isFinishDialogOpen, setIsFinishDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -144,6 +149,7 @@ export function TaskDetailPage() {
                     <ItemActionsMenu
                       title={task.title}
                       canFinish={canFinishTaskStatus(task.status)}
+                      onDetails={() => setIsDetailsDialogOpen(true)}
                       onFinish={() => setIsFinishDialogOpen(true)}
                       onDelete={() => setIsDeleteDialogOpen(true)}
                     />
@@ -158,6 +164,33 @@ export function TaskDetailPage() {
                   {TASK_STATUS_LABELS[task.status]}
                 </span>
               </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {task.tag ? (
+                <ActivityTagBadge
+                  tag={task.tag}
+                  className="text-sm"
+                  aria-label={`Alterar etiqueta de ${task.title}`}
+                  onClick={
+                    projectId ? () => setIsEditTagDialogOpen(true) : undefined
+                  }
+                />
+              ) : (
+                <span className="text-sm text-muted-foreground">
+                  Sem etiqueta
+                </span>
+              )}
+              {projectId ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Editar etiqueta"
+                  onClick={() => setIsEditTagDialogOpen(true)}
+                >
+                  <Pencil />
+                </Button>
+              ) : null}
             </div>
             {task.description ? (
               <p className="text-muted-foreground">{task.description}</p>
@@ -203,6 +236,29 @@ export function TaskDetailPage() {
                 open={isEditTitleDialogOpen}
                 onOpenChange={setIsEditTitleDialogOpen}
                 onUpdated={setTask}
+              />
+              <TaskDetailsDialog
+                projectId={projectId}
+                teamId={task.teamId}
+                task={task}
+                open={isDetailsDialogOpen}
+                onOpenChange={setIsDetailsDialogOpen}
+                onUpdated={(updated) => {
+                  if (updated) {
+                    setTask(updated)
+                    return
+                  }
+
+                  void loadTask()
+                }}
+              />
+              <EditTaskTagDialog
+                projectId={projectId}
+                teamId={task.teamId}
+                task={task}
+                open={isEditTagDialogOpen}
+                onOpenChange={setIsEditTagDialogOpen}
+                onUpdated={() => void loadTask()}
               />
               <EditEstimatedHoursDialog
                 open={isEditHoursDialogOpen}

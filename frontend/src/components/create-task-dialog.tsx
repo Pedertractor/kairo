@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Loader2 } from 'lucide-react'
 
+import { ActivityTagBadge } from '@/components/activity-tag-badge'
 import { Button } from '@/components/ui/button'
 import { ComplexityLevelMeter } from '@/components/complexity-level-meter'
 import {
@@ -36,7 +37,10 @@ import {
   isComplexityLevel,
 } from '@/lib/complexity-level'
 import type { MachineSummary, MachinesListResponse } from '@/types/machine'
+import type { TagSummary, TagsListResponse } from '@/types/tag'
 import type { CreateTaskInput, TaskResponse } from '@/types/task'
+
+const NO_TAG = '__none__'
 
 type MachineComboboxOption = {
   value: string
@@ -73,7 +77,10 @@ export function CreateTaskDialog({
   const [selectedMachine, setSelectedMachine] =
     useState<MachineComboboxOption | null>(null)
   const [complexityLevel, setComplexityLevel] = useState(NO_COMPLEXITY)
+  const [tags, setTags] = useState<TagSummary[]>([])
+  const [tagId, setTagId] = useState(NO_TAG)
   const [isLoadingMachines, setIsLoadingMachines] = useState(false)
+  const [isLoadingTags, setIsLoadingTags] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const machineOptions = useMemo(
@@ -88,13 +95,16 @@ export function CreateTaskDialog({
     setIndefiniteTime(false)
     setSelectedMachine(null)
     setComplexityLevel(NO_COMPLEXITY)
+    setTagId(NO_TAG)
   }
 
   useEffect(() => {
     if (open) {
       setSelectedMachine(null)
       setComplexityLevel(NO_COMPLEXITY)
+      setTagId(NO_TAG)
       setIsLoadingMachines(true)
+      setIsLoadingTags(true)
     }
   }, [open])
 
@@ -128,7 +138,28 @@ export function CreateTaskDialog({
       }
     }
 
+    async function loadTags() {
+      try {
+        const data = await api<TagsListResponse>(`/teams/${teamId}/tags`, {
+          toastOnError: false,
+        })
+
+        if (!cancelled) {
+          setTags(data.tags)
+        }
+      } catch {
+        if (!cancelled) {
+          setTags([])
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingTags(false)
+        }
+      }
+    }
+
     void loadMachines()
+    void loadTags()
 
     return () => {
       cancelled = true
@@ -161,6 +192,10 @@ export function CreateTaskDialog({
 
       if (isComplexityLevel(complexityLevel)) {
         payload.complexityLevel = complexityLevel
+      }
+
+      if (tagId !== NO_TAG) {
+        payload.tagId = tagId
       }
 
       await api<TaskResponse>(`/projects/${projectId}/tasks`, {
@@ -217,6 +252,51 @@ export function CreateTaskDialog({
                 disabled={isSubmitting}
                 rows={3}
               />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="task-tag">Etiqueta</FieldLabel>
+              <Select
+                value={tagId}
+                onValueChange={(value) => setTagId(value ?? NO_TAG)}
+                disabled={isSubmitting || isLoadingTags}
+              >
+                <SelectTrigger id="task-tag" className="w-full">
+                  <SelectValue placeholder="Sem etiqueta">
+                    {(selectedValue) => {
+                      const value = String(selectedValue ?? NO_TAG)
+                      if (value === NO_TAG) {
+                        return 'Sem etiqueta'
+                      }
+
+                      const tag = tags.find((item) => item.id === value)
+                      if (!tag) {
+                        return 'Etiqueta'
+                      }
+
+                      return (
+                        <span className="flex items-center gap-2">
+                          <ActivityTagBadge tag={tag} />
+                        </span>
+                      )
+                    }}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_TAG}>Sem etiqueta</SelectItem>
+                  {tags.map((tag) => (
+                    <SelectItem key={tag.id} value={tag.id}>
+                      <span className="flex items-center gap-2">
+                        <span
+                          className="size-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: tag.color }}
+                          aria-hidden
+                        />
+                        {tag.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </Field>
             <Field>
               <FieldLabel htmlFor="task-machine">Máquina</FieldLabel>

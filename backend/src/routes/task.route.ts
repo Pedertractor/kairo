@@ -3,6 +3,7 @@ import { TaskController } from '../controllers/task.controller.js';
 import { CardRepository } from '../repositories/card.repository.js';
 import { FavoriteRepository } from '../repositories/favorite.repository.js';
 import { MachineRepository } from '../repositories/machine.repository.js';
+import { TagRepository } from '../repositories/tag.repository.js';
 import { TaskRepository } from '../repositories/task.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
@@ -17,6 +18,7 @@ export async function taskRoutes(app: FastifyInstance) {
       new TimeEntryRepository(app.prisma),
       new FavoriteRepository(app.prisma),
       new MachineRepository(app.prisma),
+      new TagRepository(app.prisma),
     ),
   );
 

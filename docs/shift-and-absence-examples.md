@@ -1,6 +1,6 @@
 # Shift, absence, and occupation examples
 
-Examples from the product discussion. Times are wall-clock in `America/Sao_Paulo`. Dates like `10/07` are day/month (10 July). Occupation is `round(loggedSeconds / availabilitySeconds * 100)`, the same formula used on analytics and the admin dashboard.
+Examples from the product discussion. Times are wall-clock in `America/Sao_Paulo`. Dates like `10/07` are day/month (10 July). Occupation is `round(loggedSeconds / availabilitySeconds * 100)`, the same formula used on analytics and the admin dashboard. Saturdays and Sundays do not add available time — only Monday–Friday count as workdays.
 
 Available time is the elapsed portion of the person's shift, minus overlapping absences. Time that has not happened yet is not counted. Lunch punches (`firstExit`, `secondEntry`) are ignored; only `firstEntry` and `secondExit` define the shift.
 

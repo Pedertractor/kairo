@@ -105,6 +105,14 @@ export function shiftDateKey(dateKey: string, days: number): string {
   return shifted.toISOString().slice(0, 10);
 }
 
+/** Saturday or Sunday of the civil date in the app timezone. */
+export function isWeekendDateKey(dateKey: string): boolean {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+
+  return weekday === 0 || weekday === 6;
+}
+
 const MAX_CACHED_DAY_STARTS = 4096;
 
 const dayStartCache = new Map<string, number>();

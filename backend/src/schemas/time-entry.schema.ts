@@ -9,6 +9,7 @@ export const dayDashboardQuerySchema = z.object({
 
 export const adminTeamsDayDashboardQuerySchema = dayDashboardQuerySchema.extend({
   teamId: z.string().min(1).optional(),
+  userId: z.string().min(1).optional(),
 });
 
 export const taskTimeEntryParamSchema = z.object({

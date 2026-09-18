@@ -7,8 +7,14 @@ import type {
 const taskSummaryInclude = {
   assignedTo: { select: { id: true, name: true } },
   createdBy: { select: { id: true, name: true } },
+  tag: {
+    select: { id: true, name: true, color: true },
+  },
   machine: {
     select: { id: true, name: true, costCenter: true },
+  },
+  card: {
+    select: { teamId: true },
   },
 } as const;
 
@@ -45,7 +51,10 @@ export class TaskRepository {
       title?: string;
       status?: TaskStatus;
       completedAt?: Date | null;
+      description?: string | null;
       machineId?: string | null;
+      assignedToId?: string | null;
+      tagId?: string | null;
       complexityLevel?: ComplexityLevel | null;
       estimatedHours?: number | null;
     },
@@ -58,7 +67,14 @@ export class TaskRepository {
         ...(data.completedAt !== undefined
           ? { completedAt: data.completedAt }
           : {}),
+        ...(data.description !== undefined
+          ? { description: data.description }
+          : {}),
         ...(data.machineId !== undefined ? { machineId: data.machineId } : {}),
+        ...(data.assignedToId !== undefined
+          ? { assignedToId: data.assignedToId }
+          : {}),
+        ...(data.tagId !== undefined ? { tagId: data.tagId } : {}),
         ...(data.complexityLevel !== undefined
           ? { complexityLevel: data.complexityLevel }
           : {}),
@@ -104,6 +120,7 @@ export class TaskRepository {
     description?: string;
     estimatedHours?: number;
     machineId?: string;
+    tagId?: string;
     complexityLevel?: ComplexityLevel;
     sortOrder: number;
   }) {
@@ -115,6 +132,7 @@ export class TaskRepository {
         description: data.description ?? null,
         estimatedHours: data.estimatedHours ?? null,
         machineId: data.machineId ?? null,
+        tagId: data.tagId ?? null,
         complexityLevel: data.complexityLevel ?? null,
         sortOrder: data.sortOrder,
       },

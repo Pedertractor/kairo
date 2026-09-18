@@ -25,6 +25,7 @@ export const createTaskSchema = z.object({
     .optional(),
   machineId: z.string().min(1).optional(),
   complexityLevel: complexityLevelSchema.optional(),
+  tagId: z.string().min(1).optional(),
 });
 
 export const taskStatusSchema = z.enum([
@@ -39,7 +40,10 @@ export const updateTaskSchema = z
   .object({
     title: z.string().trim().min(1, 'Título é obrigatório').optional(),
     status: taskStatusSchema.optional(),
+    description: z.string().trim().nullable().optional(),
     machineId: z.string().min(1).nullable().optional(),
+    assignedToId: z.string().min(1).nullable().optional(),
+    tagId: z.string().min(1).nullable().optional(),
     complexityLevel: complexityLevelSchema.nullable().optional(),
     estimatedHours: z.coerce
       .number()

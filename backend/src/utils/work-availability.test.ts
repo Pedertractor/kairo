@@ -325,23 +325,24 @@ describe('team-scoped availability allocation', () => {
   });
 
   it('allocates across a multi-day period with one switch', () => {
-    const multiStart = at(0, 0);
-    const multiEnd = zonedDateTimeToUtc('2026-07-12');
+    // Thursday 09/07 + Friday 10/07 — two weekdays, no weekend.
+    const multiStart = zonedDateTimeToUtc('2026-07-09');
+    const multiEnd = zonedDateTimeToUtc('2026-07-11');
     const open = getOpenAvailabilityIntervals(
       [],
       multiStart,
       multiEnd,
-      zonedDateTimeToUtc('2026-07-12', 18, 0),
+      zonedDateTimeToUtc('2026-07-11', 18, 0),
       [
         {
           startMinutes: SHIFT_START_MINUTES,
           endMinutes: SHIFT_END_MINUTES,
-          startedAt: at(0, 0),
+          startedAt: zonedDateTimeToUtc('2026-07-09'),
           endedAt: null,
         },
       ],
     );
-    const switchAt = zonedDateTimeToUtc('2026-07-11', 8, 0);
+    const switchAt = zonedDateTimeToUtc('2026-07-10', 8, 0);
     const segments = buildTeamAllocationSegments(multiStart, multiEnd, TEAM_A, [
       { startedAt: switchAt, teamId: TEAM_B },
     ]);
@@ -397,5 +398,71 @@ describe('team-scoped availability allocation', () => {
       allocateAvailabilitySeconds(open, segments, new Set(['team-other'])),
       0,
     );
+  });
+});
+
+describe('weekends do not count toward availability', () => {
+  const weekendShift = (
+    startedAt: Date,
+  ): ShiftPeriodInterval[] => [
+    {
+      startMinutes: SHIFT_START_MINUTES,
+      endMinutes: SHIFT_END_MINUTES,
+      startedAt,
+      endedAt: null,
+    },
+  ];
+
+  it('gives zero availability on Saturday even with a shift', () => {
+    const availabilitySeconds = calculateAvailabilitySeconds(
+      [],
+      zonedDateTimeToUtc('2026-07-11'),
+      zonedDateTimeToUtc('2026-07-12'),
+      zonedDateTimeToUtc('2026-07-11', 18, 0),
+      weekendShift(zonedDateTimeToUtc('2026-07-11')),
+    );
+
+    assert.equal(availabilitySeconds, 0);
+  });
+
+  it('gives zero availability on Sunday even with a shift', () => {
+    const availabilitySeconds = calculateAvailabilitySeconds(
+      [],
+      zonedDateTimeToUtc('2026-07-12'),
+      zonedDateTimeToUtc('2026-07-13'),
+      zonedDateTimeToUtc('2026-07-12', 18, 0),
+      weekendShift(zonedDateTimeToUtc('2026-07-12')),
+    );
+
+    assert.equal(availabilitySeconds, 0);
+  });
+
+  it('counts only Friday and Monday across a Fri–Mon span', () => {
+    const availabilitySeconds = calculateAvailabilitySeconds(
+      [],
+      zonedDateTimeToUtc('2026-07-10'),
+      zonedDateTimeToUtc('2026-07-14'),
+      zonedDateTimeToUtc('2026-07-14', 18, 0),
+      weekendShift(zonedDateTimeToUtc('2026-07-10')),
+    );
+
+    assert.equal(availabilitySeconds, DAILY_AVAILABILITY_SECONDS * 2);
+  });
+
+  it('does not let a Saturday absence reduce weekday availability', () => {
+    const withWeekendAbsence = calculateAvailabilitySeconds(
+      [
+        {
+          startedAt: zonedDateTimeToUtc('2026-07-11', 6, 15),
+          endedAt: zonedDateTimeToUtc('2026-07-11', 15, 3),
+        },
+      ],
+      zonedDateTimeToUtc('2026-07-10'),
+      zonedDateTimeToUtc('2026-07-12'),
+      zonedDateTimeToUtc('2026-07-12', 18, 0),
+      weekendShift(zonedDateTimeToUtc('2026-07-10')),
+    );
+
+    assert.equal(withWeekendAbsence, DAILY_AVAILABILITY_SECONDS);
   });
 });

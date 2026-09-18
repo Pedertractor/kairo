@@ -314,6 +314,7 @@ export class TimeEntryController {
         request.user.sub,
         query.data.date,
         query.data.teamId,
+        query.data.userId,
       );
 
       return sendSuccess(reply, dashboard);

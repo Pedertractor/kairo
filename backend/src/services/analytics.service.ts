@@ -339,7 +339,11 @@ export class AnalyticsService {
 
     const totalsByEmployee = new Map<
       string,
-      { loggedSeconds: number; timeEntryCount: number }
+      {
+        loggedSeconds: number;
+        timeEntryCount: number;
+        lastLoggedDate: string | null;
+      }
     >();
 
     for (const entry of entries) {
@@ -350,6 +354,7 @@ export class AnalyticsService {
       const current = totalsByEmployee.get(entry.userId) ?? {
         loggedSeconds: 0,
         timeEntryCount: 0,
+        lastLoggedDate: null,
       };
       current.loggedSeconds += getOverlapSeconds(
         entry.startedAt,
@@ -359,6 +364,24 @@ export class AnalyticsService {
         now,
       );
       current.timeEntryCount += 1;
+
+      const overlapStartMs = Math.max(
+        entry.startedAt.getTime(),
+        periodStart.getTime(),
+      );
+      const overlapEndMs = Math.min(
+        (entry.endedAt ?? now).getTime(),
+        periodEnd.getTime(),
+      );
+
+      if (overlapEndMs > overlapStartMs) {
+        const dateKey = formatDateKey(new Date(overlapEndMs - 1));
+
+        if (!current.lastLoggedDate || dateKey > current.lastLoggedDate) {
+          current.lastLoggedDate = dateKey;
+        }
+      }
+
       totalsByEmployee.set(entry.userId, current);
     }
 
@@ -815,6 +838,7 @@ export class AnalyticsService {
         const totals = totalsByEmployee.get(employee.id) ?? {
           loggedSeconds: 0,
           timeEntryCount: 0,
+          lastLoggedDate: null,
         };
         const availabilitySeconds = availabilityByEmployee.get(employee.id) ?? 0;
 
@@ -830,6 +854,7 @@ export class AnalyticsService {
             availabilitySeconds - totals.loggedSeconds,
           ),
           timeEntryCount: totals.timeEntryCount,
+          lastLoggedDate: totals.lastLoggedDate,
           utilizationPercent:
             availabilitySeconds > 0
               ? Math.round((totals.loggedSeconds / availabilitySeconds) * 100)
