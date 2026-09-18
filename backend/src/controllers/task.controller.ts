@@ -68,6 +68,7 @@ export class TaskController {
         body.data.estimatedHours,
         body.data.machineId,
         body.data.complexityLevel,
+        body.data.tagId,
       );
 
       return sendSuccess(
@@ -97,7 +98,10 @@ export class TaskController {
         {
           title: body.data.title,
           status: body.data.status,
+          description: body.data.description,
           machineId: body.data.machineId,
+          assignedToId: body.data.assignedToId,
+          tagId: body.data.tagId,
           complexityLevel: body.data.complexityLevel,
           estimatedHours: body.data.estimatedHours,
         },

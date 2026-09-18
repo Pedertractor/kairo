@@ -2,9 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { CreateTaskDialog } from '@/components/create-task-dialog';
+import { ActivityTagBadge } from '@/components/activity-tag-badge';
 import { ComplexityLevelMeter, ComplexityLevelStripe } from '@/components/complexity-level-meter';
 import { FilterField, ResponsiveFilters } from '@/components/responsive-filters';
 import { DeleteTaskDialog } from '@/components/delete-task-dialog';
+import { EditTaskTagDialog } from '@/components/edit-task-tag-dialog';
+import { TaskDetailsDialog } from '@/components/task-details-dialog';
 import { FavoriteButton } from '@/components/favorite-button';
 import { FinishTaskDialog } from '@/components/finish-task-dialog';
 import { ItemActionsMenu } from '@/components/item-actions-menu';
@@ -31,6 +34,7 @@ import {
 } from '@/lib/task-status';
 import { cn } from '@/lib/utils';
 import type { TaskStatus, TaskSummary, TasksListResponse } from '@/types/task';
+import type { TagSummary, TagsListResponse } from '@/types/tag';
 import type { TeamMemberSummary, TeamResponse } from '@/types/team';
 
 interface ProjectTasksSectionProps {
@@ -42,6 +46,7 @@ const VISIBILITY_ACTIVE = 'active';
 const VISIBILITY_ALL = 'all';
 const ALL_ASSIGNEES = 'all';
 const UNASSIGNED = 'unassigned';
+const ALL_TAGS = 'all';
 
 const TASK_CARD_STATUS_CLASS: Record<TaskStatus, string> = {
   TODO: 'border-border bg-card',
@@ -65,9 +70,13 @@ export function ProjectTasksSection({
   const [taskToFinish, setTaskToFinish] = useState<TaskSummary | null>(null);
   const [taskToDelete, setTaskToDelete] = useState<TaskSummary | null>(null);
   const [taskToUpdate, setTaskToUpdate] = useState<TaskSummary | null>(null);
+  const [taskToEditTag, setTaskToEditTag] = useState<TaskSummary | null>(null);
+  const [taskToDetail, setTaskToDetail] = useState<TaskSummary | null>(null);
   const [visibilityFilter, setVisibilityFilter] = useState(VISIBILITY_ACTIVE);
   const [assigneeFilter, setAssigneeFilter] = useState(ALL_ASSIGNEES);
+  const [tagFilter, setTagFilter] = useState(ALL_TAGS);
   const [members, setMembers] = useState<TeamMemberSummary[]>([]);
+  const [tags, setTags] = useState<TagSummary[]>([]);
   const sortedMembers = useMemo(
     () => [...members].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
     [members],
@@ -75,6 +84,15 @@ export function ProjectTasksSection({
   const selectedAssignee = sortedMembers.find(
     (member) => member.id === assigneeFilter,
   );
+  const selectedTag = tags.find((tag) => tag.id === tagFilter);
+
+  function getTagFilterLabel(value: string) {
+    if (value === ALL_TAGS) {
+      return 'Todas as etiquetas';
+    }
+
+    return selectedTag?.name ?? 'Etiqueta';
+  }
 
   const loadTasks = useCallback(async (options?: { silent?: boolean }) => {
     if (!options?.silent) {
@@ -105,7 +123,23 @@ export function ProjectTasksSection({
       }
     }
 
+    async function loadTags() {
+      try {
+        const data = await api<TagsListResponse>(`/teams/${teamId}/tags`, {
+          toastOnError: false,
+        });
+        if (!cancelled) {
+          setTags(data.tags);
+        }
+      } catch {
+        if (!cancelled) {
+          setTags([]);
+        }
+      }
+    }
+
     void loadMembers();
+    void loadTags();
 
     return () => {
       cancelled = true;
@@ -122,6 +156,16 @@ export function ProjectTasksSection({
       setAssigneeFilter(ALL_ASSIGNEES);
     }
   }, [members, assigneeFilter]);
+
+  useEffect(() => {
+    if (
+      tagFilter !== ALL_TAGS &&
+      tags.length > 0 &&
+      !tags.some((tag) => tag.id === tagFilter)
+    ) {
+      setTagFilter(ALL_TAGS);
+    }
+  }, [tags, tagFilter]);
 
   useEffect(
     () => subscribeTaskDataInvalidation(() => void loadTasks({ silent: true })),
@@ -142,12 +186,17 @@ export function ProjectTasksSection({
           ? !task.assignedToId
           : task.assignedToId === assigneeFilter);
 
-      return matchesAssignee;
+      const matchesTag =
+        tagFilter === ALL_TAGS || task.tag?.id === tagFilter;
+
+      return matchesAssignee && matchesTag;
     });
-  }, [tasks, visibilityFilter, assigneeFilter]);
+  }, [tasks, visibilityFilter, assigneeFilter, tagFilter]);
 
   const hasSheetFilters =
-    visibilityFilter !== VISIBILITY_ACTIVE || assigneeFilter !== ALL_ASSIGNEES;
+    visibilityFilter !== VISIBILITY_ACTIVE ||
+    assigneeFilter !== ALL_ASSIGNEES ||
+    tagFilter !== ALL_TAGS;
   const hasFinishedHidden =
     visibilityFilter === VISIBILITY_ACTIVE &&
     tasks.some((task) => isFinishedTaskStatus(task.status));
@@ -210,6 +259,32 @@ export function ProjectTasksSection({
         onUpdated={() => void loadTasks()}
       />
 
+      <EditTaskTagDialog
+        projectId={projectId}
+        teamId={teamId}
+        task={taskToEditTag}
+        open={taskToEditTag !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setTaskToEditTag(null);
+          }
+        }}
+        onUpdated={() => void loadTasks()}
+      />
+
+      <TaskDetailsDialog
+        projectId={projectId}
+        teamId={teamId}
+        task={taskToDetail}
+        open={taskToDetail !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setTaskToDetail(null);
+          }
+        }}
+        onUpdated={() => void loadTasks()}
+      />
+
       {!isLoading && tasks.length > 0 ? (
         <div className='flex items-end'>
           <ResponsiveFilters
@@ -218,6 +293,67 @@ export function ProjectTasksSection({
           >
             {(idPrefix, itemClassName) => (
               <>
+                <FilterField
+                  id={`${idPrefix}-tag`}
+                  label='Filtrar por etiqueta'
+                  className={itemClassName}
+                >
+                  <Select
+                    value={tagFilter}
+                    onValueChange={(value) =>
+                      setTagFilter(value ?? ALL_TAGS)
+                    }
+                  >
+                    <SelectTrigger
+                      id={`${idPrefix}-tag`}
+                      className='w-full'
+                      aria-label='Filtrar por etiqueta'
+                    >
+                      <SelectValue placeholder='Filtrar por etiqueta'>
+                        {(selectedValue) => {
+                          const value = String(selectedValue ?? ALL_TAGS);
+                          if (value === ALL_TAGS) {
+                            return 'Todas as etiquetas';
+                          }
+
+                          const tag = tags.find((item) => item.id === value);
+                          if (!tag) {
+                            return getTagFilterLabel(value);
+                          }
+
+                          return (
+                            <span className='flex items-center gap-2'>
+                              <span
+                                className='size-2.5 shrink-0 rounded-full'
+                                style={{ backgroundColor: tag.color }}
+                                aria-hidden
+                              />
+                              {tag.name}
+                            </span>
+                          );
+                        }}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ALL_TAGS}>
+                        Todas as etiquetas
+                      </SelectItem>
+                      {tags.map((tag) => (
+                        <SelectItem key={tag.id} value={tag.id}>
+                          <span className='flex items-center gap-2'>
+                            <span
+                              className='size-2.5 shrink-0 rounded-full'
+                              style={{ backgroundColor: tag.color }}
+                              aria-hidden
+                            />
+                            {tag.name}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FilterField>
+
                 <FilterField
                   id={`${idPrefix}-assignee`}
                   label='Filtrar por responsável'
@@ -377,48 +513,70 @@ export function ProjectTasksSection({
                     </div>
                   </Link>
                   <div
-                    className='flex shrink-0 items-center gap-0.5'
+                    className='flex shrink-0 items-start gap-1'
                     onClick={(event) => event.preventDefault()}
                   >
-                    <FavoriteButton
-                      target={{
-                        kind: 'task',
-                        projectId,
-                        taskId: task.id,
-                      }}
-                      isFavorite={task.isFavorite}
-                      onToggle={(isFavorite) => {
-                        setTasks((current) =>
-                          current.map((item) =>
-                            item.id === task.id
-                              ? { ...item, isFavorite }
-                              : item,
-                          ),
-                        );
-                      }}
-                    />
-                    <StartTaskTimerButton
-                      projectId={projectId}
-                      taskId={task.id}
-                      className='text-muted-foreground hover:text-sidebar-primary'
-                    />
-                    <ItemActionsMenu
-                      title={task.title}
-                      canFinish={canFinishTaskStatus(task.status)}
-                      onFinish={() => setTaskToFinish(task)}
-                      onDelete={() => setTaskToDelete(task)}
-                    />
-                    <button
-                      type='button'
-                      className={cn(
-                        TASK_STATUS_BADGE_CLASS[task.status],
-                        TASK_STATUS_BADGE_HOVER_CLASS[task.status],
+                    <div className='flex items-center gap-0.5'>
+                      <FavoriteButton
+                        target={{
+                          kind: 'task',
+                          projectId,
+                          taskId: task.id,
+                        }}
+                        isFavorite={task.isFavorite}
+                        onToggle={(isFavorite) => {
+                          setTasks((current) =>
+                            current.map((item) =>
+                              item.id === task.id
+                                ? { ...item, isFavorite }
+                                : item,
+                            ),
+                          );
+                        }}
+                      />
+                      <StartTaskTimerButton
+                        projectId={projectId}
+                        taskId={task.id}
+                        className='text-muted-foreground hover:text-sidebar-primary'
+                      />
+                      <ItemActionsMenu
+                        title={task.title}
+                        canFinish={canFinishTaskStatus(task.status)}
+                        onDetails={() => setTaskToDetail(task)}
+                        onFinish={() => setTaskToFinish(task)}
+                        onDelete={() => setTaskToDelete(task)}
+                      />
+                    </div>
+                    <div className='flex flex-col items-end gap-1'>
+                      <button
+                        type='button'
+                        className={cn(
+                          TASK_STATUS_BADGE_CLASS[task.status],
+                          TASK_STATUS_BADGE_HOVER_CLASS[task.status],
+                        )}
+                        aria-label={`Alterar status de ${task.title}`}
+                        onClick={() => setTaskToUpdate(task)}
+                      >
+                        {TASK_STATUS_LABELS[task.status]}
+                      </button>
+                      {task.tag ? (
+                        <ActivityTagBadge
+                          tag={task.tag}
+                          className='max-w-28'
+                          aria-label={`Alterar etiqueta de ${task.title}`}
+                          onClick={() => setTaskToEditTag(task)}
+                        />
+                      ) : (
+                        <button
+                          type='button'
+                          className='inline-flex max-w-28 items-center truncate rounded-md border border-dashed px-2 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground'
+                          aria-label={`Adicionar etiqueta em ${task.title}`}
+                          onClick={() => setTaskToEditTag(task)}
+                        >
+                          Etiqueta
+                        </button>
                       )}
-                      aria-label={`Alterar status de ${task.title}`}
-                      onClick={() => setTaskToUpdate(task)}
-                    >
-                      {TASK_STATUS_LABELS[task.status]}
-                    </button>
+                    </div>
                   </div>
                 </div>
               </li>
