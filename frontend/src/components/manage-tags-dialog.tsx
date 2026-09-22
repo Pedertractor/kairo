@@ -62,7 +62,7 @@ function TagColorPicker({
               'size-8 rounded-full border-2 transition-shadow',
               isSelected
                 ? 'border-foreground ring-2 ring-ring/40'
-                : 'border-transparent hover:ring-2 hover:ring-ring/20',
+                : 'border-border hover:ring-2 hover:ring-ring/20',
             )}
             style={{ backgroundColor: swatch }}
           />
