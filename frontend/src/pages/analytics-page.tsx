@@ -99,7 +99,7 @@ function utilizationColor(percent: number) {
 }
 
 function emptyWorkItemOverview(): WorkItemStatusOverview {
-  return { total: 0, createdInPeriod: 0, byStatus: [] };
+  return { total: 0, createdInPeriod: 0, finishedInPeriod: 0, byStatus: [] };
 }
 
 function getInclusiveDayCount(startDate: string, endDate: string): number {
@@ -645,8 +645,8 @@ export function AnalyticsPage() {
             <BarChart3 className='size-5' />
           </div>
         }
-        title='Atividades concluídas por membro'
-        description='Compara só atividades finalizadas no período, atribuídas a cada membro. A barra usa pontos de complexidade (baixa 1, média 2, alta 3, muito alta 4) para não tratar trabalhos simples e difíceis da mesma forma.'
+        title='Atividades e tarefas concluídas por membro'
+        description='Compara atividades e tarefas finalizadas no período, atribuídas a cada membro. A barra usa pontos de complexidade (baixa 1, média 2, alta 3, muito alta 4) para não tratar trabalhos simples e difíceis da mesma forma.'
       >
         {isLoading ? (
           <div className='space-y-3'>
@@ -920,8 +920,8 @@ export function AnalyticsPage() {
             <Tags className='size-5' />
           </div>
         }
-        title='Atividades por etiqueta'
-        description='Quantidade de apontamentos e tempo por tipo de atividade no período.'
+        title='Atividades e tarefas por etiqueta'
+        description='Quantidade de apontamentos e tempo por etiqueta em atividades e tarefas no período.'
         toolbar={
           <div className='w-full min-w-0 sm:w-64'>
             <Label htmlFor='activity-tag-filter'>Etiqueta</Label>
@@ -960,7 +960,7 @@ export function AnalyticsPage() {
           </div>
         ) : activityTypes.length === 0 ? (
           <div className='rounded-2xl border border-dashed p-10 text-center text-sm text-muted-foreground'>
-            Nenhum apontamento em atividades neste período.
+            Nenhum apontamento em atividades ou tarefas neste período.
           </div>
         ) : filteredActivityTypes.length === 0 ? (
           <div className='rounded-2xl border border-dashed p-10 text-center text-sm text-muted-foreground'>
@@ -991,8 +991,8 @@ export function AnalyticsPage() {
                         {memberCount} {memberCount === 1 ? 'membro' : 'membros'}{' '}
                         · {activityType.activityCount}{' '}
                         {activityType.activityCount === 1
-                          ? 'atividade'
-                          : 'atividades'}
+                          ? 'item'
+                          : 'itens'}
                       </p>
                     </div>
                     <span className='rounded-full bg-orange-500/10 px-2.5 py-1 text-xs font-bold text-orange-600 dark:text-orange-300'>

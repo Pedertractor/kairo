@@ -180,25 +180,58 @@ export class AnalyticsRepository {
     return this.prisma.timeEntry.findMany({
       where: {
         ...(employeeId ? { userId: employeeId } : {}),
-        card: {
-          teamId: { in: teamIds },
-          type: 'ACTIVITY',
-          deletedAt: null,
-        },
-        startedAt: { lt: dayEnd },
-        OR: [{ endedAt: { gt: dayStart } }, { endedAt: null }],
+        AND: [
+          {
+            OR: [
+              {
+                card: {
+                  teamId: { in: teamIds },
+                  type: 'ACTIVITY',
+                  deletedAt: null,
+                },
+              },
+              {
+                task: {
+                  deletedAt: null,
+                  card: {
+                    teamId: { in: teamIds },
+                    type: 'PROJECT',
+                    deletedAt: null,
+                  },
+                },
+              },
+            ],
+          },
+          {
+            startedAt: { lt: dayEnd },
+            OR: [{ endedAt: { gt: dayStart } }, { endedAt: null }],
+          },
+        ],
       },
       select: {
         userId: true,
         startedAt: true,
         endedAt: true,
         cardId: true,
+        taskId: true,
         card: {
           select: {
             tagId: true,
             tag: { select: { name: true, color: true } },
             clientId: true,
             client: { select: { id: true, name: true } },
+          },
+        },
+        task: {
+          select: {
+            tagId: true,
+            tag: { select: { name: true, color: true } },
+            card: {
+              select: {
+                clientId: true,
+                client: { select: { id: true, name: true } },
+              },
+            },
           },
         },
       },
@@ -239,6 +272,7 @@ export class AnalyticsRepository {
         type: true,
         status: true,
         createdAt: true,
+        updatedAt: true,
         tagId: true,
         tag: { select: { name: true, color: true } },
       },
@@ -260,6 +294,10 @@ export class AnalyticsRepository {
         id: true,
         status: true,
         createdAt: true,
+        updatedAt: true,
+        completedAt: true,
+        tagId: true,
+        tag: { select: { name: true, color: true } },
       },
     });
   }
@@ -278,6 +316,38 @@ export class AnalyticsRepository {
         deletedAt: null,
         updatedAt: { gte: periodStart, lt: periodEnd },
         assignedToId: employeeId ? employeeId : { not: null },
+      },
+      select: {
+        assignedToId: true,
+        assignedTo: { select: { id: true, name: true } },
+        complexityLevel: true,
+      },
+    });
+  }
+
+  findFinishedTasksForPeriod(
+    teamIds: string[],
+    periodStart: Date,
+    periodEnd: Date,
+    employeeId?: string,
+  ) {
+    return this.prisma.task.findMany({
+      where: {
+        deletedAt: null,
+        status: 'DONE',
+        assignedToId: employeeId ? employeeId : { not: null },
+        card: {
+          teamId: { in: teamIds },
+          type: 'PROJECT',
+          deletedAt: null,
+        },
+        OR: [
+          { completedAt: { gte: periodStart, lt: periodEnd } },
+          {
+            completedAt: null,
+            updatedAt: { gte: periodStart, lt: periodEnd },
+          },
+        ],
       },
       select: {
         assignedToId: true,

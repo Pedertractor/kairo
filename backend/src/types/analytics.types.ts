@@ -96,6 +96,7 @@ export interface ActivityTagOverview {
 export interface WorkItemStatusOverview {
   total: number;
   createdInPeriod: number;
+  finishedInPeriod: number;
   byStatus: ActivityStatusCount[];
 }
 
