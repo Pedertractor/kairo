@@ -6,8 +6,10 @@ import {
   projectParamSchema,
   teamIdParamSchema,
 } from '../schemas/card.schema.js';
+import { occupationMonthParamSchema } from '../schemas/occupation.schema.js';
 import { AuthService } from '../services/auth.service.js';
 import { CardService } from '../services/card.service.js';
+import { OccupationService } from '../services/occupation.service.js';
 import { TagService } from '../services/tag.service.js';
 import { TeamService } from '../services/team.service.js';
 import { AppError, handleControllerError } from '../utils/errors.js';
@@ -19,6 +21,7 @@ export class IntegrationController {
     private readonly teamService: TeamService,
     private readonly tagService: TagService,
     private readonly cardService: CardService,
+    private readonly occupationService: OccupationService,
   ) {}
 
   me = async (request: FastifyRequest, reply: FastifyReply) => {
@@ -206,6 +209,24 @@ export class IntegrationController {
         200,
         MENSAGENS.PROJETO_REMOVIDO_SUCESSO,
       );
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  getOccupation = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const parsed = occupationMonthParamSchema.safeParse(request.params);
+
+      if (!parsed.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const occupation = await this.occupationService.getMonthlyOccupation(
+        parsed.data.month,
+      );
+
+      return sendSuccess(reply, occupation);
     } catch (error) {
       return handleControllerError(error, reply);
     }

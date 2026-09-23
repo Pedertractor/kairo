@@ -119,6 +119,10 @@ export const MENSAGENS = {
   CHAVE_API_REVOGADA_SUCESSO: 'Chave de API revogada com sucesso',
   CHAVE_API_NAO_ENCONTRADA: 'Chave de API não encontrada',
   CHAVE_API_INVALIDA: 'Chave de API inválida ou revogada',
+  CHAVE_API_OCUPACAO_PROIBIDA:
+    'Apenas administradores podem criar chaves de ocupação',
+  CHAVE_API_OCUPACAO_JA_EXISTE:
+    'Já existe uma chave de ocupação ativa. Revogue-a antes de criar outra',
 } as const;
 
 export function sendError(

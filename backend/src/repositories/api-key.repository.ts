@@ -1,4 +1,4 @@
-import type { PrismaClient } from '../generated/client.js';
+import type { ApiKeyScope, PrismaClient } from '../generated/client.js';
 
 export class ApiKeyRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -13,9 +13,25 @@ export class ApiKeyRepository {
     });
   }
 
+  findById(id: string) {
+    return this.prisma.apiKey.findUnique({
+      where: { id },
+    });
+  }
+
   findByIdForUser(id: string, userId: string) {
     return this.prisma.apiKey.findFirst({
       where: { id, userId },
+    });
+  }
+
+  findActiveByScope(scope: ApiKeyScope) {
+    return this.prisma.apiKey.findFirst({
+      where: {
+        scope,
+        revokedAt: null,
+      },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -26,9 +42,17 @@ export class ApiKeyRepository {
     });
   }
 
+  listActiveByScope(scope: ApiKeyScope) {
+    return this.prisma.apiKey.findMany({
+      where: { scope, revokedAt: null },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   create(data: {
     userId: string;
     name: string;
+    scope: ApiKeyScope;
     keyPrefix: string;
     keyHash: string;
   }) {

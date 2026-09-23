@@ -1,11 +1,15 @@
 import type { FastifyInstance } from 'fastify';
 import { ApiKeyController } from '../controllers/api-key.controller.js';
 import { ApiKeyRepository } from '../repositories/api-key.repository.js';
+import { UserRepository } from '../repositories/user.repository.js';
 import { ApiKeyService } from '../services/api-key.service.js';
 
 export async function apiKeyRoutes(app: FastifyInstance) {
   const controller = new ApiKeyController(
-    new ApiKeyService(new ApiKeyRepository(app.prisma)),
+    new ApiKeyService(
+      new ApiKeyRepository(app.prisma),
+      new UserRepository(app.prisma),
+    ),
   );
 
   app.get('/api-keys', { preHandler: [app.authenticate] }, controller.list);

@@ -2,7 +2,9 @@ import fjwt from '@fastify/jwt';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
 import { env } from '../config/env.js';
+import { ApiKeyScope } from '../generated/client.js';
 import { ApiKeyRepository } from '../repositories/api-key.repository.js';
+import { UserRepository } from '../repositories/user.repository.js';
 import { ApiKeyService } from '../services/api-key.service.js';
 import type { JwtPayload } from '../types/auth.types.js';
 import { AppError } from '../utils/errors.js';
@@ -12,6 +14,10 @@ declare module 'fastify' {
   interface FastifyInstance {
     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
     authenticateApiKey: (
+      request: FastifyRequest,
+      reply: FastifyReply,
+    ) => Promise<void>;
+    authenticateOccupationApiKey: (
       request: FastifyRequest,
       reply: FastifyReply,
     ) => Promise<void>;
@@ -47,7 +53,10 @@ export const jwtPlugin = fp(async (app: FastifyInstance) => {
     },
   });
 
-  const apiKeyService = new ApiKeyService(new ApiKeyRepository(app.prisma));
+  const apiKeyService = new ApiKeyService(
+    new ApiKeyRepository(app.prisma),
+    new UserRepository(app.prisma),
+  );
 
   app.decorate(
     'authenticate',
@@ -60,22 +69,36 @@ export const jwtPlugin = fp(async (app: FastifyInstance) => {
     },
   );
 
+  async function authenticateScopedApiKey(
+    request: FastifyRequest,
+    expectedScope: ApiKeyScope,
+  ) {
+    const rawKey = extractBearerOrApiKey(request);
+
+    if (!rawKey) {
+      throw new AppError(401, MENSAGENS.NAO_AUTORIZADO);
+    }
+
+    const resolved = await apiKeyService.resolveFromRawKey(rawKey);
+
+    if (!resolved || resolved.scope !== expectedScope) {
+      throw new AppError(401, MENSAGENS.CHAVE_API_INVALIDA);
+    }
+
+    request.user = { sub: resolved.userId };
+  }
+
   app.decorate(
     'authenticateApiKey',
     async (request: FastifyRequest, _reply: FastifyReply) => {
-      const rawKey = extractBearerOrApiKey(request);
+      await authenticateScopedApiKey(request, ApiKeyScope.INTEGRATION);
+    },
+  );
 
-      if (!rawKey) {
-        throw new AppError(401, MENSAGENS.NAO_AUTORIZADO);
-      }
-
-      const userId = await apiKeyService.resolveUserIdFromRawKey(rawKey);
-
-      if (!userId) {
-        throw new AppError(401, MENSAGENS.CHAVE_API_INVALIDA);
-      }
-
-      request.user = { sub: userId };
+  app.decorate(
+    'authenticateOccupationApiKey',
+    async (request: FastifyRequest, _reply: FastifyReply) => {
+      await authenticateScopedApiKey(request, ApiKeyScope.OCCUPATION);
     },
   );
 });

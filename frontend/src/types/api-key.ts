@@ -1,6 +1,9 @@
+export type ApiKeyScope = 'INTEGRATION' | 'OCCUPATION'
+
 export interface ApiKeySummary {
   id: string
   name: string
+  scope: ApiKeyScope
   keyPrefix: string
   lastUsedAt: string | null
   revokedAt: string | null
