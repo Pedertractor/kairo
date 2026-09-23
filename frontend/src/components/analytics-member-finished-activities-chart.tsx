@@ -38,7 +38,7 @@ export function AnalyticsMemberFinishedActivitiesChart({
   if (members.length === 0) {
     return (
       <div className='rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground'>
-        Nenhuma atividade concluída no período para estes filtros.
+        Nenhuma atividade ou tarefa concluída no período para estes filtros.
       </div>
     )
   }
@@ -76,7 +76,9 @@ export function AnalyticsMemberFinishedActivitiesChart({
                   </p>
                   <p className='text-xs text-muted-foreground'>
                     {member.activityCount}{' '}
-                    {member.activityCount === 1 ? 'atividade' : 'atividades'}{' '}
+                    {member.activityCount === 1
+                      ? 'atividade/tarefa'
+                      : 'atividades/tarefas'}{' '}
                     ·{' '}
                     {member.byComplexity
                       .map(

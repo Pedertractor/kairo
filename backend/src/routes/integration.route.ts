@@ -6,6 +6,7 @@ import { ClientRepository } from '../repositories/client.repository.js';
 import { CostCenterRepository } from '../repositories/cost-center.repository.js';
 import { FavoriteRepository } from '../repositories/favorite.repository.js';
 import { MachineRepository } from '../repositories/machine.repository.js';
+import { OccupationRepository } from '../repositories/occupation.repository.js';
 import { RefreshTokenRepository } from '../repositories/refresh-token.repository.js';
 import { ShiftRepository } from '../repositories/shift.repository.js';
 import { TagRepository } from '../repositories/tag.repository.js';
@@ -16,6 +17,7 @@ import { UserRepository } from '../repositories/user.repository.js';
 import { AbsenceService } from '../services/absence.service.js';
 import { AuthService } from '../services/auth.service.js';
 import { CardService } from '../services/card.service.js';
+import { OccupationService } from '../services/occupation.service.js';
 import { ShiftService } from '../services/shift.service.js';
 import { TagService } from '../services/tag.service.js';
 import { TeamService } from '../services/team.service.js';
@@ -23,7 +25,8 @@ import { TeamService } from '../services/team.service.js';
 export async function integrationRoutes(app: FastifyInstance) {
   const userRepository = new UserRepository(app.prisma);
   const absenceRepository = new AbsenceRepository(app.prisma);
-  const shiftService = new ShiftService(new ShiftRepository(app.prisma));
+  const shiftRepository = new ShiftRepository(app.prisma);
+  const shiftService = new ShiftService(shiftRepository);
   const absenceService = new AbsenceService(
     userRepository,
     absenceRepository,
@@ -64,11 +67,20 @@ export async function integrationRoutes(app: FastifyInstance) {
       new MachineRepository(app.prisma),
       userRepository,
     ),
+    new OccupationService(
+      new OccupationRepository(app.prisma),
+      shiftRepository,
+    ),
   );
 
   const auth = { preHandler: [app.authenticateApiKey] };
 
   app.get('/integrations/v1/me', auth, controller.me);
+  app.get(
+    '/integrations/v1/occupation/:month',
+    { preHandler: [app.authenticateOccupationApiKey] },
+    controller.getOccupation,
+  );
   app.get('/integrations/v1/teams', auth, controller.listTeams);
   app.get(
     '/integrations/v1/teams/:teamId/tags',

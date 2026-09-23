@@ -17,11 +17,17 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { copyToClipboard } from '@/lib/clipboard'
 import { api } from '@/lib/api-handler'
+import { useAuth } from '@/hooks/use-auth'
 import type {
+  ApiKeyScope,
   ApiKeySummary,
   ApiKeysListResponse,
   CreateApiKeyResponse,
 } from '@/types/api-key'
+
+function scopeLabel(scope: ApiKeyScope) {
+  return scope === 'OCCUPATION' ? 'Ocupação' : 'Integração'
+}
 
 export function ApiKeysDialog({
   open,
@@ -30,16 +36,23 @@ export function ApiKeysDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'ADMIN'
   const [apiKeys, setApiKeys] = useState<ApiKeySummary[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
   const [name, setName] = useState('')
+  const [scope, setScope] = useState<ApiKeyScope>('INTEGRATION')
   const [isCreating, setIsCreating] = useState(false)
   const [createdKey, setCreatedKey] = useState<string | null>(null)
   const [keyCopied, setKeyCopied] = useState(false)
   const [revokingId, setRevokingId] = useState<string | null>(null)
   const [revokeConfirmKey, setRevokeConfirmKey] = useState<ApiKeySummary | null>(
     null,
+  )
+
+  const hasActiveOccupationKey = apiKeys.some(
+    (item) => item.scope === 'OCCUPATION',
   )
 
   const loadKeys = useCallback(async () => {
@@ -70,10 +83,11 @@ export function ApiKeysDialog({
     try {
       const data = await api<CreateApiKeyResponse>('/api-keys', {
         method: 'POST',
-        body: JSON.stringify({ name: trimmed }),
+        body: JSON.stringify({ name: trimmed, scope }),
       })
       setCreatedKey(data.apiKey.key)
       setName('')
+      setScope('INTEGRATION')
       await loadKeys()
     } finally {
       setIsCreating(false)
@@ -147,7 +161,12 @@ export function ApiKeysDialog({
                   className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
                 >
                   <div className="min-w-0">
-                    <p className="font-medium">{item.name}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium">{item.name}</p>
+                      <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        {scopeLabel(item.scope)}
+                      </span>
+                    </div>
                     <p className="text-muted-foreground font-mono text-xs">
                       {item.keyPrefix}…
                     </p>
@@ -191,6 +210,7 @@ export function ApiKeysDialog({
             setCreatedKey(null)
             setKeyCopied(false)
             setName('')
+            setScope('INTEGRATION')
           }
         }}
       >
@@ -227,17 +247,55 @@ export function ApiKeysDialog({
               </Button>
             </div>
           ) : (
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="api-key-name">
-                Nome
-              </label>
-              <Input
-                id="api-key-name"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Ex.: solicitacao-eng-mecanica"
-                maxLength={80}
-              />
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="api-key-name">
+                  Nome
+                </label>
+                <Input
+                  id="api-key-name"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="Ex.: solicitacao-eng-mecanica"
+                  maxLength={80}
+                />
+              </div>
+
+              {isAdmin ? (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium" htmlFor="api-key-scope">
+                    Tipo
+                  </label>
+                  <select
+                    id="api-key-scope"
+                    value={scope}
+                    onChange={(event) =>
+                      setScope(event.target.value as ApiKeyScope)
+                    }
+                    className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
+                  >
+                    <option value="INTEGRATION">Integração</option>
+                    <option
+                      value="OCCUPATION"
+                      disabled={hasActiveOccupationKey}
+                    >
+                      Ocupação (única)
+                    </option>
+                  </select>
+                  {scope === 'OCCUPATION' ? (
+                    <p className="text-muted-foreground text-xs">
+                      Chave exclusiva para a rota de ocupação mensal. Só pode
+                      existir uma ativa no sistema.
+                    </p>
+                  ) : null}
+                  {hasActiveOccupationKey ? (
+                    <p className="text-muted-foreground text-xs">
+                      Já existe uma chave de ocupação ativa. Revogue-a para
+                      criar outra.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           )}
 
@@ -257,7 +315,10 @@ export function ApiKeysDialog({
                 </Button>
                 <Button
                   type="button"
-                  disabled={isCreating}
+                  disabled={
+                    isCreating ||
+                    (scope === 'OCCUPATION' && hasActiveOccupationKey)
+                  }
                   onClick={() => void handleCreate()}
                 >
                   Criar
@@ -286,6 +347,9 @@ export function ApiKeysDialog({
                   <span className="font-medium text-foreground">
                     {revokeConfirmKey.name}
                   </span>
+                  {revokeConfirmKey.scope === 'OCCUPATION'
+                    ? ' (ocupação)'
+                    : ''}
                   ? Integrações que usam essa chave deixarão de funcionar.
                 </>
               ) : (

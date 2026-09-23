@@ -30,6 +30,7 @@ export class ApiKeyController {
       const apiKey = await this.service.create(
         request.user.sub,
         parsed.data.name,
+        parsed.data.scope,
       );
 
       return sendSuccess(

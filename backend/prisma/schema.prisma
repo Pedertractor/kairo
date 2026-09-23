@@ -69,6 +69,11 @@ enum ShiftSource {
   MANUAL
 }
 
+enum ApiKeyScope {
+  INTEGRATION
+  OCCUPATION
+}
+
 model User {
   id           String   @id @default(cuid())
   employeeId   String   @unique
@@ -144,6 +149,7 @@ model ApiKey {
   user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   name      String
+  scope     ApiKeyScope @default(INTEGRATION)
   keyPrefix String
   keyHash   String @unique
 
@@ -154,6 +160,7 @@ model ApiKey {
 
   @@index([userId])
   @@index([keyHash])
+  @@index([scope, revokedAt])
   @@map("api_keys")
 }
 

@@ -37,6 +37,8 @@ function WorkItemCard({
   itemLabelPlural,
   createdLabel,
   createdLabelPlural,
+  finishedLabel,
+  finishedLabelPlural,
   accentClassName,
   overview,
   scope,
@@ -46,6 +48,8 @@ function WorkItemCard({
   itemLabelPlural: string
   createdLabel: string
   createdLabelPlural: string
+  finishedLabel: string
+  finishedLabelPlural: string
   accentClassName: string
   overview: WorkItemStatusOverview
   scope: ActivityOverviewScope
@@ -63,6 +67,12 @@ function WorkItemCard({
             {overview.total === 1
               ? `${createdLabel} no período`
               : `${createdLabelPlural} no período`}
+            {' · '}
+            {overview.finishedInPeriod}{' '}
+            {overview.finishedInPeriod === 1
+              ? finishedLabel
+              : finishedLabelPlural}{' '}
+            no período
           </>
         ) : (
           <>
@@ -71,6 +81,10 @@ function WorkItemCard({
             {overview.createdInPeriod === 1
               ? createdLabel
               : createdLabelPlural}{' '}
+            no período · {overview.finishedInPeriod}{' '}
+            {overview.finishedInPeriod === 1
+              ? finishedLabel
+              : finishedLabelPlural}{' '}
             no período
           </>
         )}
@@ -160,9 +174,10 @@ export function AnalyticsActivityOverview({
           Este bloco mostra o histórico completo das equipes filtradas: cada
           atividade, projeto e tarefa aparece com o status que tem hoje,
           independentemente de quando foi criado. O filtro de datas não remove
-          nada daqui — ele apenas define o número de itens{' '}
-          <span className='font-semibold'>criados no período</span> exibido em
-          cada cartão.
+          nada daqui — ele apenas define os números de itens{' '}
+          <span className='font-semibold'>criados</span> e{' '}
+          <span className='font-semibold'>concluídos no período</span> exibidos
+          em cada cartão.
         </p>
       ) : null}
 
@@ -173,6 +188,8 @@ export function AnalyticsActivityOverview({
           itemLabelPlural='atividades'
           createdLabel='criada'
           createdLabelPlural='criadas'
+          finishedLabel='concluída'
+          finishedLabelPlural='concluídas'
           accentClassName='border-violet-200 bg-violet-500/10 dark:border-violet-900'
           overview={overview.activities}
           scope={scope}
@@ -183,6 +200,8 @@ export function AnalyticsActivityOverview({
           itemLabelPlural='projetos'
           createdLabel='criado'
           createdLabelPlural='criados'
+          finishedLabel='concluído'
+          finishedLabelPlural='concluídos'
           accentClassName='border-indigo-200 bg-indigo-500/10 dark:border-indigo-900'
           overview={overview.projects}
           scope={scope}
@@ -193,6 +212,8 @@ export function AnalyticsActivityOverview({
           itemLabelPlural='tarefas'
           createdLabel='criada'
           createdLabelPlural='criadas'
+          finishedLabel='concluída'
+          finishedLabelPlural='concluídas'
           accentClassName='border-emerald-200 bg-emerald-500/10 dark:border-emerald-900'
           overview={overview.tasks}
           scope={scope}
