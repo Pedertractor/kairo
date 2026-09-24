@@ -338,7 +338,7 @@
     <string name="fallback_menu_item_copy_link">Copy link</string>
     <string name="fallback_menu_item_open_in_browser">Open in browser</string>
     <string name="fallback_menu_item_share_link">Share link</string>
-    <string name="fullScopeUrl" translatable="false">http://kairo.ptractor.com.br/</string>
+    <string name="fullScopeUrl" translatable="false">https://kairo.ptractor.com.br/</string>
     <string name="generatorApp" translatable="false">bubblewrap-cli</string>
     <string name="hostName" translatable="false">kairo.ptractor.com.br</string>
     <string name="launchUrl" translatable="false">https://kairo.ptractor.com.br/</string>
@@ -351,7 +351,7 @@
     <string name="search_menu_title">Search</string>
     <string name="status_bar_notification_info_overflow">999+</string>
     <string name="update_chrome_toast">Please update to Chrome Stable 72 or later.</string>
-    <string name="webManifestUrl" translatable="false">http://kairo.ptractor.com.br/manifest.webmanifest</string>
+    <string name="webManifestUrl" translatable="false">https://kairo.ptractor.com.br/manifest.webmanifest</string>
     <style name="AlertDialog.AppCompat" parent="Base.AlertDialog.AppCompat"/>
     <style name="AlertDialog.AppCompat.Light" parent="Base.AlertDialog.AppCompat.Light"/>
     <style name="Animation.AppCompat.Dialog" parent="Base.Animation.AppCompat.Dialog"/>
