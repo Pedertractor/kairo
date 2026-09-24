@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "br.com.ptractor.kairo.twa",
+      "sha256_cert_fingerprints": [
+        "5A:2B:9C:05:80:22:CF:8C:2A:79:83:43:6C:A2:AD:F5:5A:B5:2A:D5:EB:14:0C:9D:4A:DE:CE:2C:C7:A4:FB:8B"
+      ]
+    }
+  }
+]
