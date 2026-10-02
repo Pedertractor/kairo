@@ -15,6 +15,7 @@ export const updateTeamSchema = z
     membersCanEditActivities: z.boolean().optional(),
     membersCanEditTags: z.boolean().optional(),
     membersCanDeleteTags: z.boolean().optional(),
+    membersCanDeleteCards: z.boolean().optional(),
   })
   .refine(
     (data) => Object.values(data).some((value) => value !== undefined),

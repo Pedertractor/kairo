@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 interface ItemActionsMenuProps {
   title: string
   canFinish: boolean
+  canDelete?: boolean
   onFinish: () => void
   onDelete: () => void
   onDetails?: () => void
@@ -22,6 +23,7 @@ interface ItemActionsMenuProps {
 export function ItemActionsMenu({
   title,
   canFinish,
+  canDelete = true,
   onFinish,
   onDelete,
   onDetails,
@@ -69,7 +71,7 @@ export function ItemActionsMenu({
           </DropdownMenuItem>
         ) : null}
 
-        {onDetails ? <DropdownMenuSeparator /> : null}
+        {onDetails && (canFinish || canDelete) ? <DropdownMenuSeparator /> : null}
 
         {canFinish ? (
           <DropdownMenuItem
@@ -84,19 +86,21 @@ export function ItemActionsMenu({
           </DropdownMenuItem>
         ) : null}
 
-        {canFinish ? <DropdownMenuSeparator /> : null}
+        {canFinish && canDelete ? <DropdownMenuSeparator /> : null}
 
-        <DropdownMenuItem
-          variant="destructive"
-          onClick={(event) => {
-            event.preventDefault()
-            event.stopPropagation()
-            onDelete()
-          }}
-        >
-          <Trash2 />
-          Excluir
-        </DropdownMenuItem>
+        {canDelete ? (
+          <DropdownMenuItem
+            variant="destructive"
+            onClick={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              onDelete()
+            }}
+          >
+            <Trash2 />
+            Excluir
+          </DropdownMenuItem>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   )

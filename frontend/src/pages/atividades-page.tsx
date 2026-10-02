@@ -1,3 +1,4 @@
+import { useAuth } from '@/hooks/use-auth'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Copy } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -38,6 +39,7 @@ import {
 import {
   canCreateTeamActivities,
   canEditTeamActivities,
+  canDeleteTeamCard,
 } from '@/lib/team-permissions'
 import { cn } from '@/lib/utils'
 import type {
@@ -48,6 +50,7 @@ import type { TeamSummary, TeamsListResponse } from '@/types/team'
 import type { TagSummary, TagsListResponse } from '@/types/tag'
 
 export function AtividadesPage() {
+  const { user } = useAuth()
   const { isActivityCurrent } = useActiveTimer()
   const [activities, setActivities] = useState<ActivitySummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -326,6 +329,7 @@ export function AtividadesPage() {
                       canFinish={canFinishStatus(activity.status)}
                       onDetails={() => setActivityToDetail(activity)}
                       onFinish={() => setActivityToFinish(activity)}
+                      canDelete={team ? canDeleteTeamCard(team, activity.createdById, user?.id) : false}
                       onDelete={() => setActivityToDelete(activity)}
                     />
                   </div>

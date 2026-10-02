@@ -26,6 +26,7 @@ type TeamWithMembers = {
   membersCanEditActivities: boolean;
   membersCanEditTags: boolean;
   membersCanDeleteTags: boolean;
+  membersCanDeleteCards: boolean;
   createdById: string;
   createdAt: Date;
   _count: { members: number };
@@ -101,6 +102,7 @@ function toTeamSummary(
     membersCanEditActivities: team.membersCanEditActivities,
     membersCanEditTags: team.membersCanEditTags,
     membersCanDeleteTags: team.membersCanDeleteTags,
+    membersCanDeleteCards: team.membersCanDeleteCards,
     createdAt: team.createdAt.toISOString(),
   };
 }
@@ -446,6 +448,7 @@ export class TeamService {
       membersCanEditActivities?: boolean;
       membersCanEditTags?: boolean;
       membersCanDeleteTags?: boolean;
+      membersCanDeleteCards?: boolean;
     },
   ): Promise<TeamSummary> {
     await this.requireTeamAdmin(teamId, actorUserId, { forWrite: true });

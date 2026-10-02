@@ -1,3 +1,5 @@
+import { useAuth } from '@/hooks/use-auth'
+import { canDeleteTeamCard } from '@/lib/team-permissions'
 import { useCallback, useEffect, useState } from 'react';
 import { Copy, Tags } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -32,9 +34,10 @@ import {
 import { cn } from '@/lib/utils';
 import type { ActivitiesListResponse, ActivitySummary } from '@/types/card';
 import type { TagSummary, TagsListResponse } from '@/types/tag';
-import type { TeamMemberSummary } from '@/types/team';
+import type { TeamMemberSummary, TeamSummary } from '@/types/team';
 
 interface TeamActivitiesSectionProps {
+  team: Pick<TeamSummary, 'role' | 'membersCanDeleteCards'>
   teamId: string;
   members: TeamMemberSummary[];
   canCreate: boolean;
@@ -44,6 +47,7 @@ interface TeamActivitiesSectionProps {
 }
 
 export function TeamActivitiesSection({
+  team,
   teamId,
   members,
   canCreate,
@@ -51,6 +55,7 @@ export function TeamActivitiesSection({
   canEditTags,
   canDeleteTags,
 }: TeamActivitiesSectionProps) {
+  const { user } = useAuth()
   const { isActivityCurrent } = useActiveTimer();
   const [activities, setActivities] = useState<ActivitySummary[]>([]);
   const [tags, setTags] = useState<TagSummary[]>([]);
@@ -359,6 +364,7 @@ export function TeamActivitiesSection({
                       canFinish={canFinishStatus(activity.status)}
                       onDetails={() => setActivityToDetail(activity)}
                       onFinish={() => setActivityToFinish(activity)}
+                      canDelete={canDeleteTeamCard(team, activity.createdById, user?.id)}
                       onDelete={() => setActivityToDelete(activity)}
                     />
                   </div>

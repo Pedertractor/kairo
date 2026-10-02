@@ -1,3 +1,4 @@
+import { useAuth } from '@/hooks/use-auth'
 import { useCallback, useEffect, useState } from 'react'
 import { Pencil } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -21,11 +22,12 @@ import { api } from '@/lib/api-handler'
 import { CardTimeBudget } from '@/components/card-time-budget'
 import { canFinishStatus } from '@/lib/card-status'
 import { getIntegrationSourceLabel } from '@/lib/integration-source'
-import { canEditTeamActivities } from '@/lib/team-permissions'
+import { canDeleteTeamCard, canEditTeamActivities } from '@/lib/team-permissions'
 import type { ActivityResponse, ActivitySummary } from '@/types/card'
 import type { TeamResponse, TeamSummary } from '@/types/team'
 
 export function ActivityDetailPage() {
+  const { user } = useAuth()
   const navigate = useNavigate()
   const { teamId, activityId } = useParams<{
     teamId: string
@@ -162,6 +164,7 @@ export function ActivityDetailPage() {
                     canFinish={canFinishStatus(activity.status)}
                     onDetails={() => setIsDetailsDialogOpen(true)}
                     onFinish={() => setIsFinishDialogOpen(true)}
+                    canDelete={team ? canDeleteTeamCard(team, activity.createdById, user?.id) : false}
                     onDelete={() => setIsDeleteDialogOpen(true)}
                   />
                   <ActivityStatusActions

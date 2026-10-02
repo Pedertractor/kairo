@@ -210,6 +210,7 @@ model Team {
   membersCanEditActivities   Boolean @default(true)
   membersCanEditTags         Boolean @default(true)
   membersCanDeleteTags       Boolean @default(true)
+  membersCanDeleteCards      Boolean @default(true)
 
   createdById String
   createdBy   User   @relation("TeamCreator", fields: [createdById], references: [id])

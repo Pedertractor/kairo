@@ -1,3 +1,6 @@
+import { useAuth } from '@/hooks/use-auth'
+import { canDeleteTeamCard } from '@/lib/team-permissions'
+import type { TeamSummary } from '@/types/team'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
@@ -33,16 +36,19 @@ const VISIBILITY_ACTIVE = 'active'
 const VISIBILITY_ALL = 'all'
 
 interface TeamProjectsSectionProps {
+  team: Pick<TeamSummary, 'role' | 'membersCanDeleteCards'>
   teamId: string
   canCreate: boolean
   onProjectsChange?: (projects: ProjectSummary[]) => void
 }
 
 export function TeamProjectsSection({
+  team,
   teamId,
   canCreate,
   onProjectsChange,
 }: TeamProjectsSectionProps) {
+  const { user } = useAuth()
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
@@ -229,6 +235,7 @@ export function TeamProjectsSection({
                       title={project.title}
                       canFinish={canFinishStatus(project.status)}
                       onFinish={() => setProjectToFinish(project)}
+                      canDelete={canDeleteTeamCard(team, project.createdById, user?.id)}
                       onDelete={() => setProjectToDelete(project)}
                     />
                     <ProjectStatusActions

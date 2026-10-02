@@ -327,6 +327,7 @@ export function TeamDetailPage() {
 
             <TabsContent value='atividades'>
               <TeamActivitiesSection
+                team={team}
                 teamId={team.id}
                 members={team.members}
                 canCreate={canCreateTeamActivities(team)}
@@ -338,6 +339,7 @@ export function TeamDetailPage() {
 
             <TabsContent value='projetos'>
               <TeamProjectsSection
+                team={team}
                 teamId={team.id}
                 canCreate={canCreateTeamProjects(team)}
                 onProjectsChange={setProjects}

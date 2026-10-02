@@ -35,5 +35,6 @@ export interface TeamSummary {
   membersCanEditActivities: boolean;
   membersCanEditTags: boolean;
   membersCanDeleteTags: boolean;
+  membersCanDeleteCards: boolean;
   createdAt: string;
 }

@@ -119,6 +119,7 @@ export class TeamRepository {
       membersCanEditActivities?: boolean;
       membersCanEditTags?: boolean;
       membersCanDeleteTags?: boolean;
+      membersCanDeleteCards?: boolean;
     },
   ) {
     return this.prisma.team.update({
@@ -145,6 +146,9 @@ export class TeamRepository {
           : {}),
         ...(data.membersCanDeleteTags !== undefined
           ? { membersCanDeleteTags: data.membersCanDeleteTags }
+          : {}),
+        ...(data.membersCanDeleteCards !== undefined
+          ? { membersCanDeleteCards: data.membersCanDeleteCards }
           : {}),
       },
       include: memberInclude,

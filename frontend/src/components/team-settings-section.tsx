@@ -1,45 +1,52 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { Switch } from '@/components/ui/switch'
-import { api } from '@/lib/api-handler'
-import type { TeamResponse, TeamSummary, UpdateTeamInput } from '@/types/team'
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import { Switch } from "@/components/ui/switch";
+import { api } from "@/lib/api-handler";
+import type { TeamResponse, TeamSummary, UpdateTeamInput } from "@/types/team";
 
 interface TeamSettingsSectionProps {
-  team: TeamSummary
-  onTeamUpdated: (team: TeamSummary) => void
+  team: TeamSummary;
+  onTeamUpdated: (team: TeamSummary) => void;
 }
 
 export function TeamSettingsSection({
   team,
   onTeamUpdated,
 }: TeamSettingsSectionProps) {
-  const [pendingField, setPendingField] = useState<keyof UpdateTeamInput | null>(
-    null,
-  )
+  const [pendingField, setPendingField] = useState<
+    keyof UpdateTeamInput | null
+  >(null);
 
   async function updateFlag(
     field: keyof Pick<
       UpdateTeamInput,
-      | 'membersCanCreateActivities'
-      | 'membersCanCreateProjects'
-      | 'membersCanViewTimeline'
-      | 'membersCanEditActivities'
-      | 'membersCanEditTags'
-      | 'membersCanDeleteTags'
+      | "membersCanCreateActivities"
+      | "membersCanCreateProjects"
+      | "membersCanViewTimeline"
+      | "membersCanEditActivities"
+      | "membersCanEditTags"
+      | "membersCanDeleteTags"
+      | "membersCanDeleteCards"
     >,
     value: boolean,
   ) {
-    setPendingField(field)
+    setPendingField(field);
 
     try {
       const data = await api<TeamResponse>(`/teams/${team.id}`, {
-        method: 'PATCH',
+        method: "PATCH",
         body: JSON.stringify({ [field]: value }),
-      })
-      onTeamUpdated(data.team)
+      });
+      onTeamUpdated(data.team);
     } finally {
-      setPendingField(null)
+      setPendingField(null);
     }
   }
 
@@ -69,7 +76,7 @@ export function TeamSettingsSection({
             checked={team.membersCanCreateActivities}
             disabled={pendingField !== null}
             onCheckedChange={(checked) =>
-              void updateFlag('membersCanCreateActivities', checked)
+              void updateFlag("membersCanCreateActivities", checked)
             }
           />
         </Field>
@@ -81,7 +88,8 @@ export function TeamSettingsSection({
             </FieldLabel>
             <FieldDescription>
               Quando desativado, apenas administradores da equipe podem editar
-              dados das atividades. Status e exclusão continuam disponíveis.
+              dados das atividades. Status continua disponível; exclusão segue
+              sua própria permissão.
             </FieldDescription>
           </FieldContent>
           <Switch
@@ -89,7 +97,27 @@ export function TeamSettingsSection({
             checked={team.membersCanEditActivities}
             disabled={pendingField !== null}
             onCheckedChange={(checked) =>
-              void updateFlag('membersCanEditActivities', checked)
+              void updateFlag("membersCanEditActivities", checked)
+            }
+          />
+        </Field>
+
+        <Field orientation="horizontal">
+          <FieldContent>
+            <FieldLabel htmlFor="members-can-delete-cards">
+              Todos podem excluir atividades
+            </FieldLabel>
+            <FieldDescription>
+              Quando desativado, apenas administradores da equipe e o criador do
+              card podem excluir atividades e projetos.
+            </FieldDescription>
+          </FieldContent>
+          <Switch
+            id="members-can-delete-cards"
+            checked={team.membersCanDeleteCards}
+            disabled={pendingField !== null}
+            onCheckedChange={(checked) =>
+              void updateFlag("membersCanDeleteCards", checked)
             }
           />
         </Field>
@@ -109,7 +137,7 @@ export function TeamSettingsSection({
             checked={team.membersCanCreateProjects}
             disabled={pendingField !== null}
             onCheckedChange={(checked) =>
-              void updateFlag('membersCanCreateProjects', checked)
+              void updateFlag("membersCanCreateProjects", checked)
             }
           />
         </Field>
@@ -129,7 +157,7 @@ export function TeamSettingsSection({
             checked={team.membersCanViewTimeline}
             disabled={pendingField !== null}
             onCheckedChange={(checked) =>
-              void updateFlag('membersCanViewTimeline', checked)
+              void updateFlag("membersCanViewTimeline", checked)
             }
           />
         </Field>
@@ -149,7 +177,7 @@ export function TeamSettingsSection({
             checked={team.membersCanEditTags}
             disabled={pendingField !== null}
             onCheckedChange={(checked) =>
-              void updateFlag('membersCanEditTags', checked)
+              void updateFlag("membersCanEditTags", checked)
             }
           />
         </Field>
@@ -169,11 +197,11 @@ export function TeamSettingsSection({
             checked={team.membersCanDeleteTags}
             disabled={pendingField !== null}
             onCheckedChange={(checked) =>
-              void updateFlag('membersCanDeleteTags', checked)
+              void updateFlag("membersCanDeleteTags", checked)
             }
           />
         </Field>
       </FieldGroup>
     </div>
-  )
+  );
 }
