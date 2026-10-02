@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Search } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { ActivityDetailsDialog } from '@/components/activity-details-dialog'
@@ -19,28 +18,19 @@ import {
   ProjectCountBadge,
   ProjectStatusInline,
 } from '@/components/project-count-badge'
-import { FilterField, ResponsiveFilters } from '@/components/responsive-filters'
+import { ActivityFilters } from '@/components/activity-filters'
+import { useActivityFilters } from '@/hooks/use-activity-filters'
 import { StartActivityTimerButton } from '@/components/start-activity-timer-button'
 import { UpdateActivityStatusDialog } from '@/components/update-activity-status-dialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useActiveTimer } from '@/hooks/use-active-timer'
 import { subscribeActivityDataInvalidation } from '@/lib/activity-data-invalidation'
 import { api } from '@/lib/api-handler'
 import {
   canFinishStatus,
-  CARD_STATUSES,
   CARD_STATUS_BADGE_CLASS,
   CARD_STATUS_CARD_CLASS,
-  isFinishedStatus,
   STATUS_LABELS,
 } from '@/lib/card-status'
 import {
@@ -51,25 +41,9 @@ import { cn } from '@/lib/utils'
 import type {
   ActivitiesListResponse,
   ActivitySummary,
-  CardStatus,
 } from '@/types/card'
 import type { TeamSummary, TeamsListResponse } from '@/types/team'
-
-const ALL_STATUSES = 'ALL' as const
-type StatusFilter = CardStatus | typeof ALL_STATUSES
-
-const ALL_TEAMS = 'ALL' as const
-
-const VISIBILITY_ACTIVE = 'active'
-const VISIBILITY_ALL = 'all'
-
-function getStatusFilterLabel(value: StatusFilter): string {
-  if (value === ALL_STATUSES) {
-    return 'Todos os status'
-  }
-
-  return STATUS_LABELS[value]
-}
+import type { TagSummary, TagsListResponse } from '@/types/tag'
 
 export function AtividadesPage() {
   const { isActivityCurrent } = useActiveTimer()
@@ -86,11 +60,8 @@ export function AtividadesPage() {
     useState<ActivitySummary | null>(null)
   const [activityToDetail, setActivityToDetail] =
     useState<ActivitySummary | null>(null)
-  const [nameFilter, setNameFilter] = useState('')
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>(ALL_STATUSES)
-  const [teamFilter, setTeamFilter] = useState<string>(ALL_TEAMS)
-  const [visibilityFilter, setVisibilityFilter] = useState(VISIBILITY_ACTIVE)
   const [teams, setTeams] = useState<TeamSummary[]>([])
+  const [tags, setTags] = useState<TagSummary[]>([])
   const [canCreateActivity, setCanCreateActivity] = useState(false)
 
   const loadActivities = useCallback(async (options?: { silent?: boolean }) => {
@@ -103,7 +74,11 @@ export function AtividadesPage() {
         api<ActivitiesListResponse>('/activities'),
         api<TeamsListResponse>('/teams'),
       ])
+      const teamTags = await Promise.all(teamsData.teams.map((team) =>
+        api<TagsListResponse>(`/teams/${team.id}/tags`),
+      ))
       setActivities(activitiesData.activities)
+      setTags(teamTags.flatMap((data) => data.tags))
       setTeams(
         [...teamsData.teams].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
       )
@@ -132,36 +107,11 @@ export function AtividadesPage() {
     [teams],
   )
 
-  const filteredActivities = useMemo(() => {
-    const query = nameFilter.trim().toLowerCase()
-    const showFinished =
-      visibilityFilter === VISIBILITY_ALL || statusFilter === 'DONE'
-
-    return activities.filter((activity) => {
-      if (!showFinished && isFinishedStatus(activity.status)) {
-        return false
-      }
-
-      const matchesName =
-        query === '' || activity.title.toLowerCase().includes(query)
-      const matchesStatus =
-        statusFilter === ALL_STATUSES || activity.status === statusFilter
-      const matchesTeam =
-        teamFilter === ALL_TEAMS || activity.teamId === teamFilter
-
-      return matchesName && matchesStatus && matchesTeam
-    })
-  }, [activities, nameFilter, statusFilter, teamFilter, visibilityFilter])
-
-  const showTeamFilter = teams.length > 1
-  const hasSheetFilters =
-    statusFilter !== ALL_STATUSES ||
-    visibilityFilter !== VISIBILITY_ACTIVE ||
-    (showTeamFilter && teamFilter !== ALL_TEAMS)
-  const hasActiveFilters = nameFilter.trim() !== '' || hasSheetFilters
-  const hasFinishedHidden =
-    visibilityFilter === VISIBILITY_ACTIVE &&
-    activities.some((activity) => isFinishedStatus(activity.status))
+  const filterMembers = useMemo(() => teams.flatMap((team) =>
+    team.members.map((member) => ({ ...member, teamId: team.id })),
+  ), [teams])
+  const activityFilters = useActivityFilters(activities, { teams, tags, members: filterMembers })
+  const { filteredActivities, hasActiveFilters, hasFinishedHidden } = activityFilters
 
   return (
     <div className="flex flex-1 flex-col gap-6">
@@ -257,131 +207,11 @@ export function AtividadesPage() {
       />
 
       {!isLoading && activities.length > 0 ? (
-        <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end">
-          <div className="relative min-w-0 w-full sm:max-w-xs">
-            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="search"
-              value={nameFilter}
-              onChange={(event) => setNameFilter(event.target.value)}
-              placeholder="Buscar por nome..."
-              className="pl-8"
-              aria-label="Buscar atividades por nome"
-            />
-          </div>
-          <ResponsiveFilters
-            description="Filtrar as atividades das suas equipes."
-            hasActiveFilters={hasSheetFilters}
-          >
-            {(idPrefix, itemClassName) => (
-              <>
-                <FilterField
-                  id={`${idPrefix}-visibility`}
-                  label="Filtrar por situação"
-                  className={itemClassName}
-                >
-                  <Select
-                    value={visibilityFilter}
-                    onValueChange={(value) =>
-                      setVisibilityFilter(value ?? VISIBILITY_ACTIVE)
-                    }
-                  >
-                    <SelectTrigger
-                      id={`${idPrefix}-visibility`}
-                      className="w-full"
-                      aria-label="Filtrar concluídas"
-                    >
-                      <SelectValue>
-                        {(selectedValue) =>
-                          selectedValue === VISIBILITY_ALL ? 'Todos' : 'Ativos'
-                        }
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={VISIBILITY_ACTIVE}>Ativos</SelectItem>
-                      <SelectItem value={VISIBILITY_ALL}>Todos</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FilterField>
-
-                {showTeamFilter ? (
-                  <FilterField
-                    id={`${idPrefix}-team`}
-                    label="Filtrar por equipe"
-                    className={itemClassName}
-                  >
-                    <Select
-                      value={teamFilter}
-                      onValueChange={(value) =>
-                        setTeamFilter(value ?? ALL_TEAMS)
-                      }
-                    >
-                      <SelectTrigger
-                        id={`${idPrefix}-team`}
-                        className="w-full"
-                        aria-label="Filtrar por equipe"
-                      >
-                        <SelectValue placeholder="Equipe">
-                          {(selectedValue) =>
-                            selectedValue === ALL_TEAMS
-                              ? 'Todas as equipes'
-                              : teams.find((team) => team.id === selectedValue)
-                                  ?.name
-                          }
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={ALL_TEAMS}>
-                          Todas as equipes
-                        </SelectItem>
-                        {teams.map((team) => (
-                          <SelectItem key={team.id} value={team.id}>
-                            {team.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FilterField>
-                ) : null}
-
-                <FilterField
-                  id={`${idPrefix}-status`}
-                  label="Filtrar por status"
-                  className={itemClassName}
-                >
-                  <Select
-                    value={statusFilter}
-                    onValueChange={(value) =>
-                      setStatusFilter(value as StatusFilter)
-                    }
-                  >
-                    <SelectTrigger
-                      id={`${idPrefix}-status`}
-                      className="w-full"
-                      aria-label="Filtrar por status"
-                    >
-                      <SelectValue placeholder="Status">
-                        {(selectedValue) =>
-                          getStatusFilterLabel(selectedValue as StatusFilter)
-                        }
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={ALL_STATUSES}>
-                        Todos os status
-                      </SelectItem>
-                      {CARD_STATUSES.map((status) => (
-                        <SelectItem key={status} value={status}>
-                          {STATUS_LABELS[status]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FilterField>
-              </>
-            )}
-          </ResponsiveFilters>
-        </div>
+        <ActivityFilters
+          controller={activityFilters}
+          teams={teams}
+          description="Filtrar as atividades das suas equipes."
+        />
       ) : null}
 
       {isLoading ? (
@@ -402,11 +232,9 @@ export function AtividadesPage() {
           <p className="text-sm font-medium">Nenhuma atividade encontrada</p>
           <p className="max-w-sm text-sm text-muted-foreground">
             {hasFinishedHidden && !hasActiveFilters
-              ? 'Há atividades concluídas ocultas. Selecione "Todos" para exibi-las.'
+              ? 'Há atividades concluídas ocultas. Selecione "Todas" para exibi-las.'
               : hasActiveFilters
-                ? showTeamFilter
-                  ? 'Tente ajustar os filtros de busca, equipe ou status.'
-                  : 'Tente ajustar os filtros de busca ou status.'
+                ? 'Tente ajustar ou limpar os filtros.'
                 : 'As atividades das suas equipes aparecerão aqui.'}
           </p>
         </div>

@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Search, Tags } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Tags } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-import { FilterField, ResponsiveFilters } from '@/components/responsive-filters';
+import { ActivityFilters } from '@/components/activity-filters';
+import { useActivityFilters } from '@/hooks/use-activity-filters';
 import { ActivityDetailsDialog } from '@/components/activity-details-dialog';
 import { ActivityTagBadge } from '@/components/activity-tag-badge';
 import { ComplexityLevelMeter, ComplexityLevelStripe } from '@/components/complexity-level-meter';
@@ -16,14 +17,6 @@ import { ItemActionsMenu } from '@/components/item-actions-menu';
 import { StartActivityTimerButton } from '@/components/start-activity-timer-button';
 import { UpdateActivityStatusDialog } from '@/components/update-activity-status-dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useActiveTimer } from '@/hooks/use-active-timer';
 import { subscribeActivityDataInvalidation } from '@/lib/activity-data-invalidation';
@@ -33,19 +26,12 @@ import {
   canFinishStatus,
   CARD_STATUS_BADGE_CLASS,
   CARD_STATUS_CARD_CLASS,
-  isFinishedStatus,
   STATUS_LABELS,
 } from '@/lib/card-status';
 import { cn } from '@/lib/utils';
 import type { ActivitiesListResponse, ActivitySummary } from '@/types/card';
 import type { TagSummary, TagsListResponse } from '@/types/tag';
 import type { TeamMemberSummary } from '@/types/team';
-
-const ALL_TAGS = '__all__';
-const ALL_ASSIGNEES = 'all';
-const UNASSIGNED = 'unassigned';
-const VISIBILITY_ACTIVE = 'active';
-const VISIBILITY_ALL = 'all';
 
 interface TeamActivitiesSectionProps {
   teamId: string;
@@ -80,17 +66,8 @@ export function TeamActivitiesSection({
     useState<ActivitySummary | null>(null);
   const [activityToDetail, setActivityToDetail] =
     useState<ActivitySummary | null>(null);
-  const [nameFilter, setNameFilter] = useState('');
-  const [tagFilter, setTagFilter] = useState(ALL_TAGS);
-  const [assigneeFilter, setAssigneeFilter] = useState(ALL_ASSIGNEES);
-  const [visibilityFilter, setVisibilityFilter] = useState(VISIBILITY_ACTIVE);
-  const sortedMembers = useMemo(
-    () => [...members].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
-    [members],
-  );
-  const selectedAssignee = sortedMembers.find(
-    (member) => member.id === assigneeFilter,
-  );
+  const activityFilters = useActivityFilters(activities, { tags, members, scopeTeamId: teamId });
+  const { filteredActivities, hasActiveFilters, hasFinishedHidden } = activityFilters;
 
   const loadActivities = useCallback(
     async (options?: { silent?: boolean }) => {
@@ -118,16 +95,6 @@ export function TeamActivitiesSection({
     void loadActivities();
   }, [loadActivities]);
 
-  useEffect(() => {
-    if (
-      assigneeFilter !== ALL_ASSIGNEES &&
-      assigneeFilter !== UNASSIGNED &&
-      !members.some((member) => member.id === assigneeFilter)
-    ) {
-      setAssigneeFilter(ALL_ASSIGNEES);
-    }
-  }, [members, assigneeFilter]);
-
   useEffect(
     () =>
       subscribeActivityDataInvalidation(() =>
@@ -135,46 +102,6 @@ export function TeamActivitiesSection({
       ),
     [loadActivities],
   );
-
-  const filteredActivities = useMemo(() => {
-    const query = nameFilter.trim().toLowerCase();
-    const showFinished = visibilityFilter === VISIBILITY_ALL;
-
-    return activities.filter((activity) => {
-      if (!showFinished && isFinishedStatus(activity.status)) {
-        return false;
-      }
-
-      const matchesName =
-        query === '' || activity.title.toLowerCase().includes(query);
-      const matchesTag =
-        tagFilter === ALL_TAGS || activity.tag?.id === tagFilter;
-      const matchesAssignee =
-        assigneeFilter === ALL_ASSIGNEES ||
-        (assigneeFilter === UNASSIGNED
-          ? !activity.assignedToId
-          : activity.assignedToId === assigneeFilter);
-
-      return matchesName && matchesTag && matchesAssignee;
-    });
-  }, [activities, nameFilter, tagFilter, assigneeFilter, visibilityFilter]);
-
-  const hasSheetFilters =
-    tagFilter !== ALL_TAGS ||
-    assigneeFilter !== ALL_ASSIGNEES ||
-    visibilityFilter !== VISIBILITY_ACTIVE;
-  const hasActiveFilter = nameFilter.trim() !== '' || hasSheetFilters;
-  const hasFinishedHidden =
-    visibilityFilter === VISIBILITY_ACTIVE &&
-    activities.some((activity) => isFinishedStatus(activity.status));
-
-  function getTagFilterLabel(value: string) {
-    if (value === ALL_TAGS) {
-      return 'Todas as etiquetas';
-    }
-
-    return tags.find((tag) => tag.id === value)?.name ?? 'Etiqueta';
-  }
 
   return (
     <div className='flex flex-col gap-4'>
@@ -242,7 +169,6 @@ export function TeamActivitiesSection({
                 : activity,
             ),
           );
-          setTagFilter((current) => (current === tagId ? ALL_TAGS : current));
         }}
       />
 
@@ -309,163 +235,10 @@ export function TeamActivitiesSection({
       {!isLoading ? (
         <div className='flex w-full flex-col gap-3 sm:flex-row sm:items-end'>
           {activities.length > 0 ? (
-            <>
-              <div className='relative min-w-0 w-full sm:max-w-xs'>
-                <Search className='pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground' />
-                <Input
-                  type='search'
-                  value={nameFilter}
-                  onChange={(event) => setNameFilter(event.target.value)}
-                  placeholder='Buscar por nome...'
-                  className='pl-8'
-                  aria-label='Buscar atividades por nome'
-                />
-              </div>
-              <ResponsiveFilters
-                description='Filtrar as atividades desta equipe.'
-                hasActiveFilters={hasSheetFilters}
-              >
-                {(idPrefix, itemClassName) => (
-                  <>
-                    <FilterField
-                      id={`${idPrefix}-tag`}
-                      label='Filtrar por etiqueta'
-                      className={itemClassName}
-                    >
-                      <Select
-                        value={tagFilter}
-                        onValueChange={(value) => setTagFilter(value ?? ALL_TAGS)}
-                      >
-                        <SelectTrigger
-                          id={`${idPrefix}-tag`}
-                          className='w-full'
-                          aria-label='Filtrar por etiqueta'
-                        >
-                          <SelectValue placeholder='Filtrar por etiqueta'>
-                            {(selectedValue) => {
-                              const value = String(selectedValue ?? ALL_TAGS);
-                              if (value === ALL_TAGS) {
-                                return 'Todas as etiquetas';
-                              }
-
-                              const tag = tags.find((item) => item.id === value);
-                              if (!tag) {
-                                return getTagFilterLabel(value);
-                              }
-
-                              return (
-                                <span className='flex items-center gap-2'>
-                                  <span
-                                    className='size-2.5 shrink-0 rounded-full'
-                                    style={{ backgroundColor: tag.color }}
-                                    aria-hidden
-                                  />
-                                  {tag.name}
-                                </span>
-                              );
-                            }}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={ALL_TAGS}>
-                            Todas as etiquetas
-                          </SelectItem>
-                          {tags.map((tag) => (
-                            <SelectItem key={tag.id} value={tag.id}>
-                              <span className='flex items-center gap-2'>
-                                <span
-                                  className='size-2.5 shrink-0 rounded-full'
-                                  style={{ backgroundColor: tag.color }}
-                                  aria-hidden
-                                />
-                                {tag.name}
-                              </span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </FilterField>
-
-                    <FilterField
-                      id={`${idPrefix}-assignee`}
-                      label='Filtrar por responsável'
-                      className={itemClassName}
-                    >
-                      <Select
-                        value={assigneeFilter}
-                        onValueChange={(value) =>
-                          setAssigneeFilter(value ?? ALL_ASSIGNEES)
-                        }
-                      >
-                        <SelectTrigger
-                          id={`${idPrefix}-assignee`}
-                          className='w-full'
-                          aria-label='Filtrar por responsável'
-                        >
-                          <SelectValue placeholder='Todos os responsáveis'>
-                            {() => {
-                              if (assigneeFilter === UNASSIGNED) {
-                                return 'Sem responsável';
-                              }
-
-                              return (
-                                selectedAssignee?.name ?? 'Todos os responsáveis'
-                              );
-                            }}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={ALL_ASSIGNEES}>
-                            Todos os responsáveis
-                          </SelectItem>
-                          <SelectItem value={UNASSIGNED}>
-                            Sem responsável
-                          </SelectItem>
-                          {sortedMembers.map((member) => (
-                            <SelectItem key={member.id} value={member.id}>
-                              {member.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </FilterField>
-
-                    <FilterField
-                      id={`${idPrefix}-visibility`}
-                      label='Filtrar por situação'
-                      className={itemClassName}
-                    >
-                      <Select
-                        value={visibilityFilter}
-                        onValueChange={(value) =>
-                          setVisibilityFilter(value ?? VISIBILITY_ACTIVE)
-                        }
-                      >
-                        <SelectTrigger
-                          id={`${idPrefix}-visibility`}
-                          className='w-full'
-                          aria-label='Filtrar concluídas'
-                        >
-                          <SelectValue>
-                            {(selectedValue) =>
-                              selectedValue === VISIBILITY_ALL
-                                ? 'Todos'
-                                : 'Ativos'
-                            }
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={VISIBILITY_ACTIVE}>
-                            Ativos
-                          </SelectItem>
-                          <SelectItem value={VISIBILITY_ALL}>Todos</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FilterField>
-                  </>
-                )}
-              </ResponsiveFilters>
-            </>
+            <ActivityFilters
+              controller={activityFilters}
+              description="Filtrar as atividades desta equipe."
+            />
           ) : null}
           <Button
             type='button'
@@ -495,10 +268,10 @@ export function TeamActivitiesSection({
         <div className='flex min-h-48 flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/30 p-8 text-center'>
           <p className='text-sm font-medium'>Nenhuma atividade encontrada</p>
           <p className='max-w-sm text-sm text-muted-foreground'>
-            {hasFinishedHidden && !hasActiveFilter
-              ? 'Há atividades concluídas ocultas. Selecione "Todos" para exibi-las.'
-              : hasActiveFilter
-                ? 'Tente ajustar os filtros de busca.'
+            {hasFinishedHidden && !hasActiveFilters
+              ? 'Há atividades concluídas ocultas. Selecione "Todas" para exibi-las.'
+              : hasActiveFilters
+                ? 'Tente ajustar ou limpar os filtros.'
                 : 'As atividades desta equipe aparecerão aqui.'}
           </p>
         </div>

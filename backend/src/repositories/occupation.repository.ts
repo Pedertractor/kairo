@@ -57,27 +57,4 @@ export class OccupationRepository {
       },
     });
   }
-
-  findAbsences(
-    userIds: string[],
-    periodStart: Date,
-    periodEnd: Date,
-  ) {
-    if (userIds.length === 0) {
-      return Promise.resolve([]);
-    }
-
-    return this.prisma.userAbsencePeriod.findMany({
-      where: {
-        userId: { in: userIds },
-        startedAt: { lt: periodEnd },
-        OR: [{ endedAt: { gt: periodStart } }, { endedAt: null }],
-      },
-      select: {
-        userId: true,
-        startedAt: true,
-        endedAt: true,
-      },
-    });
-  }
 }
