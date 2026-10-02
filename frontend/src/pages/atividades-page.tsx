@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Copy } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { ActivityDetailsDialog } from '@/components/activity-details-dialog'
@@ -50,6 +51,8 @@ export function AtividadesPage() {
   const [activities, setActivities] = useState<ActivitySummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [activityToCopy, setActivityToCopy] =
+    useState<ActivitySummary | null>(null)
   const [activityToFinish, setActivityToFinish] =
     useState<ActivitySummary | null>(null)
   const [activityToDelete, setActivityToDelete] =
@@ -144,6 +147,17 @@ export function AtividadesPage() {
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
         onCreated={() => void loadActivities()}
+      />
+
+      <CreateActivityDialog
+        sourceActivity={activityToCopy ?? undefined}
+        open={activityToCopy !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setActivityToCopy(null)
+          }
+        }}
+        onCreated={() => {}}
       />
 
       <FinishActivityDialog
@@ -244,6 +258,7 @@ export function AtividadesPage() {
             const isTimerActive = isActivityCurrent(activity.id)
             const team = teamsById.get(activity.teamId)
             const canEdit = team ? canEditTeamActivities(team) : false
+            const canCopy = team ? canCreateTeamActivities(team) : false
 
             return (
               <li
@@ -267,6 +282,22 @@ export function AtividadesPage() {
                 <div className="pointer-events-none relative z-10 flex items-start justify-between gap-2">
                   <p className="text-sm font-medium">{activity.title}</p>
                   <div className="pointer-events-auto flex shrink-0 items-center gap-0.5">
+                    {canCopy ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        className="text-muted-foreground hover:text-sidebar-primary"
+                        aria-label={`Copiar atividade ${activity.title}`}
+                        title="Copiar atividade"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          setActivityToCopy(activity)
+                        }}
+                      >
+                        <Copy />
+                      </Button>
+                    ) : null}
                     <FavoriteButton
                       target={{
                         kind: 'activity',

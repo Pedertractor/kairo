@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Loader2 } from 'lucide-react'
 
 import { ActivityTagBadge } from '@/components/activity-tag-badge'
@@ -31,13 +31,14 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/lib/api-handler'
+import { invalidateActivityData } from '@/lib/activity-data-invalidation'
 import {
   COMPLEXITY_LEVELS,
   NO_COMPLEXITY,
   isComplexityLevel,
 } from '@/lib/complexity-level'
 import { canCreateTeamActivities } from '@/lib/team-permissions'
-import type { ActivityResponse, CreateActivityInput } from '@/types/card'
+import type { ActivityResponse, ActivitySummary, CreateActivityInput } from '@/types/card'
 import type { ClientSummary, ClientsListResponse } from '@/types/client'
 import type { MachineSummary, MachinesListResponse } from '@/types/machine'
 import type { TagSummary, TagsListResponse } from '@/types/tag'
@@ -71,6 +72,7 @@ interface CreateActivityDialogProps {
   onOpenChange: (open: boolean) => void
   onCreated: () => void
   tags?: TagSummary[]
+  sourceActivity?: ActivitySummary
 }
 
 function toClientOption(client: ClientSummary): ClientComboboxOption {
@@ -100,8 +102,10 @@ export function CreateActivityDialog({
   onOpenChange,
   onCreated,
   tags = [],
+  sourceActivity,
 }: CreateActivityDialogProps) {
-  const requiresTeamSelection = fixedTeamId === undefined
+  const isCopy = sourceActivity !== undefined
+  const requiresTeamSelection = isCopy || fixedTeamId === undefined
   const [teams, setTeams] = useState<TeamSummary[]>([])
   const [selectedTeamId, setSelectedTeamId] = useState('')
   const [isLoadingTeams, setIsLoadingTeams] = useState(false)
@@ -123,8 +127,22 @@ export function CreateActivityDialog({
   const [members, setMembers] = useState<TeamMemberSummary[]>([])
   const [isLoadingOptions, setIsLoadingOptions] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const teamId = fixedTeamId ?? selectedTeamId
+  const [teamsError, setTeamsError] = useState(false)
+  const [optionsError, setOptionsError] = useState(false)
+  const [retryCount, setRetryCount] = useState(0)
+  const [loadedTeamId, setLoadedTeamId] = useState('')
+  const [removedFields, setRemovedFields] = useState<string[]>([])
+  const initializedSource = useRef<string | null>(null)
+  const reconciledTeam = useRef('')
+  const submitting = useRef(false)
+  const teamId = isCopy ? selectedTeamId : fixedTeamId ?? selectedTeamId
   const availableTags = requiresTeamSelection ? loadedTags : tags
+  const copyBlocked = isCopy && (
+    isLoadingTeams || isLoadingOptions || teamsError || optionsError ||
+    loadedTeamId !== teamId || !teams.some((team) => team.id === teamId)
+  )
+  const selections = useRef({ tagId, selectedMachine, selectedAssignee })
+  selections.current = { tagId, selectedMachine, selectedAssignee }
 
   const clientOptions = useMemo(() => clients.map(toClientOption), [clients])
   const machineOptions = useMemo(
@@ -151,6 +169,37 @@ export function CreateActivityDialog({
   }
 
   useEffect(() => {
+    if (!open) {
+      initializedSource.current = null
+      return
+    }
+    const sourceKey = sourceActivity?.id ?? '__create__'
+    if (initializedSource.current === sourceKey) return
+    initializedSource.current = sourceKey
+    setTeamsError(false)
+    setOptionsError(false)
+    setRemovedFields([])
+    setLoadedTeamId('')
+    reconciledTeam.current = sourceActivity?.teamId ?? ''
+    if (!sourceActivity) return
+    setTeams([])
+    setSelectedTeamId(sourceActivity.teamId)
+    setTitle(sourceActivity.title)
+    setDescription(sourceActivity.description ?? '')
+    setEstimatedHours(sourceActivity.estimatedHours ?? '')
+    setIndefiniteTime(sourceActivity.estimatedHours === null)
+    setTagId(sourceActivity.tag?.id ?? NO_TAG)
+    setLoadedTags([])
+    setSelectedClient(sourceActivity.client ? toClientOption(sourceActivity.client) : null)
+    setSelectedMachine(sourceActivity.machine ? toMachineOption(sourceActivity.machine) : null)
+    setSelectedAssignee(sourceActivity.assignedToId ? {
+      value: sourceActivity.assignedToId,
+      label: sourceActivity.assignedToName ?? 'Responsável',
+    } : null)
+    setComplexityLevel(sourceActivity.complexityLevel ?? NO_COMPLEXITY)
+  }, [open, sourceActivity])
+
+  useEffect(() => {
     if (!open || !requiresTeamSelection) {
       return
     }
@@ -159,12 +208,15 @@ export function CreateActivityDialog({
 
     async function loadTeams() {
       setIsLoadingTeams(true)
+      setTeamsError(false)
 
       try {
         const data = await api<TeamsListResponse>('/teams')
         if (!cancelled) {
           setTeams(data.teams.filter(canCreateTeamActivities))
         }
+      } catch {
+        if (!cancelled) setTeamsError(true)
       } finally {
         if (!cancelled) {
           setIsLoadingTeams(false)
@@ -177,10 +229,10 @@ export function CreateActivityDialog({
     return () => {
       cancelled = true
     }
-  }, [open, requiresTeamSelection])
+  }, [open, requiresTeamSelection, retryCount])
 
   useEffect(() => {
-    if (open) {
+    if (open && !isCopy) {
       setTagId(NO_TAG)
       setSelectedClient(null)
       setSelectedMachine(null)
@@ -188,7 +240,7 @@ export function CreateActivityDialog({
       setComplexityLevel(NO_COMPLEXITY)
       setIsLoadingOptions(Boolean(teamId))
     }
-  }, [open, teamId])
+  }, [open, teamId, isCopy])
 
   useEffect(() => {
     if (!open || !teamId) {
@@ -198,24 +250,25 @@ export function CreateActivityDialog({
     let cancelled = false
 
     async function loadOptions() {
+      setIsLoadingOptions(true)
+      setOptionsError(false)
       try {
+        function tolerateFailure<T>(request: Promise<T>, fallback: T): Promise<T> {
+          return isCopy ? request : request.catch(() => fallback)
+        }
         const [clientsData, machinesData, teamData, tagsData] = await Promise.all([
-          api<ClientsListResponse>('/clients', { toastOnError: false }).catch(
-            () => ({ clients: [] }) as ClientsListResponse,
-          ),
-          api<MachinesListResponse>(
+          tolerateFailure(api<ClientsListResponse>('/clients', { toastOnError: false }), { clients: [] }),
+          tolerateFailure(api<MachinesListResponse>(
             `/machines?teamId=${encodeURIComponent(teamId)}`,
             {
               toastOnError: false,
             },
-          ).catch(() => ({ machines: [] }) as MachinesListResponse),
-          api<TeamResponse>(`/teams/${teamId}`, { toastOnError: false }).catch(
-            () => null,
-          ),
+          ), { machines: [] }),
+          tolerateFailure<TeamResponse | null>(api<TeamResponse>(`/teams/${teamId}`, { toastOnError: false }), null),
           requiresTeamSelection
-            ? api<TagsListResponse>(`/teams/${teamId}/tags`, {
+            ? tolerateFailure(api<TagsListResponse>(`/teams/${teamId}/tags`, {
                 toastOnError: false,
-              }).catch(() => ({ tags: [] }) as TagsListResponse)
+              }), { tags: [] })
             : Promise.resolve({ tags: [] } as TagsListResponse),
         ])
 
@@ -226,7 +279,28 @@ export function CreateActivityDialog({
           if (requiresTeamSelection) {
             setLoadedTags(tagsData.tags)
           }
+          if (isCopy && reconciledTeam.current !== teamId) {
+            const removed: string[] = []
+            const current = selections.current
+            if (current.tagId !== NO_TAG && !tagsData.tags.some((tag) => tag.id === current.tagId)) {
+              setTagId(NO_TAG)
+              removed.push('etiqueta')
+            }
+            if (current.selectedMachine && !machinesData.machines.some((machine) => machine.id === current.selectedMachine?.value)) {
+              setSelectedMachine(null)
+              removed.push('máquina')
+            }
+            if (current.selectedAssignee && !teamData?.team.members.some((member) => member.id === current.selectedAssignee?.value)) {
+              setSelectedAssignee(null)
+              removed.push('responsável')
+            }
+            setRemovedFields(removed)
+            reconciledTeam.current = teamId
+          }
+          setLoadedTeamId(teamId)
         }
+      } catch {
+        if (!cancelled) setOptionsError(true)
       } finally {
         if (!cancelled) {
           setIsLoadingOptions(false)
@@ -239,15 +313,16 @@ export function CreateActivityDialog({
     return () => {
       cancelled = true
     }
-  }, [open, teamId, requiresTeamSelection])
+  }, [open, teamId, requiresTeamSelection, isCopy, retryCount, sourceActivity?.id])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (!teamId) {
+    if (!teamId || submitting.current || copyBlocked || !title.trim()) {
       return
     }
 
+    submitting.current = true
     setIsSubmitting(true)
 
     try {
@@ -293,8 +368,12 @@ export function CreateActivityDialog({
 
       resetForm()
       onOpenChange(false)
+      if (isCopy) invalidateActivityData()
       onCreated()
+    } catch {
+      // The API displays the error; retain all edits for another attempt.
     } finally {
+      submitting.current = false
       setIsSubmitting(false)
     }
   }
@@ -303,6 +382,7 @@ export function CreateActivityDialog({
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
+        if (isCopy && submitting.current) return
         if (!nextOpen) {
           resetForm()
         }
@@ -315,25 +395,51 @@ export function CreateActivityDialog({
           className="flex min-h-0 flex-1 flex-col"
         >
           <DialogHeader className="shrink-0 pr-8">
-            <DialogTitle>Criar nova atividade</DialogTitle>
+            <DialogTitle>{isCopy ? 'Copiar atividade' : 'Criar nova atividade'}</DialogTitle>
             <DialogDescription>
-              {requiresTeamSelection
+              {isCopy
+                ? 'Confira os dados e a equipe para criar uma cópia desta atividade.'
+                : requiresTeamSelection
                 ? 'Selecione a equipe e preencha os dados para criar uma nova atividade.'
                 : 'Preencha os dados para criar uma nova atividade nesta equipe.'}
             </DialogDescription>
           </DialogHeader>
 
           <FieldGroup className="-mx-1 min-h-0 w-auto flex-1 overflow-x-hidden overflow-y-auto px-1 py-4">
+            {isCopy && (teamsError || optionsError) ? (
+              <div role="alert" className="space-y-2 text-sm text-destructive">
+                <p>Não foi possível carregar as opções. Seus dados foram mantidos.</p>
+                <Button type="button" variant="outline" disabled={isLoadingTeams || isLoadingOptions || isSubmitting} onClick={() => setRetryCount((count) => count + 1)}>
+                  Tentar novamente
+                </Button>
+              </div>
+            ) : null}
+            {isCopy && removedFields.length > 0 ? (
+              <output aria-live="polite" className="block text-sm text-muted-foreground">
+                Campos removidos por não estarem disponíveis nesta equipe: {removedFields.join(', ')}.
+              </output>
+            ) : null}
+            {isCopy && !isLoadingTeams && !teamsError && teamId && !teams.some((team) => team.id === teamId) ? (
+              <p role="alert" className="text-sm text-destructive">
+                Você não tem permissão para criar atividades nesta equipe. Selecione outra equipe.
+              </p>
+            ) : null}
             {requiresTeamSelection ? (
               <Field>
                 <FieldLabel htmlFor="activity-team">Equipe</FieldLabel>
                 <Select
                   value={selectedTeamId || undefined}
                   onValueChange={(value) => {
+                    if (isCopy && (value ?? '') === selectedTeamId) return
                     setSelectedTeamId(value ?? '')
-                    setTagId(NO_TAG)
-                    setSelectedMachine(null)
-                    setSelectedAssignee(null)
+                    if (isCopy) {
+                      setIsLoadingOptions(true)
+                      setRemovedFields([])
+                    } else {
+                      setTagId(NO_TAG)
+                      setSelectedMachine(null)
+                      setSelectedAssignee(null)
+                    }
                   }}
                   disabled={isSubmitting || isLoadingTeams}
                 >
@@ -347,6 +453,7 @@ export function CreateActivityDialog({
                     >
                       {(value) =>
                         teams.find((team) => team.id === value)?.name ??
+                        (isCopy && value === sourceActivity?.teamId ? sourceActivity.teamName : undefined) ??
                         'Selecione uma equipe'
                       }
                     </SelectValue>
@@ -388,7 +495,7 @@ export function CreateActivityDialog({
               <Select
                 value={tagId}
                 onValueChange={(value) => setTagId(value ?? NO_TAG)}
-                disabled={isSubmitting || !teamId}
+                disabled={isSubmitting || !teamId || (isCopy && (isLoadingOptions || loadedTeamId !== teamId || optionsError))}
               >
                 <SelectTrigger id="activity-tag" className="w-full">
                   <SelectValue placeholder="Sem etiqueta">
@@ -398,7 +505,8 @@ export function CreateActivityDialog({
                         return 'Sem etiqueta'
                       }
 
-                      const tag = availableTags.find((item) => item.id === value)
+                      const tag = availableTags.find((item) => item.id === value) ??
+                        (sourceActivity?.tag?.id === value ? sourceActivity.tag : null)
                       if (!tag) {
                         return 'Etiqueta'
                       }
@@ -442,14 +550,14 @@ export function CreateActivityDialog({
                   onValueChange={setSelectedClient}
                   itemToStringLabel={(item) => item.label}
                   isItemEqualToValue={(a, b) => a.value === b.value}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || (isCopy && optionsError)}
                 >
                   <ComboboxInput
                     id="activity-client"
                     className="w-full"
                     placeholder="Buscar cliente..."
                     showClear
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || (isCopy && optionsError)}
                   />
                   <ComboboxContent>
                     <ComboboxEmpty>Nenhum cliente encontrado.</ComboboxEmpty>
@@ -478,14 +586,14 @@ export function CreateActivityDialog({
                   onValueChange={setSelectedMachine}
                   itemToStringLabel={(item) => item.label}
                   isItemEqualToValue={(a, b) => a.value === b.value}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || (isCopy && optionsError)}
                 >
                   <ComboboxInput
                     id="activity-machine"
                     className="w-full"
                     placeholder="Buscar máquina..."
                     showClear
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || (isCopy && optionsError)}
                   />
                   <ComboboxContent>
                     <ComboboxEmpty>Nenhuma máquina encontrada.</ComboboxEmpty>
@@ -514,14 +622,14 @@ export function CreateActivityDialog({
                   onValueChange={setSelectedAssignee}
                   itemToStringLabel={(item) => item.label}
                   isItemEqualToValue={(a, b) => a.value === b.value}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || (isCopy && optionsError)}
                 >
                   <ComboboxInput
                     id="activity-assignee"
                     className="w-full"
                     placeholder="Buscar responsável..."
                     showClear
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || (isCopy && optionsError)}
                   />
                   <ComboboxContent>
                     <ComboboxEmpty>Nenhum membro encontrado.</ComboboxEmpty>
@@ -577,7 +685,7 @@ export function CreateActivityDialog({
                 id="activity-estimated-hours"
                 type="number"
                 min="0"
-                step="0.25"
+                step={isCopy ? 'any' : '0.25'}
                 value={estimatedHours}
                 onChange={(event) => setEstimatedHours(event.target.value)}
                 placeholder="Ex.: 8"
@@ -616,7 +724,7 @@ export function CreateActivityDialog({
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || !title.trim() || !teamId}
+              disabled={isSubmitting || !title.trim() || !teamId || copyBlocked}
             >
               {isSubmitting ? 'Criando...' : 'Criar atividade'}
             </Button>

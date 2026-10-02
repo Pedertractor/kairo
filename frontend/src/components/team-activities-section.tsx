@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Tags } from 'lucide-react';
+import { Copy, Tags } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { ActivityFilters } from '@/components/activity-filters';
@@ -55,6 +55,8 @@ export function TeamActivitiesSection({
   const [tags, setTags] = useState<TagSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [activityToCopy, setActivityToCopy] =
+    useState<ActivitySummary | null>(null);
   const [isManageTagsDialogOpen, setIsManageTagsDialogOpen] = useState(false);
   const [activityToFinish, setActivityToFinish] =
     useState<ActivitySummary | null>(null);
@@ -125,6 +127,17 @@ export function TeamActivitiesSection({
         onOpenChange={setIsCreateDialogOpen}
         onCreated={loadActivities}
         tags={tags}
+      />
+
+      <CreateActivityDialog
+        sourceActivity={activityToCopy ?? undefined}
+        open={activityToCopy !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setActivityToCopy(null);
+          }
+        }}
+        onCreated={() => {}}
       />
 
       <ManageTagsDialog
@@ -302,6 +315,22 @@ export function TeamActivitiesSection({
                 <div className='pointer-events-none relative z-10 flex items-start justify-between gap-2'>
                   <p className='text-sm font-medium'>{activity.title}</p>
                   <div className='pointer-events-auto flex shrink-0 items-center gap-0.5'>
+                    {canCreate ? (
+                      <Button
+                        type='button'
+                        variant='ghost'
+                        size='icon-xs'
+                        className='text-muted-foreground hover:text-sidebar-primary'
+                        aria-label={`Copiar atividade ${activity.title}`}
+                        title='Copiar atividade'
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setActivityToCopy(activity);
+                        }}
+                      >
+                        <Copy />
+                      </Button>
+                    ) : null}
                     <FavoriteButton
                       target={{
                         kind: 'activity',
