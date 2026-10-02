@@ -3,9 +3,7 @@ export interface OccupationMember {
   unit: 'PEDERTRACTOR' | 'TRACTOR';
   name: string;
   role: 'ADMIN' | 'USER';
-  loggedSeconds: number;
-  availabilitySeconds: number;
-  occupationPercent: number;
+  hoursByDate: Record<string, number>;
 }
 
 export interface OccupationResponse {
