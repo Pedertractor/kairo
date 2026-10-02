@@ -37,12 +37,16 @@ export function FilterField({
 interface ResponsiveFiltersProps {
   description: string;
   hasActiveFilters?: boolean;
+  inlineClassName?: string;
+  fieldClassName?: string;
   children: (idPrefix: string, itemClassName?: string) => ReactNode;
 }
 
 export function ResponsiveFilters({
   description,
   hasActiveFilters = false,
+  inlineClassName,
+  fieldClassName = 'w-52 shrink-0',
   children,
 }: ResponsiveFiltersProps) {
   return (
@@ -78,8 +82,8 @@ export function ResponsiveFilters({
         </SheetContent>
       </Sheet>
 
-      <div className='hidden min-w-0 2xl:flex 2xl:flex-row 2xl:items-end 2xl:gap-3'>
-        {children('inline', 'w-52 shrink-0')}
+      <div className={cn('hidden min-w-0 2xl:flex 2xl:flex-row 2xl:items-end 2xl:gap-3', inlineClassName)}>
+        {children('inline', fieldClassName)}
       </div>
     </>
   );
