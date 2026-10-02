@@ -1,3 +1,4 @@
+import { useAuth } from '@/hooks/use-auth'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Search } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -32,7 +33,7 @@ import {
   isFinishedStatus,
   STATUS_LABELS,
 } from '@/lib/card-status'
-import { canCreateTeamProjects } from '@/lib/team-permissions'
+import { canDeleteTeamCard, canCreateTeamProjects } from '@/lib/team-permissions'
 import { cn } from '@/lib/utils'
 import type { CardStatus, ProjectSummary, ProjectsListResponse } from '@/types/card'
 import type { TeamSummary, TeamsListResponse } from '@/types/team'
@@ -54,6 +55,7 @@ function getStatusFilterLabel(value: StatusFilter): string {
 }
 
 export function ProjetosPage() {
+  const { user } = useAuth()
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
@@ -332,58 +334,62 @@ export function ProjetosPage() {
         </div>
       ) : (
         <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredProjects.map((project) => (
-            <li
-              key={project.id}
-              className={cn(
-                'relative flex flex-col gap-2 rounded-lg border p-3 transition-colors hover:bg-muted/50',
-                CARD_STATUS_CARD_CLASS[project.status],
-              )}
-            >
-              <Link
-                to={`/projetos/${project.id}`}
-                className="absolute inset-0 rounded-lg"
-                aria-label={project.title}
-              />
-              <div className="pointer-events-none relative z-10 flex items-start justify-between gap-2">
-                <span className="text-sm font-medium">{project.title}</span>
-                <div className="pointer-events-auto flex shrink-0 items-center gap-0.5">
-                  <ItemActionsMenu
-                    title={project.title}
-                    canFinish={canFinishStatus(project.status)}
-                    onFinish={() => setProjectToFinish(project)}
-                    onDelete={() => setProjectToDelete(project)}
-                  />
-                  <span
-                    className={cn(
-                      'shrink-0',
-                      CARD_STATUS_BADGE_CLASS[project.status],
-                    )}
-                  >
-                    {STATUS_LABELS[project.status]}
-                  </span>
-                </div>
-              </div>
-              {project.teamName ? (
-                <p className="pointer-events-none relative z-10 text-xs text-muted-foreground">
-                  {project.teamName}
-                </p>
-              ) : null}
-              {project.description ? (
-                <p className="pointer-events-none relative z-10 line-clamp-2 whitespace-pre-wrap text-xs text-muted-foreground">
-                  {project.description}
-                </p>
-              ) : null}
-              <div className="pointer-events-none relative z-10 flex items-center justify-between gap-2 [&>div]:min-w-0 [&>div]:flex-1">
-                <CardTimeBudget
-                  loggedSeconds={project.loggedSeconds}
-                  estimatedHours={project.estimatedHours}
-                  className="truncate"
+          {filteredProjects.map((project) => {
+            const team = teams.find((team) => team.id === project.teamId)
+            return (
+              <li
+                key={project.id}
+                className={cn(
+                  'relative flex flex-col gap-2 rounded-lg border p-3 transition-colors hover:bg-muted/50',
+                  CARD_STATUS_CARD_CLASS[project.status],
+                )}
+              >
+                <Link
+                  to={`/projetos/${project.id}`}
+                  className="absolute inset-0 rounded-lg"
+                  aria-label={project.title}
                 />
-                <CardCreatedAt createdAt={project.createdAt} />
-              </div>
-            </li>
-          ))}
+                <div className="pointer-events-none relative z-10 flex items-start justify-between gap-2">
+                  <span className="text-sm font-medium">{project.title}</span>
+                  <div className="pointer-events-auto flex shrink-0 items-center gap-0.5">
+                    <ItemActionsMenu
+                      title={project.title}
+                      canFinish={canFinishStatus(project.status)}
+                      onFinish={() => setProjectToFinish(project)}
+                      canDelete={team ? canDeleteTeamCard(team, project.createdById, user?.id) : false}
+                      onDelete={() => setProjectToDelete(project)}
+                    />
+                    <span
+                      className={cn(
+                        'shrink-0',
+                        CARD_STATUS_BADGE_CLASS[project.status],
+                      )}
+                    >
+                      {STATUS_LABELS[project.status]}
+                    </span>
+                  </div>
+                </div>
+                {project.teamName ? (
+                  <p className="pointer-events-none relative z-10 text-xs text-muted-foreground">
+                    {project.teamName}
+                  </p>
+                ) : null}
+                {project.description ? (
+                  <p className="pointer-events-none relative z-10 line-clamp-2 whitespace-pre-wrap text-xs text-muted-foreground">
+                    {project.description}
+                  </p>
+                ) : null}
+                <div className="pointer-events-none relative z-10 flex items-center justify-between gap-2 [&>div]:min-w-0 [&>div]:flex-1">
+                  <CardTimeBudget
+                    loggedSeconds={project.loggedSeconds}
+                    estimatedHours={project.estimatedHours}
+                    className="truncate"
+                  />
+                  <CardCreatedAt createdAt={project.createdAt} />
+                </div>
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>

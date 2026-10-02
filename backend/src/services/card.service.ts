@@ -633,12 +633,16 @@ export class CardService {
     activityId: string,
     userId: string,
   ): Promise<ActivitySummary> {
-    await this.assertTeamMember(teamId, userId);
+    const membership = await this.assertTeamMember(teamId, userId);
 
     const card = await this.cardRepository.findActivityById(activityId);
 
     if (!card || card.teamId !== teamId || card.type !== 'ACTIVITY') {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    if (card.createdById !== userId) {
+      assertTeamAdminOrFlag(membership.role, membership.team.membersCanDeleteCards);
     }
 
     const activeEntries =
@@ -662,12 +666,16 @@ export class CardService {
     projectId: string,
     userId: string,
   ): Promise<ProjectSummary> {
-    await this.assertTeamMember(teamId, userId);
+    const membership = await this.assertTeamMember(teamId, userId);
 
     const card = await this.cardRepository.findProjectById(projectId);
 
     if (!card || card.teamId !== teamId || card.type !== 'PROJECT') {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    if (card.createdById !== userId) {
+      assertTeamAdminOrFlag(membership.role, membership.team.membersCanDeleteCards);
     }
 
     const activeEntries =

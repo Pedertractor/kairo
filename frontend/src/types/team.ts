@@ -30,6 +30,7 @@ export interface TeamSummary {
   membersCanEditActivities: boolean
   membersCanEditTags: boolean
   membersCanDeleteTags: boolean
+  membersCanDeleteCards: boolean
   createdAt: string
 }
 
@@ -55,6 +56,7 @@ export interface UpdateTeamInput {
   membersCanEditActivities?: boolean
   membersCanEditTags?: boolean
   membersCanDeleteTags?: boolean
+  membersCanDeleteCards?: boolean
 }
 
 export interface AddTeamMemberInput {

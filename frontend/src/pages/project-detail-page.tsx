@@ -1,3 +1,4 @@
+import { useCanDeleteCard } from '@/hooks/use-can-delete-card'
 import { useEffect, useState } from 'react'
 import { Pencil } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -30,6 +31,7 @@ export function ProjectDetailPage() {
   const [isEditHoursDialogOpen, setIsEditHoursDialogOpen] = useState(false)
   const [isFinishDialogOpen, setIsFinishDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const canDelete = useCanDeleteCard(project?.teamId, project?.createdById)
   const canEditEstimatedHours = useCanEditEstimatedHours(
     project?.teamId,
     project?.createdById,
@@ -111,6 +113,7 @@ export function ProjectDetailPage() {
                   title={project.title}
                   canFinish={canFinishStatus(project.status)}
                   onFinish={() => setIsFinishDialogOpen(true)}
+                  canDelete={canDelete}
                   onDelete={() => setIsDeleteDialogOpen(true)}
                 />
                 <ProjectStatusActions

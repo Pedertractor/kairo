@@ -1,5 +1,13 @@
 import type { TeamSummary } from '@/types/team'
 
+export function canDeleteTeamCard(
+  team: Pick<TeamSummary, 'role' | 'membersCanDeleteCards'>,
+  createdById: string,
+  userId: string | undefined,
+) {
+  return team.role === 'ADMIN' || team.membersCanDeleteCards || createdById === userId
+}
+
 export function canCreateTeamActivities(
   team: Pick<TeamSummary, 'role' | 'membersCanCreateActivities'>,
 ) {
