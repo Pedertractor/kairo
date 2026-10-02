@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { ActivityDetailsDialog } from '@/components/activity-details-dialog'
 import { ActivityTagBadge } from '@/components/activity-tag-badge'
 import { CardTimeBudget } from '@/components/card-time-budget'
+import { CardCreatedAt } from '@/components/card-created-at'
 import {
   ComplexityLevelMeter,
   ComplexityLevelStripe,
@@ -379,11 +380,13 @@ export function AtividadesPage() {
                     className="pointer-events-none relative z-10 text-xs text-muted-foreground"
                   />
                 ) : null}
-                <div className="pointer-events-none relative z-10">
+                <div className="pointer-events-none relative z-10 flex items-center justify-between gap-2 [&>div]:min-w-0 [&>div]:flex-1">
                   <CardTimeBudget
                     loggedSeconds={activity.loggedSeconds}
                     estimatedHours={activity.estimatedHours}
+                    className="truncate"
                   />
+                  <CardCreatedAt createdAt={activity.createdAt} />
                 </div>
               </li>
             )

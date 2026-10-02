@@ -3,6 +3,7 @@ import { Search } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { CardTimeBudget } from '@/components/card-time-budget'
+import { CardCreatedAt } from '@/components/card-created-at'
 import {
   ProjectCountBadge,
   ProjectStatusInline,
@@ -373,11 +374,13 @@ export function ProjetosPage() {
                   {project.description}
                 </p>
               ) : null}
-              <div className="pointer-events-none relative z-10">
+              <div className="pointer-events-none relative z-10 flex items-center justify-between gap-2 [&>div]:min-w-0 [&>div]:flex-1">
                 <CardTimeBudget
                   loggedSeconds={project.loggedSeconds}
                   estimatedHours={project.estimatedHours}
+                  className="truncate"
                 />
+                <CardCreatedAt createdAt={project.createdAt} />
               </div>
             </li>
           ))}
