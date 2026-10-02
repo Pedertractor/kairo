@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { CardTimeBudget } from '@/components/card-time-budget'
+import { CardCreatedAt } from '@/components/card-created-at'
 import { CreateProjectDialog } from '@/components/create-project-dialog'
 import { FilterField, ResponsiveFilters } from '@/components/responsive-filters'
 import { DeleteProjectDialog } from '@/components/delete-project-dialog'
@@ -242,10 +243,14 @@ export function TeamProjectsSection({
                     {project.description}
                   </p>
                 ) : null}
-                <CardTimeBudget
-                  loggedSeconds={project.loggedSeconds}
-                  estimatedHours={project.estimatedHours}
-                />
+                <div className="flex items-center justify-between gap-2 [&>div]:min-w-0 [&>div]:flex-1">
+                  <CardTimeBudget
+                    loggedSeconds={project.loggedSeconds}
+                    estimatedHours={project.estimatedHours}
+                    className="truncate"
+                  />
+                  <CardCreatedAt createdAt={project.createdAt} />
+                </div>
               </div>
             </li>
           ))}

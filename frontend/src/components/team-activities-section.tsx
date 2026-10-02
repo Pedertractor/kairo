@@ -22,6 +22,7 @@ import { useActiveTimer } from '@/hooks/use-active-timer';
 import { subscribeActivityDataInvalidation } from '@/lib/activity-data-invalidation';
 import { api } from '@/lib/api-handler';
 import { CardTimeBudget } from '@/components/card-time-budget';
+import { CardCreatedAt } from '@/components/card-created-at';
 import {
   canFinishStatus,
   CARD_STATUS_BADGE_CLASS,
@@ -407,11 +408,13 @@ export function TeamActivitiesSection({
                     className="pointer-events-none relative z-10 text-xs text-muted-foreground"
                   />
                 ) : null}
-                <div className='pointer-events-none relative z-10'>
+                <div className='pointer-events-none relative z-10 flex items-center justify-between gap-2 [&>div]:min-w-0 [&>div]:flex-1'>
                   <CardTimeBudget
                     loggedSeconds={activity.loggedSeconds}
                     estimatedHours={activity.estimatedHours}
+                    className="truncate"
                   />
+                  <CardCreatedAt createdAt={activity.createdAt} />
                 </div>
               </li>
             );
