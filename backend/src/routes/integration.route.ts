@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { IntegrationController } from '../controllers/integration.controller.js';
 import { AbsenceRepository } from '../repositories/absence.repository.js';
+import { CardHistoryRepository } from '../repositories/card-history.repository.js';
 import { CardRepository } from '../repositories/card.repository.js';
 import { ClientRepository } from '../repositories/client.repository.js';
 import { CostCenterRepository } from '../repositories/cost-center.repository.js';
@@ -66,6 +67,7 @@ export async function integrationRoutes(app: FastifyInstance) {
       new ClientRepository(app.prisma),
       new MachineRepository(app.prisma),
       userRepository,
+      new CardHistoryRepository(app.prisma),
     ),
     new OccupationService(
       new OccupationRepository(app.prisma),
