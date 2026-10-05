@@ -1,5 +1,6 @@
 import type { TimeEntry } from '../generated/client.js';
 import { TeamRole, UserRole } from '../generated/client.js';
+import { CardHistoryRepository } from '../repositories/card-history.repository.js';
 import { CardRepository } from '../repositories/card.repository.js';
 import { TaskRepository } from '../repositories/task.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
@@ -514,6 +515,7 @@ export class TimeEntryService {
     private readonly taskRepository: TaskRepository,
     private readonly userRepository: UserRepository,
     private readonly absenceService: AbsenceService,
+    private readonly cardHistoryRepository: CardHistoryRepository,
   ) {}
 
   async getActiveTimer(userId: string): Promise<ActiveTimer | null> {
@@ -604,11 +606,25 @@ export class TimeEntryService {
     const marked = await this.cardRepository.updateStatusIfOpen(
       activityId,
       'IN_PROGRESS',
+      { assignedToId: userId },
     );
 
     if (marked.count === 0) {
       await this.timeEntryRepository.deleteById(entry.id);
       throw new AppError(400, MENSAGENS.ATIVIDADE_TIMER_STATUS_INVALIDO);
+    }
+
+    if (card.assignedToId !== userId) {
+      const starter = await this.userRepository.findById(userId);
+
+      await this.cardHistoryRepository.createAssigneeChange({
+        cardId: activityId,
+        changedById: userId,
+        fromAssignedToId: card.assignedToId,
+        fromAssignedToName: card.assignedTo?.name ?? null,
+        toAssignedToId: userId,
+        toAssignedToName: starter?.name ?? null,
+      });
     }
 
     return {

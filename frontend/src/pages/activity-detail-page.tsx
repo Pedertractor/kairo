@@ -4,6 +4,7 @@ import { Pencil } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import { ActivityDetailsDialog } from '@/components/activity-details-dialog'
+import { ActivityHistorySection } from '@/components/activity-history-section'
 import { BackButton } from '@/components/back-button'
 import { ActivityTagBadge } from '@/components/activity-tag-badge'
 import { ActivityStatusActions } from '@/components/activity-status-actions'
@@ -299,10 +300,16 @@ export function ActivityDetailPage() {
           ) : null}
 
           {teamId && activityId ? (
-            <ActivityTimeEntriesSection
-              teamId={teamId}
-              activityId={activityId}
-            />
+            <>
+              <ActivityHistorySection
+                teamId={teamId}
+                activityId={activityId}
+              />
+              <ActivityTimeEntriesSection
+                teamId={teamId}
+                activityId={activityId}
+              />
+            </>
           ) : null}
         </>
       ) : (

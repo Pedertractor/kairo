@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { CardController } from '../controllers/card.controller.js';
+import { CardHistoryRepository } from '../repositories/card-history.repository.js';
 import { CardRepository } from '../repositories/card.repository.js';
 import { ClientRepository } from '../repositories/client.repository.js';
 import { FavoriteRepository } from '../repositories/favorite.repository.js';
@@ -21,6 +22,7 @@ export async function cardRoutes(app: FastifyInstance) {
       new ClientRepository(app.prisma),
       new MachineRepository(app.prisma),
       new UserRepository(app.prisma),
+      new CardHistoryRepository(app.prisma),
     ),
   );
 
@@ -33,6 +35,11 @@ export async function cardRoutes(app: FastifyInstance) {
     '/teams/:teamId/activities/:activityId',
     { preHandler: [app.authenticate] },
     controller.getActivity,
+  );
+  app.get(
+    '/teams/:teamId/activities/:activityId/history',
+    { preHandler: [app.authenticate] },
+    controller.listActivityHistory,
   );
   app.post(
     '/teams/:teamId/activities',

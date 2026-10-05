@@ -108,7 +108,11 @@ export class CardRepository {
   }
 
   /** Updates status unless the activity is already DONE or CANCELED. */
-  updateStatusIfOpen(cardId: string, status: CardStatus) {
+  updateStatusIfOpen(
+    cardId: string,
+    status: CardStatus,
+    options?: { assignedToId?: string },
+  ) {
     return this.prisma.card.updateMany({
       where: {
         id: cardId,
@@ -116,7 +120,12 @@ export class CardRepository {
         deletedAt: null,
         status: { notIn: ['DONE', 'CANCELED'] },
       },
-      data: { status },
+      data: {
+        status,
+        ...(options?.assignedToId !== undefined
+          ? { assignedToId: options.assignedToId }
+          : {}),
+      },
     });
   }
 

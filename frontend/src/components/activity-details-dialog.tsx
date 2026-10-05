@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
+import { invalidateActivityData } from '@/lib/activity-data-invalidation'
 import { api } from '@/lib/api-handler'
 import { CARD_STATUSES, STATUS_LABELS } from '@/lib/card-status'
 import {
@@ -324,6 +325,7 @@ export function ActivityDetailsDialog({
       )
 
       onOpenChange(false)
+      invalidateActivityData()
       onUpdated()
     } finally {
       setIsSubmitting(false)

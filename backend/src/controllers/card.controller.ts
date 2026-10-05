@@ -55,6 +55,26 @@ export class CardController {
     }
   };
 
+  listActivityHistory = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const parsed = activityParamSchema.safeParse(request.params);
+
+      if (!parsed.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      const history = await this.service.listActivityHistory(
+        parsed.data.teamId,
+        parsed.data.activityId,
+        request.user.sub,
+      );
+
+      return sendSuccess(reply, { history });
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
   createActivity = async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const params = teamIdParamSchema.safeParse(request.params);

@@ -74,6 +74,10 @@ enum ApiKeyScope {
   OCCUPATION
 }
 
+enum CardHistoryEventType {
+  ASSIGNEE_CHANGED
+}
+
 model User {
   id           String   @id @default(cuid())
   employeeId   String   @unique
@@ -97,6 +101,8 @@ model User {
   deletedCards   Card[] @relation("CardDeletedBy")
   createdTasks   Task[] @relation("TaskCreator")
   assignedTasks  Task[] @relation("TaskAssignee")
+
+  cardHistoryEvents CardHistoryEvent[] @relation("CardHistoryChangedBy")
 
   timeEntries TimeEntry[]
   favorites   UserFavorite[]
@@ -403,9 +409,10 @@ model Card {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tasks       Task[]
-  timeEntries TimeEntry[]
-  favorites   UserFavorite[]
+  tasks         Task[]
+  timeEntries   TimeEntry[]
+  favorites     UserFavorite[]
+  historyEvents CardHistoryEvent[]
 
   @@index([teamId])
   @@index([createdById])
@@ -418,6 +425,28 @@ model Card {
   @@index([deletedAt, teamId, type])
   @@index([deletedAt, createdAt])
   @@map("cards")
+}
+
+model CardHistoryEvent {
+  id String @id @default(cuid())
+
+  cardId String
+  card   Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  type CardHistoryEventType
+
+  changedById String
+  changedBy   User   @relation("CardHistoryChangedBy", fields: [changedById], references: [id])
+
+  fromAssignedToId   String?
+  fromAssignedToName String?
+  toAssignedToId     String?
+  toAssignedToName   String?
+
+  createdAt DateTime @default(now())
+
+  @@index([cardId, createdAt])
+  @@map("card_history_events")
 }
 
 model Task {

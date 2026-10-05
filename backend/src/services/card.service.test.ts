@@ -39,7 +39,7 @@ function createService(type: 'ACTIVITY' | 'PROJECT', options: {
       findActiveManyByProjectId: async () => { effects.push('entries'); return [{ id: 'entry' }]; },
       stopEntry: async () => { effects.push('stop'); },
     },
-    {}, {}, {}, {}, {},
+    {}, {}, {}, {}, {}, {},
   ] as unknown as ConstructorParameters<typeof CardService>);
   const remove = () => type === 'ACTIVITY'
     ? service.deleteActivity('team-1', 'card-1', 'user-1')

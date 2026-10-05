@@ -1,5 +1,6 @@
 import type { Card, CardStatus, ComplexityLevel } from '../generated/client.js';
 import { TeamRole, UserRole } from '../generated/client.js';
+import { CardHistoryRepository } from '../repositories/card-history.repository.js';
 import { CardRepository } from '../repositories/card.repository.js';
 import { ClientRepository } from '../repositories/client.repository.js';
 import { FavoriteRepository } from '../repositories/favorite.repository.js';
@@ -8,6 +9,7 @@ import { TagRepository } from '../repositories/tag.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
 import { UserRepository } from '../repositories/user.repository.js';
+import type { ActivityHistoryEvent } from '../types/card-history.types.js';
 import type {
   ActivityClientSummary,
   ActivityMachineSummary,
@@ -142,6 +144,7 @@ export class CardService {
     private readonly clientRepository: ClientRepository,
     private readonly machineRepository: MachineRepository,
     private readonly userRepository: UserRepository,
+    private readonly cardHistoryRepository: CardHistoryRepository,
   ) {}
 
   private async assertTeamMember(teamId: string, userId: string) {
@@ -437,7 +440,35 @@ export class CardService {
       }
     }
 
+    const previousAssignedToId = card.assignedToId;
+    const previousAssignedToName = card.assignedTo?.name ?? null;
+    const assigneeChanged =
+      data.assignedToId !== undefined &&
+      data.assignedToId !== previousAssignedToId;
+
+    let nextAssignedToName: string | null = previousAssignedToName;
+
+    if (assigneeChanged) {
+      if (data.assignedToId) {
+        const assignee = await this.userRepository.findById(data.assignedToId);
+        nextAssignedToName = assignee?.name ?? null;
+      } else {
+        nextAssignedToName = null;
+      }
+    }
+
     const updated = await this.cardRepository.updateActivity(activityId, data);
+
+    if (assigneeChanged) {
+      await this.cardHistoryRepository.createAssigneeChange({
+        cardId: activityId,
+        changedById: userId,
+        fromAssignedToId: previousAssignedToId,
+        fromAssignedToName: previousAssignedToName,
+        toAssignedToId: data.assignedToId ?? null,
+        toAssignedToName: nextAssignedToName,
+      });
+    }
 
     const [loggedByCard, favorite] = await Promise.all([
       this.timeEntryRepository.getLoggedSecondsByCardIds([activityId]),
@@ -449,6 +480,35 @@ export class CardService {
       loggedByCard.get(activityId) ?? 0,
       favorite !== null,
     );
+  }
+
+  async listActivityHistory(
+    teamId: string,
+    activityId: string,
+    userId: string,
+  ): Promise<ActivityHistoryEvent[]> {
+    await this.assertTeamMember(teamId, userId);
+
+    const card = await this.cardRepository.findActivityById(activityId);
+
+    if (!card || card.teamId !== teamId || card.type !== 'ACTIVITY') {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    const events = await this.cardHistoryRepository.findByCardId(activityId);
+
+    return events.map((event) => ({
+      id: event.id,
+      cardId: event.cardId,
+      type: event.type,
+      changedById: event.changedById,
+      changedByName: event.changedBy.name,
+      fromAssignedToId: event.fromAssignedToId,
+      fromAssignedToName: event.fromAssignedToName,
+      toAssignedToId: event.toAssignedToId,
+      toAssignedToName: event.toAssignedToName,
+      createdAt: event.createdAt.toISOString(),
+    }));
   }
 
   async listProjects(
