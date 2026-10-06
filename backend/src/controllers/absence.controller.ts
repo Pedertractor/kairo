@@ -16,6 +16,24 @@ export class AbsenceController {
     }
   };
 
+  unseenCount = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const result = await this.service.countUnseenForActor(request.user.sub);
+      return sendSuccess(reply, result);
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  markSeen = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const result = await this.service.markSeenForActor(request.user.sub);
+      return sendSuccess(reply, result);
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
   create = async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const body = createAbsenceSchema.safeParse(request.body);

@@ -23,6 +23,24 @@ export class AbsenceRepository {
     });
   }
 
+  countCreatedByOthersSince(
+    userIds: string[],
+    excludeCreatedById: string,
+    since: Date | null,
+  ) {
+    if (userIds.length === 0) {
+      return Promise.resolve(0);
+    }
+
+    return this.prisma.userAbsencePeriod.count({
+      where: {
+        userId: { in: userIds },
+        createdById: { not: excludeCreatedById },
+        ...(since ? { createdAt: { gt: since } } : {}),
+      },
+    });
+  }
+
   findById(id: string) {
     return this.prisma.userAbsencePeriod.findUnique({
       where: { id },

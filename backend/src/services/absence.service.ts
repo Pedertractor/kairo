@@ -117,6 +117,43 @@ export class AbsenceService {
     };
   }
 
+  async countUnseenForActor(actorUserId: string): Promise<{
+    count: number;
+    absencesSeenAt: string | null;
+  }> {
+    const actor = await this.getActiveUser(actorUserId);
+    const managedUsers =
+      await this.userRepository.findManagedByTeamAdmin(actorUserId);
+    const managedUserIds = managedUsers.map((user) => user.id);
+    const count = await this.absenceRepository.countCreatedByOthersSince(
+      managedUserIds,
+      actorUserId,
+      actor.absencesSeenAt,
+    );
+
+    return {
+      count,
+      absencesSeenAt: actor.absencesSeenAt?.toISOString() ?? null,
+    };
+  }
+
+  async markSeenForActor(actorUserId: string): Promise<{
+    count: number;
+    absencesSeenAt: string;
+  }> {
+    await this.getActiveUser(actorUserId);
+    const at = new Date();
+    const updated = await this.userRepository.markAbsencesSeen(
+      actorUserId,
+      at,
+    );
+
+    return {
+      count: 0,
+      absencesSeenAt: updated.absencesSeenAt!.toISOString(),
+    };
+  }
+
   async createForActor(
     actorUserId: string,
     targetUserId: string,

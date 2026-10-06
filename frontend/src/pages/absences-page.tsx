@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CalendarOff, Plus, Search, X } from 'lucide-react'
 
 import { CancelAbsenceDialog } from '@/components/cancel-absence-dialog'
@@ -7,10 +7,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@/hooks/use-auth'
+import { markAbsencesSeen } from '@/hooks/use-unseen-absences'
 import { api } from '@/lib/api-handler'
 import type {
   AbsenceListItem,
   AbsenceListResponse,
+  AbsenceUnseenCountResponse,
   AbsenceUserOption,
 } from '@/types/absence'
 
@@ -35,6 +37,22 @@ function getStatus(absence: AbsenceListItem) {
   return { label: 'Concluída', className: 'bg-muted text-muted-foreground' }
 }
 
+function isNewAbsence(
+  absence: AbsenceListItem,
+  currentUserId: string,
+  seenAt: string | null,
+) {
+  if (absence.createdById === currentUserId) {
+    return false
+  }
+
+  if (seenAt === null) {
+    return true
+  }
+
+  return new Date(absence.createdAt).getTime() > new Date(seenAt).getTime()
+}
+
 export function AbsencesPage() {
   const { user } = useAuth()
   const [absences, setAbsences] = useState<AbsenceListItem[]>([])
@@ -43,6 +61,10 @@ export function AbsencesPage() {
   const [query, setQuery] = useState('')
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [toCancel, setToCancel] = useState<AbsenceListItem | null>(null)
+  const [highlightSeenAt, setHighlightSeenAt] = useState<string | null | undefined>(
+    undefined,
+  )
+  const markedSeenRef = useRef(false)
 
   const applyData = useCallback((data: AbsenceListResponse) => {
     setAbsences(data.absences)
@@ -61,6 +83,28 @@ export function AbsencesPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    if (!user?.hasOwnedTeams || isLoading || markedSeenRef.current) {
+      return
+    }
+
+    markedSeenRef.current = true
+
+    void (async () => {
+      try {
+        const unseen = await api<AbsenceUnseenCountResponse>(
+          '/absences/unseen-count',
+          { toastOnError: false },
+        )
+        setHighlightSeenAt(unseen.absencesSeenAt)
+      } catch {
+        setHighlightSeenAt(null)
+      }
+
+      await markAbsencesSeen()
+    })()
+  }, [user?.hasOwnedTeams, isLoading])
 
   const filtered = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase('pt-BR')
@@ -124,6 +168,11 @@ export function AbsencesPage() {
         <div className='space-y-3'>
           {filtered.map((absence) => {
             const status = getStatus(absence)
+            const isNew =
+              user &&
+              highlightSeenAt !== undefined &&
+              isNewAbsence(absence, user.id, highlightSeenAt)
+
             return (
               <article
                 key={absence.id}
@@ -137,6 +186,11 @@ export function AbsencesPage() {
                     >
                       {status.label}
                     </span>
+                    {isNew ? (
+                      <span className='rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive'>
+                        Nova
+                      </span>
+                    ) : null}
                   </div>
                   <p className='text-sm'>
                     {DATE_FORMAT.format(new Date(absence.startedAt))}

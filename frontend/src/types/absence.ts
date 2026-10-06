@@ -19,3 +19,8 @@ export interface AbsenceListResponse {
   absences: AbsenceListItem[]
   users: AbsenceUserOption[]
 }
+
+export interface AbsenceUnseenCountResponse {
+  count: number
+  absencesSeenAt: string | null
+}
