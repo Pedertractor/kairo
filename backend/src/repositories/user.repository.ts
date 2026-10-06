@@ -197,6 +197,13 @@ export class UserRepository {
     });
   }
 
+  markAbsencesSeen(id: string, at: Date) {
+    return this.prisma.user.update({
+      where: { id },
+      data: { absencesSeenAt: at },
+    });
+  }
+
   resetPassword(id: string, passwordHash: string) {
     return this.prisma.user.update({
       where: { id },

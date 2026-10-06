@@ -20,6 +20,8 @@ export async function absenceRoutes(app: FastifyInstance) {
   const auth = { preHandler: [app.authenticate] };
 
   app.get('/absences', auth, controller.list);
+  app.get('/absences/unseen-count', auth, controller.unseenCount);
+  app.post('/absences/seen', auth, controller.markSeen);
   app.post('/absences', auth, controller.create);
   app.delete('/absences/:id', auth, controller.cancel);
 }

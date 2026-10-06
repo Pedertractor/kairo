@@ -19,6 +19,7 @@ function makeUser(overrides: Partial<User> = {}): User {
     active: true,
     firstLogin: false,
     absent: false,
+    absencesSeenAt: null,
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
     updatedAt: new Date('2026-01-01T00:00:00.000Z'),
     ...overrides,
@@ -38,6 +39,7 @@ function createService(options?: {
   canLeaderManageUser?: boolean;
   managedUsers?: User[];
   users?: User[];
+  unseenCount?: number;
 }) {
   const user = options?.actor ?? makeUser();
   const knownUsers = new Map(
@@ -56,6 +58,12 @@ function createService(options?: {
   const deleted: string[] = [];
   const findAllCalls: number[] = [];
   let absentFlag: boolean | null = null;
+  let markedSeenAt: Date | null = null;
+  const countCalls: Array<{
+    userIds: string[];
+    excludeCreatedById: string;
+    since: Date | null;
+  }> = [];
 
   const userRepository = {
     findById: async (id: string) => knownUsers.get(id) ?? null,
@@ -70,6 +78,13 @@ function createService(options?: {
       return [...knownUsers.values()];
     },
     findManagedByTeamAdmin: async () => options?.managedUsers ?? [],
+    markAbsencesSeen: async (id: string, at: Date) => {
+      markedSeenAt = at;
+      const target = knownUsers.get(id) ?? user;
+      const updated = { ...target, absencesSeenAt: at };
+      knownUsers.set(id, updated);
+      return updated;
+    },
   };
 
   const absenceRepository = {
@@ -117,6 +132,14 @@ function createService(options?: {
           }
         : null,
     findVisible: async () => [],
+    countCreatedByOthersSince: async (
+      userIds: string[],
+      excludeCreatedById: string,
+      since: Date | null,
+    ) => {
+      countCalls.push({ userIds, excludeCreatedById, since });
+      return options?.unseenCount ?? 0;
+    },
   };
 
   const timeEntryRepository = {
@@ -140,6 +163,8 @@ function createService(options?: {
     closed,
     deleted,
     getAbsentFlag: () => absentFlag,
+    getMarkedSeenAt: () => markedSeenAt,
+    countCalls,
     setCovering: (
       next: { id: string; startedAt: Date; endedAt: Date | null } | null,
     ) => {
@@ -454,5 +479,65 @@ describe('AbsenceService team-scoped access', () => {
         return true;
       },
     );
+  });
+});
+
+describe('AbsenceService unseen count', () => {
+  it('counts all absences created by others when absencesSeenAt is null', async () => {
+    const actor = makeUser({ id: 'leader-1', role: UserRole.LEADER });
+    const member = makeUser({ id: 'member-1', name: 'Bruno' });
+    const { service, countCalls } = createService({
+      actor,
+      managedUsers: [member],
+      unseenCount: 3,
+    });
+
+    const result = await service.countUnseenForActor(actor.id);
+
+    assert.equal(result.count, 3);
+    assert.equal(result.absencesSeenAt, null);
+    assert.equal(countCalls.length, 1);
+    assert.deepEqual(countCalls[0]?.userIds, ['member-1']);
+    assert.equal(countCalls[0]?.excludeCreatedById, 'leader-1');
+    assert.equal(countCalls[0]?.since, null);
+  });
+
+  it('passes absencesSeenAt so only newer absences by others are counted', async () => {
+    const seenAt = new Date('2026-10-01T12:00:00.000Z');
+    const actor = makeUser({
+      id: 'leader-1',
+      role: UserRole.LEADER,
+      absencesSeenAt: seenAt,
+    });
+    const member = makeUser({ id: 'member-1', name: 'Bruno' });
+    const { service, countCalls } = createService({
+      actor,
+      managedUsers: [member],
+      unseenCount: 1,
+    });
+
+    const result = await service.countUnseenForActor(actor.id);
+
+    assert.equal(result.count, 1);
+    assert.equal(result.absencesSeenAt, seenAt.toISOString());
+    assert.equal(countCalls[0]?.excludeCreatedById, 'leader-1');
+    assert.equal(countCalls[0]?.since?.toISOString(), seenAt.toISOString());
+  });
+
+  it('marks absences as seen and returns count zero', async () => {
+    const actor = makeUser({ id: 'leader-1', role: UserRole.LEADER });
+    const { service, getMarkedSeenAt } = createService({ actor });
+
+    const before = Date.now();
+    const result = await service.markSeenForActor(actor.id);
+    const after = Date.now();
+
+    assert.equal(result.count, 0);
+    assert.ok(result.absencesSeenAt);
+    const marked = getMarkedSeenAt();
+    assert.ok(marked);
+    assert.ok(marked.getTime() >= before);
+    assert.ok(marked.getTime() <= after);
+    assert.equal(result.absencesSeenAt, marked.toISOString());
   });
 });

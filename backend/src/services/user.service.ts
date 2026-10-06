@@ -27,6 +27,7 @@ type UserRecord = {
   active: boolean;
   firstLogin: boolean;
   absent: boolean;
+  absencesSeenAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };

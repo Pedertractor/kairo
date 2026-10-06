@@ -12,6 +12,7 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/use-auth';
+import { useUnseenAbsencesCount } from '@/hooks/use-unseen-absences';
 import type { UnitType } from '@/types/auth';
 import {
   ChartNoAxesCombinedIcon,
@@ -90,6 +91,7 @@ const userManagementNavItems = [
 export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
   const { pathname } = useLocation();
+  const { count: unseenAbsencesCount } = useUnseenAbsencesCount();
 
   const navItems = [
     ...baseNavItems,
@@ -106,6 +108,10 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
       item.url === '/'
         ? pathname === '/'
         : pathname === item.url || pathname.startsWith(`${item.url}/`),
+    badge:
+      item.url === '/ausencias' && user?.hasOwnedTeams
+        ? unseenAbsencesCount
+        : undefined,
   }));
 
   return (

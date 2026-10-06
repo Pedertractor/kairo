@@ -89,6 +89,7 @@ model User {
   active     Boolean  @default(true)
   firstLogin Boolean  @default(true)
   absent     Boolean  @default(false)
+  absencesSeenAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
