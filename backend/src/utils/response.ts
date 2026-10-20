@@ -92,6 +92,8 @@ export const MENSAGENS = {
     'Só é possível registrar uma ausência passada quando há apontamento naquele dia',
   AUSENCIA_CRIADA_SUCESSO: 'Ausência criada com sucesso',
   AUSENCIA_CANCELADA_SUCESSO: 'Ausência futura cancelada com sucesso',
+  AUSENCIA_EDITADA_SUCESSO: 'Ausência atualizada com sucesso',
+  AUSENCIA_EXCLUIDA_SUCESSO: 'Ausência excluída com sucesso',
   APONTAMENTO_ATUALIZADO_SUCESSO: 'Apontamento atualizado com sucesso',
   USUARIO_ROLE_ATUALIZADO_SUCESSO: 'Função do usuário atualizada com sucesso',
   USUARIO_SENHA_REPOSTA_SUCESSO: 'Senha resetada com sucesso',

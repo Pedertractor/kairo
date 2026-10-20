@@ -23,6 +23,64 @@ export class AbsenceRepository {
     });
   }
 
+  findAllFiltered(filters: {
+    userId?: string;
+    createdById?: string;
+    status?: 'scheduled' | 'ongoing' | 'finished';
+    from?: Date;
+    to?: Date;
+    now?: Date;
+  }) {
+    const now = filters.now ?? new Date();
+    const and: Array<Record<string, unknown>> = [];
+
+    if (filters.userId) {
+      and.push({ userId: filters.userId });
+    }
+
+    if (filters.createdById) {
+      and.push({ createdById: filters.createdById });
+    }
+
+    if (filters.from || filters.to) {
+      const overlap: Array<Record<string, unknown>> = [];
+
+      if (filters.to) {
+        overlap.push({ startedAt: { lt: filters.to } });
+      }
+
+      if (filters.from) {
+        overlap.push({
+          OR: [{ endedAt: null }, { endedAt: { gt: filters.from } }],
+        });
+      }
+
+      and.push({ AND: overlap });
+    }
+
+    if (filters.status === 'scheduled') {
+      and.push({ startedAt: { gt: now } });
+    } else if (filters.status === 'ongoing') {
+      and.push({
+        startedAt: { lte: now },
+        OR: [{ endedAt: null }, { endedAt: { gt: now } }],
+      });
+    } else if (filters.status === 'finished') {
+      and.push({
+        endedAt: { not: null, lte: now },
+      });
+    }
+
+    return this.prisma.userAbsencePeriod.findMany({
+      where: and.length > 0 ? { AND: and } : undefined,
+      include: {
+        user: { select: { id: true, name: true } },
+        createdBy: { select: { id: true, name: true } },
+      },
+      orderBy: [{ startedAt: 'desc' }, { createdAt: 'desc' }],
+    });
+  }
+
   countCreatedByOthersSince(
     userIds: string[],
     excludeCreatedById: string,
@@ -69,10 +127,12 @@ export class AbsenceRepository {
     userId: string,
     startedAt: Date,
     endedAt: Date | null,
+    excludeId?: string,
   ) {
     return this.prisma.userAbsencePeriod.findFirst({
       where: {
         userId,
+        ...(excludeId ? { id: { not: excludeId } } : {}),
         AND: [
           {
             OR: [{ endedAt: null }, { endedAt: { gt: startedAt } }],
@@ -82,6 +142,20 @@ export class AbsenceRepository {
             : [{ startedAt: { lt: endedAt } }]),
         ],
       },
+    });
+  }
+
+  update(
+    id: string,
+    data: {
+      userId: string;
+      startedAt: Date;
+      endedAt: Date | null;
+    },
+  ) {
+    return this.prisma.userAbsencePeriod.update({
+      where: { id },
+      data,
     });
   }
 

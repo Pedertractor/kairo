@@ -72,6 +72,20 @@ export class TimeEntryRepository {
     });
   }
 
+  findExecutionEntries(cardId: string) {
+    return this.prisma.timeEntry.findMany({
+      where: {
+        OR: [{ cardId }, { task: { cardId } }],
+      },
+      select: {
+        startedAt: true,
+        endedAt: true,
+        user: { select: { id: true, name: true } },
+      },
+      orderBy: { startedAt: 'asc' },
+    });
+  }
+
   findActiveManyByProjectId(projectId: string) {
     return this.prisma.timeEntry.findMany({
       where: {

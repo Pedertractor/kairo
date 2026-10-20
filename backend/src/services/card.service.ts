@@ -310,6 +310,38 @@ export class CardService {
     return toActivitySummary(card, loggedSeconds, false);
   }
 
+  async getActivityExecution(activityId: string): Promise<{
+    startedAt: string | null;
+    finishedAt: string | null;
+    workers: Array<{ id: string; name: string }>;
+  }> {
+    const entries =
+      await this.timeEntryRepository.findExecutionEntries(activityId);
+    const startedAt = entries[0]?.startedAt.toISOString() ?? null;
+    const finishedAtMs = entries.reduce<number | null>((latest, entry) => {
+      if (!entry.endedAt) {
+        return latest;
+      }
+
+      const endedAt = entry.endedAt.getTime();
+      return latest === null || endedAt > latest ? endedAt : latest;
+    }, null);
+    const workersById = new Map<string, string>();
+
+    for (const entry of entries) {
+      workersById.set(entry.user.id, entry.user.name);
+    }
+
+    return {
+      startedAt,
+      finishedAt:
+        finishedAtMs === null ? null : new Date(finishedAtMs).toISOString(),
+      workers: [...workersById.entries()]
+        .map(([id, name]) => ({ id, name }))
+        .sort((left, right) => left.name.localeCompare(right.name, 'pt-BR')),
+    };
+  }
+
   async createActivity(
     teamId: string,
     userId: string,

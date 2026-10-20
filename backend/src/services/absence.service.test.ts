@@ -30,6 +30,17 @@ function isoAt(dateKey: string, hour: number, minute: number): string {
   return zonedDateTimeToUtc(dateKey, hour, minute).toISOString();
 }
 
+type PeriodRecord = {
+  id: string;
+  userId: string;
+  createdById: string;
+  startedAt: Date;
+  endedAt: Date | null;
+  createdAt?: Date;
+  user?: { id: string; name: string };
+  createdBy?: { id: string; name: string };
+};
+
 function createService(options?: {
   hasTimeEntry?: boolean;
   covering?: { id: string; startedAt: Date; endedAt: Date | null } | null;
@@ -40,6 +51,7 @@ function createService(options?: {
   managedUsers?: User[];
   users?: User[];
   unseenCount?: number;
+  periods?: PeriodRecord[];
 }) {
   const user = options?.actor ?? makeUser();
   const knownUsers = new Map(
@@ -48,6 +60,9 @@ function createService(options?: {
     ),
   );
   let covering = options?.covering ?? null;
+  const periods = new Map(
+    (options?.periods ?? []).map((period) => [period.id, period]),
+  );
   const created: Array<{
     userId: string;
     startedAt: Date;
@@ -56,8 +71,16 @@ function createService(options?: {
   }> = [];
   const closed: Array<{ id: string; endedAt: Date }> = [];
   const deleted: string[] = [];
+  const updated: Array<{
+    id: string;
+    userId: string;
+    startedAt: Date;
+    endedAt: Date | null;
+  }> = [];
   const findAllCalls: number[] = [];
+  const findAllFilteredCalls: Array<Record<string, unknown>> = [];
   let absentFlag: boolean | null = null;
+  const absentFlags = new Map<string, boolean>();
   let markedSeenAt: Date | null = null;
   const countCalls: Array<{
     userIds: string[];
@@ -69,26 +92,46 @@ function createService(options?: {
     findById: async (id: string) => knownUsers.get(id) ?? null,
     setAbsent: async (id: string, absent: boolean) => {
       absentFlag = absent;
+      absentFlags.set(id, absent);
       const target = knownUsers.get(id) ?? user;
       return { ...target, absent };
     },
     canLeaderManageUser: async () => options?.canLeaderManageUser ?? false,
     findAll: async () => {
       findAllCalls.push(1);
-      return [...knownUsers.values()];
+      return [...knownUsers.values()].filter((known) => known.active);
     },
     findManagedByTeamAdmin: async () => options?.managedUsers ?? [],
     markAbsencesSeen: async (id: string, at: Date) => {
       markedSeenAt = at;
       const target = knownUsers.get(id) ?? user;
-      const updated = { ...target, absencesSeenAt: at };
-      knownUsers.set(id, updated);
-      return updated;
+      const updatedUser = { ...target, absencesSeenAt: at };
+      knownUsers.set(id, updatedUser);
+      return updatedUser;
     },
   };
 
   const absenceRepository = {
-    findCoveringOn: async (_userId: string, on = new Date()) => {
+    findCoveringOn: async (userId: string, on = new Date()) => {
+      for (const period of periods.values()) {
+        if (period.userId !== userId) {
+          continue;
+        }
+
+        if (period.startedAt.getTime() > on.getTime()) {
+          continue;
+        }
+
+        if (
+          period.endedAt !== null &&
+          period.endedAt.getTime() <= on.getTime()
+        ) {
+          continue;
+        }
+
+        return period;
+      }
+
       if (!covering) {
         return null;
       }
@@ -104,7 +147,12 @@ function createService(options?: {
       return covering;
     },
     findOpenByUserId: async () => options?.open ?? null,
-    findOverlapping: async () => options?.overlapping ?? null,
+    findOverlapping: async (
+      _userId: string,
+      _startedAt: Date,
+      _endedAt: Date | null,
+      _excludeId?: string,
+    ) => options?.overlapping ?? null,
     create: async (data: (typeof created)[number]) => {
       created.push(data);
       covering = {
@@ -121,17 +169,63 @@ function createService(options?: {
     },
     delete: async (id: string) => {
       deleted.push(id);
+      periods.delete(id);
       covering = null;
     },
-    findById: async (id: string) =>
-      covering && covering.id === id
+    update: async (
+      id: string,
+      data: { userId: string; startedAt: Date; endedAt: Date | null },
+    ) => {
+      updated.push({ id, ...data });
+      const existing = periods.get(id);
+      if (existing) {
+        periods.set(id, { ...existing, ...data });
+      }
+      covering = { id, startedAt: data.startedAt, endedAt: data.endedAt };
+      return { id, ...data };
+    },
+    findById: async (id: string) => {
+      const fromPeriods = periods.get(id);
+      if (fromPeriods) {
+        const periodUser = knownUsers.get(fromPeriods.userId);
+        const creator = knownUsers.get(fromPeriods.createdById);
+        return {
+          ...fromPeriods,
+          user: periodUser
+            ? { id: periodUser.id, name: periodUser.name }
+            : { id: fromPeriods.userId, name: 'Unknown' },
+          createdBy: creator
+            ? { id: creator.id, name: creator.name }
+            : { id: fromPeriods.createdById, name: 'Unknown' },
+        };
+      }
+
+      return covering && covering.id === id
         ? {
             ...covering,
             userId: user.id,
             createdById: user.id,
           }
-        : null,
+        : null;
+    },
     findVisible: async () => [],
+    findAllFiltered: async (filters: Record<string, unknown>) => {
+      findAllFilteredCalls.push(filters);
+      return [...periods.values()].map((period) => {
+        const periodUser = knownUsers.get(period.userId);
+        const creator = knownUsers.get(period.createdById);
+        return {
+          ...period,
+          createdAt: period.createdAt ?? period.startedAt,
+          user: periodUser
+            ? { id: periodUser.id, name: periodUser.name }
+            : { id: period.userId, name: 'Unknown' },
+          createdBy: creator
+            ? { id: creator.id, name: creator.name }
+            : { id: period.createdById, name: 'Unknown' },
+        };
+      });
+    },
     countCreatedByOthersSince: async (
       userIds: string[],
       excludeCreatedById: string,
@@ -162,7 +256,9 @@ function createService(options?: {
     created,
     closed,
     deleted,
+    updated,
     getAbsentFlag: () => absentFlag,
+    getAbsentFlags: () => absentFlags,
     getMarkedSeenAt: () => markedSeenAt,
     countCalls,
     setCovering: (
@@ -171,6 +267,7 @@ function createService(options?: {
       covering = next;
     },
     findAllCalls,
+    findAllFilteredCalls,
   };
 }
 
@@ -479,6 +576,141 @@ describe('AbsenceService team-scoped access', () => {
         return true;
       },
     );
+  });
+});
+
+describe('AbsenceService admin operations', () => {
+  it('lists every absence for an application admin', async () => {
+    const today = formatDateKey(new Date());
+    const admin = makeUser({ id: 'admin-1', role: UserRole.ADMIN, name: 'Admin' });
+    const member = makeUser({ id: 'member-1', name: 'Bruno' });
+    const other = makeUser({ id: 'other-1', name: 'Carlos' });
+    const { service, findAllCalls, findAllFilteredCalls } = createService({
+      actor: admin,
+      users: [member, other],
+      periods: [
+        {
+          id: 'absence-1',
+          userId: 'other-1',
+          createdById: 'member-1',
+          startedAt: zonedDateTimeToUtc(today, 6, 15),
+          endedAt: zonedDateTimeToUtc(today, 10, 0),
+          createdAt: zonedDateTimeToUtc(today, 5, 0),
+        },
+      ],
+    });
+
+    const result = await service.listForAdmin(admin.id);
+
+    assert.equal(findAllCalls.length, 1);
+    assert.equal(findAllFilteredCalls.length, 1);
+    assert.equal(result.absences.length, 1);
+    assert.equal(result.absences[0]?.userId, 'other-1');
+    assert.deepEqual(
+      result.users.map((item) => item.id).sort(),
+      ['admin-1', 'member-1', 'other-1'],
+    );
+  });
+
+  it('rejects a non-admin listing all absences', async () => {
+    const actor = makeUser({ id: 'user-1', role: UserRole.USER });
+    const { service, findAllFilteredCalls } = createService({ actor });
+
+    await assert.rejects(
+      () => service.listForAdmin(actor.id),
+      (error: unknown) => {
+        assert.ok(error instanceof AppError);
+        assert.equal(error.statusCode, 403);
+        return true;
+      },
+    );
+    assert.equal(findAllFilteredCalls.length, 0);
+  });
+
+  it('lets an application admin edit any absence including past ones', async () => {
+    const today = formatDateKey(new Date());
+    const yesterday = shiftDateKey(today, -1);
+    const admin = makeUser({ id: 'admin-1', role: UserRole.ADMIN });
+    const member = makeUser({ id: 'member-1', name: 'Bruno' });
+    const { service, updated, getAbsentFlags } = createService({
+      actor: admin,
+      users: [member],
+      periods: [
+        {
+          id: 'absence-past',
+          userId: 'member-1',
+          createdById: 'member-1',
+          startedAt: zonedDateTimeToUtc(yesterday, 6, 15),
+          endedAt: zonedDateTimeToUtc(yesterday, 10, 0),
+        },
+      ],
+    });
+
+    await service.updateForAdmin(
+      admin.id,
+      'absence-past',
+      'member-1',
+      isoAt(yesterday, 7, 0),
+      isoAt(yesterday, 11, 0),
+    );
+
+    assert.equal(updated.length, 1);
+    assert.equal(updated[0]?.id, 'absence-past');
+    assert.equal(
+      updated[0]?.startedAt.toISOString(),
+      zonedDateTimeToUtc(yesterday, 7, 0).toISOString(),
+    );
+    assert.equal(getAbsentFlags().get('member-1'), false);
+  });
+
+  it('lets an application admin delete any absence', async () => {
+    const today = formatDateKey(new Date());
+    const admin = makeUser({ id: 'admin-1', role: UserRole.ADMIN });
+    const member = makeUser({ id: 'member-1', name: 'Bruno' });
+    const { service, deleted, getAbsentFlags } = createService({
+      actor: admin,
+      users: [member],
+      periods: [
+        {
+          id: 'absence-ongoing',
+          userId: 'member-1',
+          createdById: 'admin-1',
+          startedAt: zonedDateTimeToUtc(today, 6, 15),
+          endedAt: null,
+        },
+      ],
+    });
+
+    await service.deleteForAdmin(admin.id, 'absence-ongoing');
+
+    assert.deepEqual(deleted, ['absence-ongoing']);
+    assert.equal(getAbsentFlags().get('member-1'), false);
+  });
+
+  it('rejects a non-admin deleting an absence', async () => {
+    const actor = makeUser({ id: 'leader-1', role: UserRole.LEADER });
+    const { service, deleted } = createService({
+      actor,
+      periods: [
+        {
+          id: 'absence-1',
+          userId: 'leader-1',
+          createdById: 'leader-1',
+          startedAt: new Date('2026-01-01T10:00:00.000Z'),
+          endedAt: new Date('2026-01-01T12:00:00.000Z'),
+        },
+      ],
+    });
+
+    await assert.rejects(
+      () => service.deleteForAdmin(actor.id, 'absence-1'),
+      (error: unknown) => {
+        assert.ok(error instanceof AppError);
+        assert.equal(error.statusCode, 403);
+        return true;
+      },
+    );
+    assert.deepEqual(deleted, []);
   });
 });
 
