@@ -3,7 +3,7 @@ import { CardRepository } from '../repositories/card.repository.js';
 import { TaskRepository } from '../repositories/task.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
 import { UserRepository } from '../repositories/user.repository.js';
-import type { User } from '../generated/client.js';
+import { UserRole, type User } from '../generated/client.js';
 import { AppError } from '../utils/errors.js';
 import { formatDateKey, parseDayBounds } from '../utils/app-timezone.js';
 import { MENSAGENS } from '../utils/response.js';
@@ -26,6 +26,14 @@ export interface AbsenceListItem {
   endedAt: string | null;
   createdAt: string;
   canCancel: boolean;
+}
+
+export interface AdminAbsenceFilters {
+  userId?: string;
+  createdById?: string;
+  status?: 'scheduled' | 'ongoing' | 'finished';
+  from?: string;
+  to?: string;
 }
 
 function parseDateTime(value: string): Date {
@@ -200,6 +208,119 @@ export class AbsenceService {
     await this.absenceRepository.delete(absenceId);
   }
 
+  async listForAdmin(
+    actorUserId: string,
+    filters: AdminAbsenceFilters = {},
+  ): Promise<{
+    absences: AbsenceListItem[];
+    users: Array<{ id: string; name: string }>;
+  }> {
+    await this.requireAdmin(actorUserId);
+    const now = new Date();
+    const periods = await this.absenceRepository.findAllFiltered({
+      userId: filters.userId,
+      createdById: filters.createdById,
+      status: filters.status,
+      from: filters.from ? parseDateTime(filters.from) : undefined,
+      to: filters.to ? parseDateTime(filters.to) : undefined,
+      now,
+    });
+    const users = (await this.userRepository.findAll({ active: true }))
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .map((user) => ({ id: user.id, name: user.name }));
+    const nowMs = now.getTime();
+
+    return {
+      users,
+      absences: periods.map((period) => ({
+        id: period.id,
+        userId: period.userId,
+        userName: period.user.name,
+        createdById: period.createdById,
+        createdByName: period.createdBy.name,
+        startedAt: period.startedAt.toISOString(),
+        endedAt: period.endedAt?.toISOString() ?? null,
+        createdAt: period.createdAt.toISOString(),
+        canCancel: period.startedAt.getTime() > nowMs,
+      })),
+    };
+  }
+
+  async updateForAdmin(
+    actorUserId: string,
+    absenceId: string,
+    userId: string,
+    startDate: string,
+    endDate?: string | null,
+  ): Promise<void> {
+    await this.requireAdmin(actorUserId);
+    const period = await this.absenceRepository.findById(absenceId);
+
+    if (!period) {
+      throw new AppError(404, MENSAGENS.AUSENCIA_NAO_ENCONTRADA);
+    }
+
+    const target = await this.userRepository.findById(userId);
+
+    if (!target) {
+      throw new AppError(404, MENSAGENS.USUARIO_NAO_ENCONTRADO);
+    }
+
+    if (!target.active && target.id !== period.userId) {
+      throw new AppError(404, MENSAGENS.USUARIO_NAO_ENCONTRADO);
+    }
+
+    const startedAt = parseDateTime(startDate);
+    let endedAt: Date | null = null;
+
+    if (endDate !== undefined && endDate !== null) {
+      endedAt = parseDateTime(endDate);
+      if (endedAt.getTime() <= startedAt.getTime()) {
+        throw new AppError(400, MENSAGENS.AUSENCIA_FIM_ANTES_INICIO);
+      }
+    }
+
+    const overlapping = await this.absenceRepository.findOverlapping(
+      userId,
+      startedAt,
+      endedAt,
+      absenceId,
+    );
+
+    if (overlapping) {
+      throw new AppError(400, MENSAGENS.AUSENCIA_SOBREPOSTA);
+    }
+
+    const previousUserId = period.userId;
+
+    await this.absenceRepository.update(absenceId, {
+      userId,
+      startedAt,
+      endedAt,
+    });
+
+    await this.syncAbsentFlag(previousUserId);
+
+    if (previousUserId !== userId) {
+      await this.syncAbsentFlag(userId);
+    }
+
+    await this.stopActiveTimerIfCovered(userId);
+  }
+
+  async deleteForAdmin(actorUserId: string, absenceId: string): Promise<void> {
+    await this.requireAdmin(actorUserId);
+    const period = await this.absenceRepository.findById(absenceId);
+
+    if (!period) {
+      throw new AppError(404, MENSAGENS.AUSENCIA_NAO_ENCONTRADA);
+    }
+
+    const userId = period.userId;
+    await this.absenceRepository.delete(absenceId);
+    await this.syncAbsentFlag(userId);
+  }
+
   async setAbsent(
     userId: string,
     absent: boolean,
@@ -297,6 +418,48 @@ export class AbsenceService {
     }
 
     return this.userRepository.canLeaderManageUser(actorUserId, targetUserId);
+  }
+
+  private async requireAdmin(actorUserId: string): Promise<User> {
+    const actor = await this.getActiveUser(actorUserId);
+
+    if (actor.role !== UserRole.ADMIN) {
+      throw new AppError(403, MENSAGENS.PROIBIDO);
+    }
+
+    return actor;
+  }
+
+  private async syncAbsentFlag(userId: string, now = new Date()): Promise<void> {
+    const covering = await this.absenceRepository.findCoveringOn(userId, now);
+    await this.userRepository.setAbsent(userId, covering !== null);
+  }
+
+  private async stopActiveTimerIfCovered(userId: string, now = new Date()) {
+    const covering = await this.absenceRepository.findCoveringOn(userId, now);
+
+    if (!covering) {
+      return;
+    }
+
+    const activeEntry =
+      await this.timeEntryRepository.findActiveByUserId(userId);
+
+    if (!activeEntry) {
+      return;
+    }
+
+    await this.timeEntryRepository.stopEntry(activeEntry, now);
+    await releaseTaskIfIdle(
+      this.timeEntryRepository,
+      this.taskRepository,
+      activeEntry.taskId,
+    );
+    await releaseActivityIfIdle(
+      this.timeEntryRepository,
+      this.cardRepository,
+      activeEntry.cardId,
+    );
   }
 
   private async getActiveUser(userId: string): Promise<User> {

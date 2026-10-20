@@ -74,8 +74,20 @@ export class IntegrationController {
         parsed.data.activityId,
         request.user.sub,
       );
+      const execution = await this.cardService.getActivityExecution(
+        parsed.data.activityId,
+      );
 
-      return sendSuccess(reply, { activity });
+      return sendSuccess(reply, {
+        activity: {
+          ...activity,
+          startedAt: execution.startedAt,
+          finishedAt:
+            execution.finishedAt ??
+            (activity.status === 'DONE' ? activity.updatedAt : null),
+          workers: execution.workers,
+        },
+      });
     } catch (error) {
       return handleControllerError(error, reply);
     }
