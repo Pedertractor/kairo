@@ -25,14 +25,7 @@ export class FavoriteRepository {
             type: true,
             status: true,
             teamId: true,
-            assignedToId: true,
-            team: {
-              select: {
-                id: true,
-                name: true,
-                membersCanEditActivities: true,
-              },
-            },
+            team: { select: { id: true, name: true } },
           },
         },
         task: {
