@@ -182,7 +182,6 @@ export function ActivityDetailPage() {
                     teamId={teamId}
                     activity={activity}
                     canChangeStatus={canChangeStatus}
-                    canStartTimer={canChangeStatus}
                     onStatusClick={() => setIsStatusDialogOpen(true)}
                     onFavoriteToggle={(isFavorite) => {
                       setActivity((current) =>

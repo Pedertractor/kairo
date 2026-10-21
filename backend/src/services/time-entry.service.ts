@@ -31,10 +31,8 @@ import {
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 import {
-  assertCanChangeActivityStatus,
   assertTeamAdminOrFlag,
   assertTeamMembership,
-  canChangeActivityStatus,
 } from '../utils/team-access.js';
 import { getEntryDurationSeconds } from '../utils/time-entry-duration.js';
 import {
@@ -387,11 +385,7 @@ function getWorkItemKey(entry: DayEntry): string | null {
   return null;
 }
 
-function mapRecentEntry(
-  entry: RecentEntry,
-  userId: string,
-  roleByTeamId: Map<string, TeamRole>,
-): RecentWorkItem | null {
+function mapRecentEntry(entry: RecentEntry): RecentWorkItem | null {
   if (entry.task) {
     const parentCard = entry.task.card;
 
@@ -425,19 +419,6 @@ function mapRecentEntry(
     return null;
   }
 
-  const statusOpen = !['DONE', 'CANCELED'].includes(entry.card.status);
-  const role = roleByTeamId.get(entry.card.teamId);
-  const canStartActivity =
-    kind === 'ACTIVITY' &&
-    statusOpen &&
-    role !== undefined &&
-    canChangeActivityStatus(
-      role,
-      entry.card.team.membersCanEditActivities,
-      entry.card.assignedToId,
-      userId,
-    );
-
   return {
     kind,
     id: entry.card.id,
@@ -447,7 +428,9 @@ function mapRecentEntry(
     status: entry.card.status,
     parentTitle: null,
     lastWorkedAt: entry.startedAt.toISOString(),
-    canStartTimer: canStartActivity,
+    canStartTimer:
+      kind === 'ACTIVITY' &&
+      !['DONE', 'CANCELED'].includes(entry.card.status),
     activityId: kind === 'ACTIVITY' ? entry.card.id : null,
     projectId: kind === 'PROJECT' ? entry.card.id : null,
     taskId: null,
@@ -583,7 +566,7 @@ export class TimeEntryService {
     userId: string,
   ): Promise<ActiveTimer> {
     await this.assertActiveUser(userId);
-    const membership = await this.assertTeamMember(teamId, userId);
+    await this.assertTeamMember(teamId, userId);
 
     const card = await this.cardRepository.findActivityById(activityId);
 
@@ -594,13 +577,6 @@ export class TimeEntryService {
     if (card.status === 'DONE' || card.status === 'CANCELED') {
       throw new AppError(400, MENSAGENS.ATIVIDADE_TIMER_STATUS_INVALIDO);
     }
-
-    assertCanChangeActivityStatus(
-      membership.role,
-      membership.team.membersCanEditActivities,
-      card.assignedToId,
-      userId,
-    );
 
     const activeEntry =
       await this.timeEntryRepository.findActiveByUserId(userId);
@@ -1025,18 +1001,12 @@ export class TimeEntryService {
     userId: string,
     limit = 8,
   ): Promise<RecentWorkItem[]> {
-    const [entries, memberships] = await Promise.all([
-      this.timeEntryRepository.findRecentByUserId(userId),
-      this.teamRepository.findMembershipsByUserId(userId, { active: true }),
-    ]);
-    const roleByTeamId = new Map<string, TeamRole>(
-      memberships.map((membership) => [membership.teamId, membership.role]),
-    );
+    const entries = await this.timeEntryRepository.findRecentByUserId(userId);
     const seen = new Set<string>();
     const items: RecentWorkItem[] = [];
 
     for (const entry of entries) {
-      const item = mapRecentEntry(entry, userId, roleByTeamId);
+      const item = mapRecentEntry(entry);
 
       if (!item) {
         continue;

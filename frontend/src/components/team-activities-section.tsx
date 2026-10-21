@@ -368,7 +368,6 @@ export function TeamActivitiesSection({
                     <StartActivityTimerButton
                       teamId={teamId}
                       activityId={activity.id}
-                      canStart={canChangeStatus}
                       className='text-muted-foreground hover:text-sidebar-primary'
                     />
                     <ItemActionsMenu
