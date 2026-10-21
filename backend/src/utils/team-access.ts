@@ -40,3 +40,37 @@ export function assertTeamAdminOrFlag(role: TeamRole, flag: boolean) {
 
   throw new AppError(403, MENSAGENS.PROIBIDO);
 }
+
+/** Team admin, open edit flag, or the activity assignee may change status / start. */
+export function canChangeActivityStatus(
+  role: TeamRole,
+  membersCanEditActivities: boolean,
+  assignedToId: string | null | undefined,
+  userId: string,
+): boolean {
+  return (
+    role === TeamRole.ADMIN ||
+    membersCanEditActivities ||
+    assignedToId === userId
+  );
+}
+
+export function assertCanChangeActivityStatus(
+  role: TeamRole,
+  membersCanEditActivities: boolean,
+  assignedToId: string | null | undefined,
+  userId: string,
+) {
+  if (
+    canChangeActivityStatus(
+      role,
+      membersCanEditActivities,
+      assignedToId,
+      userId,
+    )
+  ) {
+    return;
+  }
+
+  throw new AppError(403, MENSAGENS.ATIVIDADE_STATUS_SEM_PERMISSAO);
+}

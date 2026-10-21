@@ -23,7 +23,11 @@ import { api } from '@/lib/api-handler'
 import { CardTimeBudget } from '@/components/card-time-budget'
 import { canFinishStatus } from '@/lib/card-status'
 import { getIntegrationSourceLabel } from '@/lib/integration-source'
-import { canDeleteTeamCard, canEditTeamActivities } from '@/lib/team-permissions'
+import {
+  canChangeActivityStatus,
+  canDeleteTeamCard,
+  canEditTeamActivities,
+} from '@/lib/team-permissions'
 import type { ActivityResponse, ActivitySummary } from '@/types/card'
 import type { TeamResponse, TeamSummary } from '@/types/team'
 
@@ -124,6 +128,10 @@ export function ActivityDetailPage() {
 
   const reloadActivity = loadActivity
   const canEdit = team ? canEditTeamActivities(team) : false
+  const canChangeStatus =
+    team && activity
+      ? canChangeActivityStatus(team, activity.assignedToId, user?.id)
+      : false
 
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-6">
@@ -162,7 +170,9 @@ export function ActivityDetailPage() {
                 <div className="flex shrink-0 items-center gap-0.5">
                   <ItemActionsMenu
                     title={activity.title}
-                    canFinish={canFinishStatus(activity.status)}
+                    canFinish={
+                      canFinishStatus(activity.status) && canChangeStatus
+                    }
                     onDetails={() => setIsDetailsDialogOpen(true)}
                     onFinish={() => setIsFinishDialogOpen(true)}
                     canDelete={team ? canDeleteTeamCard(team, activity.createdById, user?.id) : false}
@@ -171,6 +181,8 @@ export function ActivityDetailPage() {
                   <ActivityStatusActions
                     teamId={teamId}
                     activity={activity}
+                    canChangeStatus={canChangeStatus}
+                    canStartTimer={canChangeStatus}
                     onStatusClick={() => setIsStatusDialogOpen(true)}
                     onFavoriteToggle={(isFavorite) => {
                       setActivity((current) =>

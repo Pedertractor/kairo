@@ -159,6 +159,7 @@ function RecentWorkItemCard({ item }: { item: RecentWorkItem }) {
             <StartActivityTimerButton
               teamId={item.teamId}
               activityId={item.activityId}
+              canStart={item.canStartTimer}
               size='icon-sm'
               className='size-6 text-muted-foreground hover:text-sidebar-primary'
             />

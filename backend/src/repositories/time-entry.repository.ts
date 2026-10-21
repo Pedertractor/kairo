@@ -294,7 +294,10 @@ export class TimeEntryRepository {
         type: true,
         teamId: true,
         status: true,
-        team: { select: { name: true } },
+        assignedToId: true,
+        team: {
+          select: { name: true, membersCanEditActivities: true },
+        },
       },
     },
     task: {

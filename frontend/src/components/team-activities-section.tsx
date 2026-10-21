@@ -1,5 +1,8 @@
 import { useAuth } from '@/hooks/use-auth'
-import { canDeleteTeamCard } from '@/lib/team-permissions'
+import {
+  canChangeActivityStatus,
+  canDeleteTeamCard,
+} from '@/lib/team-permissions'
 import { useCallback, useEffect, useState } from 'react';
 import { Copy, Tags } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -37,7 +40,10 @@ import type { TagSummary, TagsListResponse } from '@/types/tag';
 import type { TeamMemberSummary, TeamSummary } from '@/types/team';
 
 interface TeamActivitiesSectionProps {
-  team: Pick<TeamSummary, 'role' | 'membersCanDeleteCards'>
+  team: Pick<
+    TeamSummary,
+    'role' | 'membersCanDeleteCards' | 'membersCanEditActivities'
+  >
   teamId: string;
   members: TeamMemberSummary[];
   canCreate: boolean;
@@ -298,6 +304,11 @@ export function TeamActivitiesSection({
         <ul className='grid gap-2 sm:grid-cols-2 lg:grid-cols-3'>
           {filteredActivities.map((activity) => {
             const isTimerActive = isActivityCurrent(activity.id);
+            const canChangeStatus = canChangeActivityStatus(
+              team,
+              activity.assignedToId,
+              user?.id,
+            );
 
             return (
               <li
@@ -357,11 +368,14 @@ export function TeamActivitiesSection({
                     <StartActivityTimerButton
                       teamId={teamId}
                       activityId={activity.id}
+                      canStart={canChangeStatus}
                       className='text-muted-foreground hover:text-sidebar-primary'
                     />
                     <ItemActionsMenu
                       title={activity.title}
-                      canFinish={canFinishStatus(activity.status)}
+                      canFinish={
+                        canFinishStatus(activity.status) && canChangeStatus
+                      }
                       onDetails={() => setActivityToDetail(activity)}
                       onFinish={() => setActivityToFinish(activity)}
                       canDelete={canDeleteTeamCard(team, activity.createdById, user?.id)}
@@ -382,17 +396,28 @@ export function TeamActivitiesSection({
                       }
                     />
                   ) : null}
-                  <button
-                    type='button'
-                    className={cn(
-                      'pointer-events-auto',
-                      CARD_STATUS_BADGE_CLASS[activity.status],
-                    )}
-                    aria-label={`Alterar status de ${activity.title}`}
-                    onClick={() => setActivityToUpdate(activity)}
-                  >
-                    {STATUS_LABELS[activity.status]}
-                  </button>
+                  {canChangeStatus ? (
+                    <button
+                      type='button'
+                      className={cn(
+                        'pointer-events-auto',
+                        CARD_STATUS_BADGE_CLASS[activity.status],
+                      )}
+                      aria-label={`Alterar status de ${activity.title}`}
+                      onClick={() => setActivityToUpdate(activity)}
+                    >
+                      {STATUS_LABELS[activity.status]}
+                    </button>
+                  ) : (
+                    <span
+                      className={cn(
+                        'pointer-events-none',
+                        CARD_STATUS_BADGE_CLASS[activity.status],
+                      )}
+                    >
+                      {STATUS_LABELS[activity.status]}
+                    </span>
+                  )}
                 </div>
                 {activity.description ? (
                   <p className='pointer-events-none relative z-10 line-clamp-2 whitespace-pre-wrap text-xs text-muted-foreground'>

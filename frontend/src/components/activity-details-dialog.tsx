@@ -47,7 +47,11 @@ import {
   isComplexityLevel,
 } from '@/lib/complexity-level'
 import { getIntegrationSourceLabel } from '@/lib/integration-source'
-import { canEditTeamActivities } from '@/lib/team-permissions'
+import {
+  canChangeActivityStatus,
+  canEditTeamActivities,
+} from '@/lib/team-permissions'
+import { useAuth } from '@/hooks/use-auth'
 import type {
   ActivityResponse,
   ActivitySummary,
@@ -57,7 +61,11 @@ import type {
 import type { ClientSummary, ClientsListResponse } from '@/types/client'
 import type { MachineSummary, MachinesListResponse } from '@/types/machine'
 import type { TagSummary, TagsListResponse } from '@/types/tag'
-import type { TeamMemberSummary, TeamResponse } from '@/types/team'
+import type {
+  TeamMemberSummary,
+  TeamResponse,
+  TeamSummary,
+} from '@/types/team'
 
 const NO_TAG = '__none__'
 
@@ -128,6 +136,7 @@ export function ActivityDetailsDialog({
   onOpenChange,
   onUpdated,
 }: ActivityDetailsDialogProps) {
+  const { user } = useAuth()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [status, setStatus] = useState<CardStatus>('TODO')
@@ -145,8 +154,21 @@ export function ActivityDetailsDialog({
   const [machines, setMachines] = useState<MachineSummary[]>([])
   const [members, setMembers] = useState<TeamMemberSummary[]>([])
   const [canEdit, setCanEdit] = useState(false)
+  const [teamPermissions, setTeamPermissions] = useState<Pick<
+    TeamSummary,
+    'role' | 'membersCanEditActivities'
+  > | null>(null)
   const [isLoadingOptions, setIsLoadingOptions] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const canChangeStatus =
+    teamPermissions && activity
+      ? canChangeActivityStatus(
+          teamPermissions,
+          activity.assignedToId,
+          user?.id,
+        )
+      : false
 
   const clientOptions = useMemo(() => clients.map(toClientOption), [clients])
   const machineOptions = useMemo(() => {
@@ -210,6 +232,7 @@ export function ActivityDetailsDialog({
     async function loadOptions() {
       setIsLoadingOptions(true)
       setCanEdit(false)
+      setTeamPermissions(null)
 
       try {
         const [tagsData, clientsData, machinesData, teamData] = await Promise.all([
@@ -235,6 +258,15 @@ export function ActivityDetailsDialog({
           setMembers(teamData?.team.members ?? [])
           setCanEdit(
             teamData ? canEditTeamActivities(teamData.team) : false,
+          )
+          setTeamPermissions(
+            teamData
+              ? {
+                  role: teamData.team.role,
+                  membersCanEditActivities:
+                    teamData.team.membersCanEditActivities,
+                }
+              : null,
           )
         }
       } finally {
@@ -304,7 +336,7 @@ export function ActivityDetailsDialog({
       }
     }
 
-    if (status !== activity.status) {
+    if (canChangeStatus && status !== activity.status) {
       payload.status = status
     }
 
@@ -380,7 +412,7 @@ export function ActivityDetailsDialog({
               <Select
                 value={status}
                 onValueChange={(value) => setStatus(value as CardStatus)}
-                disabled={isBusy}
+                disabled={isBusy || !canChangeStatus}
               >
                 <SelectTrigger id="activity-details-status" className="w-full">
                   <SelectValue placeholder="Selecione um status">

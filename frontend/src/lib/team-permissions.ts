@@ -20,6 +20,18 @@ export function canEditTeamActivities(
   return team.role === 'ADMIN' || team.membersCanEditActivities
 }
 
+export function canChangeActivityStatus(
+  team: Pick<TeamSummary, 'role' | 'membersCanEditActivities'>,
+  assignedToId: string | null | undefined,
+  userId: string | undefined,
+) {
+  return (
+    team.role === 'ADMIN' ||
+    team.membersCanEditActivities ||
+    (userId !== undefined && assignedToId === userId)
+  )
+}
+
 export function canCreateTeamProjects(
   team: Pick<TeamSummary, 'role' | 'membersCanCreateProjects'>,
 ) {

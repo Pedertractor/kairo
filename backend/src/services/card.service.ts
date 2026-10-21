@@ -20,6 +20,7 @@ import type {
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 import {
+  assertCanChangeActivityStatus,
   assertTeamAdminOrFlag,
   assertTeamMembership,
 } from '../utils/team-access.js';
@@ -441,6 +442,15 @@ export class CardService {
       assertTeamAdminOrFlag(
         membership.role,
         membership.team.membersCanEditActivities,
+      );
+    }
+
+    if (data.status !== undefined && data.status !== card.status) {
+      assertCanChangeActivityStatus(
+        membership.role,
+        membership.team.membersCanEditActivities,
+        card.assignedToId,
+        userId,
       );
     }
 

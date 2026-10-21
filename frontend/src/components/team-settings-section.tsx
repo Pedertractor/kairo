@@ -88,8 +88,9 @@ export function TeamSettingsSection({
             </FieldLabel>
             <FieldDescription>
               Quando desativado, apenas administradores da equipe podem editar
-              dados das atividades. Status continua disponível; exclusão segue
-              sua própria permissão.
+              dados das atividades. O status e o início do timer ficam
+              disponíveis apenas para o responsável ou um administrador;
+              exclusão segue sua própria permissão.
             </FieldDescription>
           </FieldContent>
           <Switch
