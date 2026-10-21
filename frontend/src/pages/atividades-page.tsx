@@ -37,6 +37,7 @@ import {
   STATUS_LABELS,
 } from '@/lib/card-status'
 import {
+  canChangeActivityStatus,
   canCreateTeamActivities,
   canEditTeamActivities,
   canDeleteTeamCard,
@@ -263,6 +264,9 @@ export function AtividadesPage() {
             const team = teamsById.get(activity.teamId)
             const canEdit = team ? canEditTeamActivities(team) : false
             const canCopy = team ? canCreateTeamActivities(team) : false
+            const canChangeStatus = team
+              ? canChangeActivityStatus(team, activity.assignedToId, user?.id)
+              : false
 
             return (
               <li
@@ -322,11 +326,14 @@ export function AtividadesPage() {
                     <StartActivityTimerButton
                       teamId={activity.teamId}
                       activityId={activity.id}
+                      canStart={canChangeStatus}
                       className="text-muted-foreground hover:text-sidebar-primary"
                     />
                     <ItemActionsMenu
                       title={activity.title}
-                      canFinish={canFinishStatus(activity.status)}
+                      canFinish={
+                        canFinishStatus(activity.status) && canChangeStatus
+                      }
                       onDetails={() => setActivityToDetail(activity)}
                       onFinish={() => setActivityToFinish(activity)}
                       canDelete={team ? canDeleteTeamCard(team, activity.createdById, user?.id) : false}
@@ -347,17 +354,28 @@ export function AtividadesPage() {
                       }
                     />
                   ) : null}
-                  <button
-                    type="button"
-                    className={cn(
-                      'pointer-events-auto',
-                      CARD_STATUS_BADGE_CLASS[activity.status],
-                    )}
-                    aria-label={`Alterar status de ${activity.title}`}
-                    onClick={() => setActivityToUpdate(activity)}
-                  >
-                    {STATUS_LABELS[activity.status]}
-                  </button>
+                  {canChangeStatus ? (
+                    <button
+                      type="button"
+                      className={cn(
+                        'pointer-events-auto',
+                        CARD_STATUS_BADGE_CLASS[activity.status],
+                      )}
+                      aria-label={`Alterar status de ${activity.title}`}
+                      onClick={() => setActivityToUpdate(activity)}
+                    >
+                      {STATUS_LABELS[activity.status]}
+                    </button>
+                  ) : (
+                    <span
+                      className={cn(
+                        'pointer-events-none',
+                        CARD_STATUS_BADGE_CLASS[activity.status],
+                      )}
+                    >
+                      {STATUS_LABELS[activity.status]}
+                    </span>
+                  )}
                 </div>
                 {activity.teamName ? (
                   <p className="pointer-events-none relative z-10 text-xs text-muted-foreground">

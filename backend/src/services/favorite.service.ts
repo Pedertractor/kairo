@@ -1,3 +1,4 @@
+import type { TeamRole } from '../generated/client.js';
 import { CardRepository } from '../repositories/card.repository.js';
 import { FavoriteRepository } from '../repositories/favorite.repository.js';
 import { TaskRepository } from '../repositories/task.repository.js';
@@ -8,7 +9,10 @@ import type {
 } from '../types/favorite.types.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
-import { assertTeamMembership } from '../utils/team-access.js';
+import {
+  assertTeamMembership,
+  canChangeActivityStatus,
+} from '../utils/team-access.js';
 
 export class FavoriteService {
   constructor(
@@ -27,7 +31,13 @@ export class FavoriteService {
   }
 
   async listFavorites(userId: string): Promise<FavoriteWorkItem[]> {
-    const favorites = await this.favoriteRepository.findByUserId(userId);
+    const [favorites, memberships] = await Promise.all([
+      this.favoriteRepository.findByUserId(userId),
+      this.teamRepository.findMembershipsByUserId(userId, { active: true }),
+    ]);
+    const roleByTeamId = new Map<string, TeamRole>(
+      memberships.map((membership) => [membership.teamId, membership.role]),
+    );
     const items: FavoriteWorkItem[] = [];
 
     for (const favorite of favorites) {
@@ -35,6 +45,18 @@ export class FavoriteService {
         if (favorite.card.type !== 'ACTIVITY') {
           continue;
         }
+
+        const statusOpen = !['DONE', 'CANCELED'].includes(favorite.card.status);
+        const role = roleByTeamId.get(favorite.card.teamId);
+        const canStartTimer =
+          statusOpen &&
+          role !== undefined &&
+          canChangeActivityStatus(
+            role,
+            favorite.card.team.membersCanEditActivities,
+            favorite.card.assignedToId,
+            userId,
+          );
 
         items.push({
           kind: 'ACTIVITY',
@@ -44,7 +66,7 @@ export class FavoriteService {
           teamName: favorite.card.team.name,
           status: favorite.card.status,
           parentTitle: null,
-          canStartTimer: !['DONE', 'CANCELED'].includes(favorite.card.status),
+          canStartTimer,
           activityId: favorite.card.id,
           projectId: null,
           taskId: null,

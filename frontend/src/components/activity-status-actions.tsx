@@ -8,6 +8,8 @@ import { StartActivityTimerButton } from './start-activity-timer-button'
 interface ActivityStatusActionsProps {
   teamId: string
   activity: ActivitySummary
+  canChangeStatus: boolean
+  canStartTimer?: boolean
   onStatusClick: () => void
   onFavoriteToggle?: (isFavorite: boolean) => void
   statusClassName?: string
@@ -16,10 +18,17 @@ interface ActivityStatusActionsProps {
 export function ActivityStatusActions({
   teamId,
   activity,
+  canChangeStatus,
+  canStartTimer = true,
   onStatusClick,
   onFavoriteToggle,
   statusClassName,
 }: ActivityStatusActionsProps) {
+  const statusClassNameMerged = cn(
+    CARD_STATUS_BADGE_CLASS[activity.status],
+    statusClassName,
+  )
+
   return (
     <div className="flex shrink-0 items-center gap-0.5">
       <FavoriteButton
@@ -34,18 +43,22 @@ export function ActivityStatusActions({
       <StartActivityTimerButton
         teamId={teamId}
         activityId={activity.id}
+        canStart={canStartTimer}
         className="text-muted-foreground hover:text-sidebar-primary"
       />
-      <button
-        type="button"
-        className={cn(
-          CARD_STATUS_BADGE_CLASS[activity.status],
-          statusClassName,
-        )}
-        onClick={onStatusClick}
-      >
-        {STATUS_LABELS[activity.status]}
-      </button>
+      {canChangeStatus ? (
+        <button
+          type="button"
+          className={statusClassNameMerged}
+          onClick={onStatusClick}
+        >
+          {STATUS_LABELS[activity.status]}
+        </button>
+      ) : (
+        <span className={statusClassNameMerged}>
+          {STATUS_LABELS[activity.status]}
+        </span>
+      )}
     </div>
   )
 }

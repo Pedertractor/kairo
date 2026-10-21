@@ -25,6 +25,7 @@ import {
   TASK_STATUS_BADGE_CLASS,
   TASK_STATUS_LABELS,
 } from '@/lib/task-status'
+import { canChangeActivityStatus } from '@/lib/team-permissions'
 import { cn } from '@/lib/utils'
 import type {
   ActivitiesListResponse,
@@ -34,7 +35,8 @@ import type {
   FavoriteWorkItem,
   FavoritesListResponse,
 } from '@/types/favorite'
-import type { TeamsListResponse } from '@/types/team'
+import type { TeamSummary, TeamsListResponse } from '@/types/team'
+import { useAuth } from '@/hooks/use-auth'
 import type {
   RecentWorkItem,
   RecentWorkItemsResponse,
@@ -141,17 +143,20 @@ function toStartableFromRecent(item: RecentWorkItem): StartableWorkItem | null {
 
 function toStartableFromActivity(
   activity: ActivitySummary,
-  teamName: string,
+  team: TeamSummary,
+  userId: string | undefined,
 ): StartableWorkItem {
   return {
     kind: 'ACTIVITY',
     id: activity.id,
     title: activity.title,
     teamId: activity.teamId,
-    teamName,
+    teamName: team.name,
     status: activity.status,
     parentTitle: null,
-    canStartTimer: canStartFromStatus(activity.status),
+    canStartTimer:
+      canStartFromStatus(activity.status) &&
+      canChangeActivityStatus(team, activity.assignedToId, userId),
     activityId: activity.id,
     projectId: null,
     taskId: null,
@@ -443,6 +448,7 @@ export function StartRecentWorkDialog({
   onOpenChange,
   onStarted,
 }: StartRecentWorkDialogProps) {
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<DialogTab>('favoritos')
   const [favorites, setFavorites] = useState<StartableWorkItem[]>([])
   const [recents, setRecents] = useState<StartableWorkItem[]>([])
@@ -507,7 +513,7 @@ export function StartRecentWorkDialog({
               )
 
               return data.activities.map((activity) =>
-                toStartableFromActivity(activity, team.name),
+                toStartableFromActivity(activity, team, user?.id),
               )
             }),
           )
@@ -536,7 +542,7 @@ export function StartRecentWorkDialog({
     return () => {
       cancelled = true
     }
-  }, [open, activeTab, loadedTabs])
+  }, [open, activeTab, loadedTabs, user?.id])
 
   async function handleStart(item: StartableWorkItem) {
     const itemKey = `${item.kind}-${item.id}`

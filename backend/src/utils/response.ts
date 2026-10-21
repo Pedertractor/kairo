@@ -75,6 +75,8 @@ export const MENSAGENS = {
     'Não é possível iniciar o timer de uma atividade concluída ou cancelada',
   ATIVIDADE_COM_APONTAMENTO_ABERTO:
     'Não é possível finalizar ou cancelar esta atividade enquanto houver um apontamento em aberto',
+  ATIVIDADE_STATUS_SEM_PERMISSAO:
+    'Apenas o responsável ou um administrador da equipe podem alterar o status desta atividade',
   TIMER_INICIADO_SUCESSO: 'Timer iniciado com sucesso',
   TIMER_JA_ATIVO: 'Você já tem um timer ativo para este item',
   TIMER_PAUSADO_SUCESSO: 'Timer pausado com sucesso',
