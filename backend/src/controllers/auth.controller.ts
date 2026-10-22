@@ -6,6 +6,7 @@ import {
   updateAbsentSchema,
 } from '../schemas/auth.schema.js';
 import { AuthService } from '../services/auth.service.js';
+import { ProductionSessionService } from '../services/production-session.service.js';
 import { AppError, handleControllerError } from '../utils/errors.js';
 import { MENSAGENS, sendSuccess } from '../utils/response.js';
 
@@ -111,6 +112,12 @@ export class AuthController {
 
   logout = async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      if (request.user.productionSessionId) {
+        await new ProductionSessionService(request.server.prisma).revoke(
+          request.user.productionSessionId, request.user.sub,
+        );
+        return sendSuccess(reply, null, 200, MENSAGENS.LOGOUT_SUCESSO);
+      }
       const parsed = refreshTokenSchema.partial().safeParse(request.body ?? {});
       const refreshToken = parsed.success ? parsed.data.refreshToken : undefined;
 

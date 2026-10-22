@@ -17,10 +17,12 @@ import { tagRoutes } from './tag.route.js';
 import { teamRoutes } from './team.route.js';
 import { timeEntryRoutes } from './time-entry.route.js';
 import { userRoutes } from './user.route.js';
+import { productionRoutes } from './production.route.js';
 
 export async function registerRoutes(app: FastifyInstance) {
   await app.register(healthRoutes, { prefix: '/api' });
   await app.register(authRoutes, { prefix: '/api' });
+  await app.register(productionRoutes, { prefix: '/api' });
   await app.register(absenceRoutes, { prefix: '/api' });
   await app.register(apiKeyRoutes, { prefix: '/api' });
   await app.register(integrationRoutes, { prefix: '/api' });

@@ -289,7 +289,7 @@ export function UsuariosPage() {
                     </td>
                     <td className="px-4 py-3">{user.cardNumber}</td>
                     <td className="px-4 py-3">{UNIT_LABELS[user.unit]}</td>
-                    <td className="px-4 py-3">{ROLE_LABELS[user.role]}</td>
+                    <td className="px-4 py-3">{user.production ? 'Produção' : ROLE_LABELS[user.role]}</td>
                     <td className="px-4 py-3">
                       {formatShiftLabel(user.shiftStart, user.shiftEnd)}
                     </td>

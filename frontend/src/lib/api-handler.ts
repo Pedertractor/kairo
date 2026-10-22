@@ -4,6 +4,7 @@ import {
   clearStoredToken,
   getStoredRefreshToken,
   getStoredToken,
+  isStoredProductionSession,
   setStoredSession,
 } from '@/lib/auth-storage'
 
@@ -129,6 +130,11 @@ async function executeApiRequest(
     !AUTH_PATHS_WITHOUT_REFRESH.has(path) &&
     Boolean(getStoredRefreshToken())
 
+  if (response.status === 401 && isStoredProductionSession() && token === getStoredToken() && !AUTH_PATHS_WITHOUT_REFRESH.has(path)) {
+    clearStoredToken()
+    window.dispatchEvent(new Event('kairo:session-expired'))
+  }
+
   if (shouldTryRefresh) {
     const refreshed = await refreshAccessToken()
     if (refreshed) {
@@ -144,6 +150,7 @@ async function executeApiRequest(
 
 const AUTH_PATHS_WITHOUT_REFRESH = new Set([
   '/auth/login',
+  '/production/login',
   '/auth/refresh',
   '/auth/change-password',
 ])

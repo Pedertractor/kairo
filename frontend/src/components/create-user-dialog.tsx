@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Loader2, UserRound } from 'lucide-react'
+import { Info, Loader2, UserRound } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -55,6 +56,7 @@ export function CreateUserDialog({
   const [cardNumber, setCardNumber] = useState('')
   const [unit, setUnit] = useState<UnitType>(defaultUnit)
   const [role, setRole] = useState<UserRole>('USER')
+  const [production, setProduction] = useState(false)
   const [teamId, setTeamId] = useState('')
   const [ownedTeams, setOwnedTeams] = useState<TeamSummary[]>([])
   const [isLoadingTeams, setIsLoadingTeams] = useState(false)
@@ -75,6 +77,7 @@ export function CreateUserDialog({
     setCardNumber('')
     setUnit(defaultUnit)
     setRole('USER')
+    setProduction(false)
     setTeamId('')
     setEmployeeName(null)
     setLookupError(null)
@@ -84,6 +87,7 @@ export function CreateUserDialog({
   useEffect(() => {
     if (open) {
       setUnit(defaultUnit)
+      setProduction(false)
     }
   }, [open, defaultUnit])
 
@@ -198,6 +202,7 @@ export function CreateUserDialog({
         cardNumber: cardNumber.trim(),
         unit,
         role,
+        production,
         ...(isLeader && teamId ? { teamId } : {}),
       }
 
@@ -254,7 +259,7 @@ export function CreateUserDialog({
               <Select
                 value={role}
                 onValueChange={(value) => setRole(value as UserRole)}
-                disabled={isSubmitting}
+                disabled={isSubmitting || production}
               >
                 <SelectTrigger id="user-role" className="w-full">
                   <SelectValue>
@@ -269,6 +274,26 @@ export function CreateUserDialog({
                   ))}
                 </SelectContent>
               </Select>
+            </Field>
+
+            <Field>
+              <div className="flex items-center gap-2">
+                <label htmlFor="user-production" className="flex items-center gap-2 text-sm font-medium">
+                  <input id="user-production" type="checkbox" checked={production}
+                    disabled={isSubmitting} className="size-4 accent-primary"
+                    onChange={(event) => {
+                      setProduction(event.target.checked)
+                      if (event.target.checked) setRole('USER')
+                    }} />
+                  Usuário de produção
+                </label>
+                <Tooltip>
+                  <TooltipTrigger type="button" aria-label="Sobre o acesso de produção">
+                    <Info className="size-4 text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent>Acesso por cartão e unidade, apenas atividades e saída após 15s sem uso.</TooltipContent>
+                </Tooltip>
+              </div>
             </Field>
 
             <Field>
