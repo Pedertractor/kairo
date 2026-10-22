@@ -88,6 +88,7 @@ model User {
   role       UserRole
   active     Boolean  @default(true)
   firstLogin Boolean  @default(true)
+  production Boolean  @default(false)
   absent     Boolean  @default(false)
   absencesSeenAt DateTime?
 
@@ -112,6 +113,7 @@ model User {
   acceptedInvites TeamInvite[] @relation("InviteAcceptedBy")
 
   refreshTokens RefreshToken[]
+  productionSessions ProductionSession[]
   documents     TeamDocument[]
 
   absencePeriods UserAbsencePeriod[] @relation("UserAbsencePeriods")
@@ -185,6 +187,17 @@ model UserAbsencePeriod {
   @@index([userId, startedAt])
   @@index([userId, endedAt])
   @@map("user_absence_periods")
+}
+
+model ProductionSession {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastActivityAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([lastActivityAt])
+  @@map("production_sessions")
 }
 
 model RefreshToken {

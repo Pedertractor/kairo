@@ -14,6 +14,9 @@ export const createUserSchema = z.object({
   unit: z.enum(['PEDERTRACTOR', 'TRACTOR']),
   teamId: z.string().min(1).optional(),
   role: z.enum(['ADMIN', 'LEADER', 'USER']).default('USER'),
+  production: z.boolean().default(false),
+}).refine((data) => !data.production || data.role === 'USER', {
+  message: 'Usuários de produção devem ter a função Usuário',
 });
 
 export const updateUserRoleSchema = z.object({

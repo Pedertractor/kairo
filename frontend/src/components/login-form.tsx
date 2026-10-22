@@ -13,9 +13,10 @@ const UNITS: UnitType[] = ['PEDERTRACTOR', 'TRACTOR'];
 
 export function LoginForm({
   className,
+  production = false,
   ...props
-}: Omit<React.ComponentProps<'form'>, 'onSubmit'>) {
-  const { login } = useAuth();
+}: Omit<React.ComponentProps<'form'>, 'onSubmit'> & { production?: boolean }) {
+  const { login, loginProduction } = useAuth();
   const navigate = useNavigate();
   const [unit, setUnit] = useState<UnitType>('PEDERTRACTOR');
   const [cardNumber, setCardNumber] = useState('');
@@ -27,10 +28,17 @@ export function LoginForm({
     setIsSubmitting(true);
 
     try {
+      if (production) {
+        await loginProduction({ unit, cardNumber });
+        navigate('/producao/atividades', { replace: true });
+        return;
+      }
       const loggedIn = await login({ unit, cardNumber, password });
       if (loggedIn) {
         navigate('/');
       }
+    } catch {
+      // API errors are displayed by the shared client.
     } finally {
       setIsSubmitting(false);
     }
@@ -44,9 +52,9 @@ export function LoginForm({
     >
       <FieldGroup>
         <div className='flex flex-col items-center gap-1 text-center'>
-          <h1 className='text-2xl font-bold'>Entrar na sua conta</h1>
+          <h1 className='text-2xl font-bold'>{production ? 'Acesso da produção' : 'Entrar na sua conta'}</h1>
           <p className='text-sm text-balance text-muted-foreground'>
-            Selecione a unidade e informe seu cartão e senha
+            {production ? 'Selecione a unidade e informe seu cartão' : 'Selecione a unidade e informe seu cartão e senha'}
           </p>
         </div>
         <Field>
@@ -61,7 +69,7 @@ export function LoginForm({
             required
           />
         </Field>
-        <Field>
+        {!production ? <Field>
           <FieldLabel htmlFor='password'>Senha</FieldLabel>
           <PasswordInput
             id='password'
@@ -71,7 +79,7 @@ export function LoginForm({
             onChange={(event) => setPassword(event.target.value)}
             required
           />
-        </Field>
+        </Field> : null}
         <Field>
           <FieldLabel>Unidade</FieldLabel>
           <div className='grid grid-cols-2 gap-2'>

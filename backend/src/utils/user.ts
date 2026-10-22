@@ -22,6 +22,7 @@ export function toSafeUser(
     role: user.role,
     active: user.active,
     firstLogin: user.firstLogin,
+    production: user.production,
     absent: currentAbsence === undefined ? user.absent : Boolean(currentAbsence),
     absenceStartedAt: currentAbsence?.startedAt.toISOString() ?? null,
     absenceEndedAt: currentAbsence?.endedAt?.toISOString() ?? null,

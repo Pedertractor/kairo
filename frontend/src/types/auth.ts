@@ -10,6 +10,7 @@ export interface User {
   role: UserRole
   active: boolean
   firstLogin: boolean
+  production: boolean
   absent: boolean
   absenceStartedAt: string | null
   absenceEndedAt: string | null
@@ -37,6 +38,13 @@ export interface LoginCredentials {
   cardNumber: string
   unit: UnitType
   password: string
+}
+
+export type ProductionCredentials = Pick<LoginCredentials, 'cardNumber' | 'unit'>
+export interface ProductionAuthResponse {
+  token: string
+  user: User
+  expiresAt: string
 }
 
 export interface ChangePasswordInput {

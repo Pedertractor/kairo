@@ -9,6 +9,7 @@ export interface SafeUser {
   role: UserRole;
   active: boolean;
   firstLogin: boolean;
+  production: boolean;
   absent: boolean;
   absenceStartedAt: string | null;
   absenceEndedAt: string | null;
@@ -44,4 +45,5 @@ export interface ChangePasswordInput {
 
 export interface JwtPayload {
   sub: string;
+  productionSessionId?: string;
 }

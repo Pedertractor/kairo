@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -13,6 +14,7 @@ import {
   clearStoredToken,
   getStoredRefreshToken,
   getStoredToken,
+  isStoredProductionSession,
   setStoredSession,
 } from '@/lib/auth-storage'
 import type {
@@ -23,6 +25,8 @@ import type {
   LoginResponse,
   MeResponse,
   User,
+  ProductionCredentials,
+  ProductionAuthResponse,
 } from '@/types/auth'
 
 interface AuthContextValue {
@@ -33,6 +37,7 @@ interface AuthContextValue {
   pendingPasswordChange: boolean
   pendingUser: User | null
   login: (credentials: LoginCredentials) => Promise<boolean>
+  loginProduction: (credentials: ProductionCredentials) => Promise<void>
   changePassword: (input: ChangePasswordInput) => Promise<void>
   refreshUser: () => Promise<void>
   logout: () => Promise<void>
@@ -41,6 +46,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const sessionVersion = useRef(0)
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState<string | null>(() => getStoredToken())
   const [isLoading, setIsLoading] = useState(true)
@@ -48,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [pendingUser, setPendingUser] = useState<User | null>(null)
 
   const clearSession = useCallback(() => {
+    sessionVersion.current++
     clearStoredToken()
     setToken(null)
     setUser(null)
@@ -56,7 +63,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const applySession = useCallback((accessToken: string, refreshToken: string, nextUser: User) => {
-    setStoredSession(accessToken, refreshToken)
+    sessionVersion.current++
+    setStoredSession(accessToken, refreshToken, nextUser.production)
     setToken(accessToken)
     setUser(nextUser)
   }, [])
@@ -121,6 +129,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [applySession],
   )
 
+  const loginProduction = useCallback(async (credentials: ProductionCredentials) => {
+    const response = await api<ProductionAuthResponse>('/production/login', {
+      method: 'POST', body: JSON.stringify(credentials),
+    })
+    applySession(response.token, '', response.user)
+    sessionStorage.setItem('kairo:production-expires-at', String(new Date(response.expiresAt).getTime()))
+  }, [applySession])
+
   const changePassword = useCallback(
     async ({ newPassword, confirmPassword }: ChangePasswordInput) => {
       if (!pendingCredentials) {
@@ -151,10 +167,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const refreshUser = useCallback(async () => {
+    const version = sessionVersion.current
     const { user: currentUser } = await api<MeResponse>('/auth/me', {
       toastOnError: false,
     })
-    setUser(currentUser)
+    if (version === sessionVersion.current) setUser(currentUser)
   }, [])
 
   useEffect(() => {
@@ -195,6 +212,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshUser, user?.absenceEndedAt, user?.absent])
 
   const logout = useCallback(async () => {
+    if (isStoredProductionSession()) {
+      const accessToken = getStoredToken()
+      clearSession()
+      // Clear the kiosk immediately, even when the network is unavailable.
+      if (accessToken) {
+        void api('/auth/logout', {
+          method: 'POST', headers: { Authorization: `Bearer ${accessToken}` },
+          toastOnSuccess: false, toastOnError: false, _skipRefresh: true,
+        }).catch(() => {})
+      }
+      return
+    }
     try {
       if (getStoredToken()) {
         const refreshToken = getStoredRefreshToken()
@@ -220,6 +249,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       pendingPasswordChange: Boolean(pendingCredentials && pendingUser),
       pendingUser,
       login,
+      loginProduction,
       changePassword,
       refreshUser,
       logout,
@@ -231,6 +261,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       pendingCredentials,
       pendingUser,
       login,
+      loginProduction,
       changePassword,
       refreshUser,
       logout,

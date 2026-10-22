@@ -552,12 +552,13 @@ export class TimeEntryService {
     return assertTeamMembership(membership);
   }
 
-  private async assertActiveUser(userId: string): Promise<void> {
+  private async assertActiveUser(userId: string) {
     const user = await this.userRepository.findById(userId);
 
-    if (!user) {
+    if (!user || !user.active) {
       throw new AppError(404, MENSAGENS.USUARIO_NAO_ENCONTRADO);
     }
+    return user;
   }
 
   async startActivityTimer(
@@ -565,8 +566,13 @@ export class TimeEntryService {
     activityId: string,
     userId: string,
   ): Promise<ActiveTimer> {
-    await this.assertActiveUser(userId);
-    await this.assertTeamMember(teamId, userId);
+    const user = await this.assertActiveUser(userId);
+    if (user.production) {
+      const team = await this.teamRepository.findById(teamId);
+      if (!team?.active) throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    } else {
+      await this.assertTeamMember(teamId, userId);
+    }
 
     const card = await this.cardRepository.findActivityById(activityId);
 

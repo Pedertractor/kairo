@@ -9,6 +9,8 @@ import { ApiKeyService } from '../services/api-key.service.js';
 import type { JwtPayload } from '../types/auth.types.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
+import { ProductionSessionService } from '../services/production-session.service.js';
+import { isProductionRouteAllowed } from '../utils/production-access.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -66,6 +68,21 @@ export const jwtPlugin = fp(async (app: FastifyInstance) => {
       } catch {
         throw new AppError(401, MENSAGENS.NAO_AUTORIZADO);
       }
+      const user = await app.prisma.user.findUnique({
+        where: { id: request.user.sub },
+        select: { active: true, production: true },
+      });
+      if (!user?.active) throw new AppError(401, MENSAGENS.NAO_AUTORIZADO);
+      if (user.production) {
+        await new ProductionSessionService(app.prisma).validate(
+          request.user.productionSessionId, request.user.sub,
+        );
+        if (!isProductionRouteAllowed(request.method, request.routeOptions.url ?? '')) {
+          throw new AppError(403, MENSAGENS.PROIBIDO);
+        }
+      } else if (request.user.productionSessionId) {
+        throw new AppError(401, MENSAGENS.NAO_AUTORIZADO);
+      }
     },
   );
 
@@ -84,6 +101,11 @@ export const jwtPlugin = fp(async (app: FastifyInstance) => {
     if (!resolved || resolved.scope !== expectedScope) {
       throw new AppError(401, MENSAGENS.CHAVE_API_INVALIDA);
     }
+
+    const user = await app.prisma.user.findUnique({
+      where: { id: resolved.userId }, select: { active: true, production: true },
+    });
+    if (!user?.active || user.production) throw new AppError(401, MENSAGENS.CHAVE_API_INVALIDA);
 
     request.user = { sub: resolved.userId };
   }

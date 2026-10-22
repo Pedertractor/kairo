@@ -62,7 +62,7 @@ export class AuthService {
       cardNumber,
     );
 
-    if (!user || !user.active) {
+    if (!user || !user.active || user.production) {
       throw new AppError(401, MENSAGENS.CREDENCIAIS_INVALIDAS);
     }
 
@@ -82,7 +82,7 @@ export class AuthService {
       cardNumber,
     );
 
-    if (!user || !user.active) {
+    if (!user || !user.active || user.production) {
       throw new AppError(401, MENSAGENS.CREDENCIAIS_INVALIDAS);
     }
 
@@ -150,6 +150,10 @@ export class AuthService {
   }
 
   async issueRefreshToken(userId: string): Promise<string> {
+    const user = await this.userRepository.findById(userId);
+    if (!user || !user.active || user.production) {
+      throw new AppError(401, MENSAGENS.NAO_AUTORIZADO);
+    }
     const plainToken = generateRefreshToken();
     const tokenHash = hashRefreshToken(plainToken);
     const expiresAt = addDuration(new Date(), env.JWT_REFRESH_EXPIRES_IN);
@@ -182,7 +186,7 @@ export class AuthService {
       throw new AppError(401, MENSAGENS.REFRESH_TOKEN_INVALIDO);
     }
 
-    if (!existing.user.active) {
+    if (!existing.user.active || existing.user.production) {
       await this.refreshTokenRepository.revokeAllForUser(existing.userId);
       throw new AppError(401, MENSAGENS.NAO_AUTORIZADO);
     }

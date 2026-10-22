@@ -17,6 +17,7 @@ import { AtividadesPage } from '@/pages/atividades-page'
 import { ProjetosPage } from '@/pages/projetos-page'
 import { TeamsPage } from '@/pages/teams-page'
 import { UsuariosPage } from '@/pages/usuarios-page'
+import { ProductionPage } from '@/pages/production-page'
 
 function ProtectedRoute({
   children,
@@ -40,6 +41,8 @@ function ProtectedRoute({
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
   }
+
+  if (user?.production) return <Navigate to="/producao/atividades" replace />
 
   if (requireAdmin && user?.role !== 'ADMIN') {
     return <Navigate to="/" replace />
@@ -69,10 +72,10 @@ function ProtectedRoute({
 }
 
 function GuestRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
 
   if (isAuthenticated) {
-    return <Navigate to="/" replace />
+    return <Navigate to={user?.production ? '/producao/atividades' : '/'} replace />
   }
 
   return children
@@ -95,6 +98,8 @@ function App() {
 
   return (
     <Routes>
+      <Route path="/producao" element={<GuestRoute><LoginPage production /></GuestRoute>} />
+      <Route path="/producao/atividades" element={<ProductionPage />} />
       <Route
         path="/login"
         element={
