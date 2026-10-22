@@ -9,7 +9,7 @@ import {
 import { formatElapsed } from '@/lib/format-elapsed';
 import { cn } from '@/lib/utils';
 
-export function ActiveTimerBar() {
+export function ActiveTimerBar({ production = false }: { production?: boolean }) {
   const {
     activeTimer,
     pausedTarget,
@@ -84,9 +84,9 @@ export function ActiveTimerBar() {
               ) : null}
             </div>
             <p className='truncate text-sm font-medium text-sidebar-primary'>
-              <Link to={timerLink.to} className='hover:underline'>
+              {production ? timerLink.title : <Link to={timerLink.to} className='hover:underline'>
                 {timerLink.title}
-              </Link>
+              </Link>}
             </p>
           </div>
 
@@ -103,6 +103,7 @@ export function ActiveTimerBar() {
                 variant='outline'
                 className='border-sidebar-primary/40 bg-background/60 hover:bg-background/90'
                 disabled={isPausing}
+                aria-label='Pausar timer'
                 onClick={() => void pauseTimer()}
               >
                 <Pause />

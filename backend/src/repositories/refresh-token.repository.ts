@@ -24,7 +24,8 @@ export class RefreshTokenRepository {
     });
   }
 
-  revokeAllForUser(userId: string) {
+  async revokeAllForUser(userId: string) {
+    await this.prisma.productionSession.deleteMany({ where: { userId } });
     return this.prisma.refreshToken.updateMany({
       where: {
         userId,

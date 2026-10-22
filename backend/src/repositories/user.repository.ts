@@ -117,6 +117,7 @@ export class UserRepository {
       cardNumber: string;
       passwordHash: string;
       role: UserRole;
+      production?: boolean;
     },
     teamId: string,
     initialShift?: {
@@ -177,6 +178,7 @@ export class UserRepository {
       name: string;
       role: UserRole;
       passwordHash: string;
+      production?: boolean;
     },
   ) {
     return this.prisma.user.update({
@@ -229,6 +231,7 @@ export class UserRepository {
       cardNumber: string;
       passwordHash: string;
       role: UserRole;
+      production?: boolean;
     },
     initialShift?: {
       startMinutes: number;

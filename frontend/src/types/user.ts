@@ -17,6 +17,7 @@ export interface CreateUserInput {
   unit: UnitType
   role: UserRole
   teamId?: string
+  production: boolean
 }
 
 export interface EmployeeLookupResult {

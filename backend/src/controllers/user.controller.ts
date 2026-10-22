@@ -55,6 +55,7 @@ export class UserController {
         parsed.data.unit,
         parsed.data.role,
         parsed.data.teamId,
+        parsed.data.production,
       );
 
       return sendSuccess(reply, { user }, 201, MENSAGENS.USUARIO_CRIADO_SUCESSO);

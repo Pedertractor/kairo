@@ -26,6 +26,7 @@ type UserRecord = {
   role: UserRole;
   active: boolean;
   firstLogin: boolean;
+  production: boolean;
   absent: boolean;
   absencesSeenAt: Date | null;
   createdAt: Date;
@@ -129,8 +130,13 @@ export class UserService {
     unit: EmployeeLookupResult['unit'],
     role: UserRole,
     teamId?: string,
+    production = false,
   ): Promise<SafeUser> {
     const actor = await this.getActorOrThrow(actorUserId);
+
+    if (!['ADMIN', 'LEADER'].includes(actor.role) || (production && role !== UserRole.USER)) {
+      throw new AppError(403, MENSAGENS.PROIBIDO);
+    }
 
     if (
       actor.role === UserRole.LEADER &&
@@ -187,6 +193,7 @@ export class UserService {
         name: employee.name,
         role,
         passwordHash,
+        production,
       });
 
       if (actor.role === UserRole.LEADER && teamId) {
@@ -211,6 +218,7 @@ export class UserService {
       cardNumber: employee.cardNumber,
       passwordHash,
       role,
+      production,
     };
 
     if (actor.role === UserRole.LEADER && teamId) {
@@ -261,6 +269,10 @@ export class UserService {
     }
 
     await this.assertCanManageTarget(actor, targetUser);
+
+    if (targetUser.production && role !== UserRole.USER) {
+      throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+    }
 
     if (actor.role === UserRole.LEADER && role === UserRole.ADMIN) {
       throw new AppError(403, MENSAGENS.PROIBIDO);

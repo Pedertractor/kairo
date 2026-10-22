@@ -95,10 +95,10 @@ function toPausedTarget(activeTimer: ActiveTimer): PausedTimerTarget | null {
 }
 
 export function ActiveTimerProvider({ children }: { children: ReactNode }) {
-  const { refreshUser } = useAuth();
+  const { refreshUser, user } = useAuth();
   const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(null);
   const [pausedTarget, setPausedTarget] = useState<PausedTimerTarget | null>(
-    () => readPausedTimerTarget(),
+    () => user?.production ? null : readPausedTimerTarget(),
   );
   const [isStarting, setIsStarting] = useState(false);
   const [isPausing, setIsPausing] = useState(false);
@@ -117,8 +117,8 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
 
   const setPausedTargetState = useCallback((target: PausedTimerTarget | null) => {
     setPausedTarget(target);
-    writePausedTimerTarget(target);
-  }, []);
+    if (!user?.production) writePausedTimerTarget(target);
+  }, [user?.production]);
 
   const refresh = useCallback(async () => {
     const data = await api<ActiveTimerResponse>('/time-entries/active', {
@@ -132,7 +132,7 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
   }, [clearPausedTarget]);
 
   useEffect(() => {
-    void refresh();
+    void refresh().catch(() => {});
   }, [refresh]);
 
   useEffect(() => {
@@ -162,7 +162,7 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
     try {
       const data = await api<StartTimerResponse>(
         `/teams/${teamId}/activities/${activityId}/time-entries`,
-        { method: 'POST' },
+        { method: 'POST', toastOnSuccess: !user?.production },
       );
       setActiveTimer(data.activeTimer);
       clearPausedTarget();
@@ -173,7 +173,7 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsStarting(false);
     }
-  }, [clearPausedTarget, refreshUser]);
+  }, [clearPausedTarget, refreshUser, user?.production]);
 
   const startTaskTimer = useCallback(
     async (projectId: string, taskId: string) => {
@@ -182,7 +182,7 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
       try {
         const data = await api<StartTimerResponse>(
           `/projects/${projectId}/tasks/${taskId}/time-entries`,
-          { method: 'POST' },
+          { method: 'POST', toastOnSuccess: !user?.production },
         );
         setActiveTimer(data.activeTimer);
         clearPausedTarget();
@@ -194,7 +194,7 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
         setIsStarting(false);
       }
     },
-    [clearPausedTarget, refreshUser],
+    [clearPausedTarget, refreshUser, user?.production],
   );
 
   const pauseTimer = useCallback(async () => {
@@ -208,6 +208,7 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
     try {
       await api<PauseTimerResponse>('/time-entries/active/pause', {
         method: 'POST',
+        toastOnSuccess: !user?.production,
       });
       setActiveTimer(null);
 
@@ -221,7 +222,7 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsPausing(false);
     }
-  }, [activeTimer, setPausedTargetState]);
+  }, [activeTimer, setPausedTargetState, user?.production]);
 
   const resumeTimer = useCallback(async () => {
     if (pausedTarget?.activity) {
