@@ -18,6 +18,7 @@ import { UserRepository } from '../repositories/user.repository.js';
 import { AbsenceService } from '../services/absence.service.js';
 import { AuthService } from '../services/auth.service.js';
 import { CardService } from '../services/card.service.js';
+import { ClientService } from '../services/client.service.js';
 import { OccupationService } from '../services/occupation.service.js';
 import { ShiftService } from '../services/shift.service.js';
 import { TagService } from '../services/tag.service.js';
@@ -35,6 +36,7 @@ export async function integrationRoutes(app: FastifyInstance) {
     new TaskRepository(app.prisma),
     new CardRepository(app.prisma),
   );
+  const clientRepository = new ClientRepository(app.prisma);
 
   const controller = new IntegrationController(
     new AuthService(
@@ -64,7 +66,7 @@ export async function integrationRoutes(app: FastifyInstance) {
       new TimeEntryRepository(app.prisma),
       new FavoriteRepository(app.prisma),
       new TagRepository(app.prisma),
-      new ClientRepository(app.prisma),
+      clientRepository,
       new MachineRepository(app.prisma),
       userRepository,
       new CardHistoryRepository(app.prisma),
@@ -72,6 +74,7 @@ export async function integrationRoutes(app: FastifyInstance) {
     new OccupationService(
       new OccupationRepository(app.prisma),
     ),
+    new ClientService(clientRepository),
   );
 
   const auth = { preHandler: [app.authenticateApiKey] };
@@ -83,6 +86,7 @@ export async function integrationRoutes(app: FastifyInstance) {
     controller.getOccupation,
   );
   app.get('/integrations/v1/teams', auth, controller.listTeams);
+  app.get('/integrations/v1/clients', auth, controller.listClients);
   app.get(
     '/integrations/v1/teams/:teamId/tags',
     auth,

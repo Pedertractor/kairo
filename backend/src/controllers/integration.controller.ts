@@ -9,6 +9,7 @@ import {
 import { occupationMonthParamSchema } from '../schemas/occupation.schema.js';
 import { AuthService } from '../services/auth.service.js';
 import { CardService } from '../services/card.service.js';
+import { ClientService } from '../services/client.service.js';
 import { OccupationService } from '../services/occupation.service.js';
 import { TagService } from '../services/tag.service.js';
 import { TeamService } from '../services/team.service.js';
@@ -22,6 +23,7 @@ export class IntegrationController {
     private readonly tagService: TagService,
     private readonly cardService: CardService,
     private readonly occupationService: OccupationService,
+    private readonly clientService: ClientService,
   ) {}
 
   me = async (request: FastifyRequest, reply: FastifyReply) => {
@@ -37,6 +39,15 @@ export class IntegrationController {
     try {
       const teams = await this.teamService.listUserTeams(request.user.sub, true);
       return sendSuccess(reply, { teams });
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  listClients = async (_request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const clients = await this.clientService.list();
+      return sendSuccess(reply, { clients });
     } catch (error) {
       return handleControllerError(error, reply);
     }
