@@ -4,6 +4,7 @@ import type {
   ComplexityLevel,
   PrismaClient,
 } from '../generated/client.js';
+import { notifySolicitationCardChanged } from '../integrations/solicitation-webhook.js';
 
 const activityTagInclude = {
   tag: {
@@ -57,7 +58,27 @@ const projectInclude = {
 } as const;
 
 export class CardRepository {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(
+    private readonly prisma: PrismaClient,
+    private readonly onCardChanged = notifySolicitationCardChanged,
+  ) {}
+
+  private async notifyUpdated<
+    T extends { id: string; teamId: string; integrationSource: string | null },
+  >(mutation: PromiseLike<T>): Promise<T> {
+    const card = await mutation;
+    this.onCardChanged(card);
+    return card;
+  }
+
+  private async notifyById(cardId: string) {
+    try {
+      const card = await this.prisma.card.findUnique({ where: { id: cardId } });
+      if (card) this.onCardChanged(card);
+    } catch {
+      console.error(`[solicitation-webhook] Falha ao carregar card ${cardId}`);
+    }
+  }
 
   findActivitiesByTeamId(teamId: string) {
     return this.prisma.card.findMany({
@@ -100,20 +121,20 @@ export class CardRepository {
   }
 
   updateActivityStatus(activityId: string, status: CardStatus) {
-    return this.prisma.card.update({
+    return this.notifyUpdated(this.prisma.card.update({
       where: { id: activityId },
       data: { status },
       include: activityTagInclude,
-    });
+    }));
   }
 
   /** Updates status unless the activity is already DONE or CANCELED. */
-  updateStatusIfOpen(
+  async updateStatusIfOpen(
     cardId: string,
     status: CardStatus,
     options?: { assignedToId?: string },
   ) {
-    return this.prisma.card.updateMany({
+    const result = await this.prisma.card.updateMany({
       where: {
         id: cardId,
         type: 'ACTIVITY',
@@ -127,6 +148,8 @@ export class CardRepository {
           : {}),
       },
     });
+    if (result.count > 0) void this.notifyById(cardId);
+    return result;
   }
 
   updateActivity(
@@ -143,7 +166,7 @@ export class CardRepository {
       complexityLevel?: ComplexityLevel | null;
     },
   ) {
-    return this.prisma.card.update({
+    return this.notifyUpdated(this.prisma.card.update({
       where: { id: activityId },
       data: {
         ...(data.title !== undefined ? { title: data.title } : {}),
@@ -165,7 +188,7 @@ export class CardRepository {
           : {}),
       },
       include: activityTagInclude,
-    });
+    }));
   }
 
   createActivity(data: {
@@ -203,11 +226,11 @@ export class CardRepository {
   }
 
   softDeleteActivity(activityId: string, deletedById: string) {
-    return this.prisma.card.update({
+    return this.notifyUpdated(this.prisma.card.update({
       where: { id: activityId },
       data: { deletedAt: new Date(), deletedById },
       include: activityTagInclude,
-    });
+    }));
   }
 
   findProjectsByTeamId(teamId: string) {
@@ -261,7 +284,7 @@ export class CardRepository {
       estimatedHours?: number | null;
     },
   ) {
-    return this.prisma.card.update({
+    return this.notifyUpdated(this.prisma.card.update({
       where: { id: projectId },
       data: {
         ...(data.title !== undefined ? { title: data.title } : {}),
@@ -273,7 +296,7 @@ export class CardRepository {
           ? { estimatedHours: data.estimatedHours }
           : {}),
       },
-    });
+    }));
   }
 
   createProject(data: {
@@ -300,10 +323,10 @@ export class CardRepository {
     });
   }
 
-  softDeleteProject(projectId: string, deletedById: string) {
+  async softDeleteProject(projectId: string, deletedById: string) {
     const deletedAt = new Date();
 
-    return this.prisma.$transaction([
+    const result = await this.prisma.$transaction([
       this.prisma.task.updateMany({
         where: { cardId: projectId, deletedAt: null },
         data: { deletedAt },
@@ -314,5 +337,7 @@ export class CardRepository {
         include: projectInclude,
       }),
     ]);
+    this.onCardChanged(result[1]);
+    return result;
   }
 }
