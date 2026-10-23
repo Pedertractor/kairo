@@ -24,6 +24,11 @@ const envSchema = z.object({
   UPLOAD_DIR: z.string().min(1).default('uploads'),
   ORION_URL: z.string().url('ORION_URL deve ser uma URL válida').optional(),
   ORION_APP_TOKEN: z.string().min(1).optional(),
+  SOLICITATION_WEBHOOK_URL: z.string().url().optional(),
+  SOLICITATION_WEBHOOK_SECRET: z.string().min(32).optional(),
+}).refine((value) => Boolean(value.SOLICITATION_WEBHOOK_URL) === Boolean(value.SOLICITATION_WEBHOOK_SECRET), {
+  message: 'Configure SOLICITATION_WEBHOOK_URL e SOLICITATION_WEBHOOK_SECRET juntos',
+  path: ['SOLICITATION_WEBHOOK_URL'],
 });
 
 const parsed = envSchema.safeParse(process.env);
