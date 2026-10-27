@@ -28,6 +28,7 @@ async function main() {
   page.on('pageerror', (e) => errors.push(e.message))
   let adminToken, activity, teamId, temporaryTeam = false
   const extraActivities = []
+  const accessFixtures = []
   const orderingPrefix = 'Validação produção ' + Date.now()
   const api = async (route, token, method = 'GET', data) => {
     const r = await context.request.fetch(apiURL + route, { method, headers: token ? { Authorization: `Bearer ${token}` } : {}, ...(data ? { data } : {}) })
@@ -87,15 +88,23 @@ async function main() {
     }
     pass('Creation dialog defaults false, explains flow, and creates the requested production operator')
 
-    const teams = (await api('/teams', adminToken)).body.dados.teams
-    let team = teams.find(t => t.role === 'ADMIN')
-    if (!team) {
-      const createdTeam = await api('/teams', adminToken, 'POST', { name: 'Validação produção ' + Date.now() })
-      assert.equal(createdTeam.status, 201)
-      team = createdTeam.body.dados.team
-      temporaryTeam = true
-    }
+    const operator = (await api('/users', adminToken)).body.dados.users.find(u => u.cardNumber === operatorCard && u.unit === operatorUnit)
+    const createdTeam = await api('/teams', adminToken, 'POST', { name: 'Validação produção ' + Date.now() })
+    assert.equal(createdTeam.status, 201)
+    const team = createdTeam.body.dados.team
+    temporaryTeam = true
     teamId = team.id
+    assert.equal((await api(`/teams/${teamId}/members`, adminToken, 'POST', { userId: operator.id })).status, 201)
+    for (const member of [true, false]) {
+      const created = await api('/teams', adminToken, 'POST', { name: `Acesso produção ${member} ${Date.now()}` })
+      assert.equal(created.status, 201)
+      const accessTeam = created.body.dados.team
+      accessFixtures.push({ teamId: accessTeam.id, member })
+      if (member) assert.equal((await api(`/teams/${accessTeam.id}/members`, adminToken, 'POST', { userId: operator.id })).status, 201)
+      const card = await api(`/teams/${accessTeam.id}/activities`, adminToken, 'POST', { title: `Acesso ${member} ${Date.now()}` })
+      assert.equal(card.status, 201)
+      accessFixtures.at(-1).activity = card.body.dados.activity
+    }
     const createdActivity = await api(`/teams/${teamId}/activities`, adminToken, 'POST', { title: orderingPrefix + ' A principal' })
     assert.equal(createdActivity.status, 201)
     activity = createdActivity.body.dados.activity
@@ -126,6 +135,19 @@ async function main() {
     const visibleText = await page.locator('body').innerText()
     assert.doesNotMatch(visibleText, /Timeline|Apontamentos do dia/)
     pass('Passwordless production login, dedicated page, no sidebar or timeline')
+
+    const [otherMemberTeam, outsideTeam] = accessFixtures
+    const allowed = (await api('/production/activities', productionToken)).body.dados.activities
+    assert.ok(allowed.some(a => a.id === activity.id))
+    assert.ok(allowed.some(a => a.id === otherMemberTeam.activity.id))
+    assert.ok(!allowed.some(a => a.id === outsideTeam.activity.id))
+    await page.getByRole('heading', { name: otherMemberTeam.activity.title, exact: true }).waitFor()
+    assert.equal(await page.getByRole('heading', { name: outsideTeam.activity.title, exact: true }).count(), 0)
+    assert.equal((await api(`/teams/${outsideTeam.teamId}/activities/${outsideTeam.activity.id}/time-entries`, productionToken, 'POST')).status, 404)
+    assert.equal((await api(`/teams/${otherMemberTeam.teamId}/members/${operator.id}`, adminToken, 'DELETE')).status, 200)
+    assert.ok(!(await api('/production/activities', productionToken)).body.dados.activities.some(a => a.id === otherMemberTeam.activity.id))
+    assert.equal((await api(`/teams/${otherMemberTeam.teamId}/activities/${otherMemberTeam.activity.id}/time-entries`, productionToken, 'POST')).status, 404)
+    pass('Only member teams appear; unrelated and removed memberships cannot start timers through the API')
 
     const filter = page.getByRole('textbox', { name: 'Filtrar atividades por nome' })
     await filter.fill('nome impossível xyz')
@@ -244,6 +266,10 @@ async function main() {
     for (const extra of extraActivities) {
       const cleanup = await api(`/teams/${teamId}/activities/${extra.id}`, adminToken, 'DELETE')
       console.log('Ordering fixture cleanup status:', cleanup.status)
+    }
+    for (const fixture of accessFixtures) {
+      if (fixture.activity) await api(`/teams/${fixture.teamId}/activities/${fixture.activity.id}`, adminToken, 'DELETE')
+      await api(`/teams/${fixture.teamId}/deactivate`, adminToken, 'PATCH')
     }
     if (temporaryTeam && teamId && adminToken) {
       const cleanup = await api(`/teams/${teamId}/deactivate`, adminToken, 'PATCH')
