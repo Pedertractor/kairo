@@ -3,7 +3,7 @@ import { it } from 'node:test';
 import { TimeEntryService } from './time-entry.service.js';
 import { AppError } from '../utils/errors.js';
 
-function setup(options: { production?: boolean; active?: boolean; teamActive?: boolean; cardTeam?: string; cardType?: string; status?: string; deleted?: boolean } = {}) {
+function setup(options: { production?: boolean; member?: boolean; active?: boolean; teamActive?: boolean; cardTeam?: string; cardType?: string; status?: string; deleted?: boolean } = {}) {
   const effects: string[] = [];
   const user = { id: 'user', name: 'Operator', active: options.active ?? true, production: options.production ?? true };
   const card = options.deleted ? null : {
@@ -16,7 +16,11 @@ function setup(options: { production?: boolean; active?: boolean; teamActive?: b
       startTimer: async () => { effects.push('start'); return { id: 'entry', userId: user.id, cardId: 'activity', startedAt: new Date(), createdAt: new Date(), updatedAt: new Date(), endedAt: null }; },
     },
     { findActivityById: async () => card, updateStatusIfOpen: async () => ({ count: 1 }) },
-    { findById: async () => ({ active: options.teamActive ?? true }), findMembershipByTeamAndUser: async () => null },
+    { findMembershipByTeamAndUser: async (teamId: string, userId: string) => {
+      assert.equal(teamId, 'team');
+      assert.equal(userId, 'user');
+      return options.member === false ? null : { role: 'MEMBER', team: { active: options.teamActive ?? true } };
+    } },
     {},
     { findById: async () => user },
     { endCoveringAbsenceAt: async () => {} },
@@ -25,14 +29,15 @@ function setup(options: { production?: boolean; active?: boolean; teamActive?: b
   return { service, effects };
 }
 
-it('allows a production operator to start an activity without a team membership', async () => {
+it('allows a production operator to start an activity in a team they belong to', async () => {
   const { service, effects } = setup();
   const timer = await service.startActivityTimer('team', 'activity', 'user');
   assert.equal(timer.activity?.id, 'activity');
   assert.deepEqual(effects, ['start']);
 });
 for (const [description, options] of [
-  ['regular nonmember', { production: false }],
+  ['production nonmember', { member: false }],
+  ['regular nonmember', { production: false, member: false }],
   ['inactive operator', { active: false }],
   ['inactive team', { teamActive: false }],
   ['wrong team', { cardTeam: 'another-team' }],

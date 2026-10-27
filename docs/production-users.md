@@ -1,6 +1,6 @@
 # Usuários de produção
 
-O acesso exclusivo fica em `/producao`. Depois do login por cartão e unidade, o usuário vai para `/producao/atividades`, com filtro por nome, cards e o widget de apontamento. Todas as atividades não excluídas de equipes ativas são listadas. Atividades concluídas ou canceladas não podem ser iniciadas.
+O acesso exclusivo fica em `/producao`. Depois do login por cartão e unidade, o usuário vai para `/producao/atividades`, com filtro por nome, cards e o widget de apontamento. São listadas apenas as atividades não excluídas das equipes ativas das quais o colaborador é membro. Sem vínculo com equipes, a lista fica vazia. Atividades concluídas ou canceladas não podem ser iniciadas. O início do apontamento também exige esse vínculo no backend, inclusive em chamadas diretas à API.
 
 A atividade em andamento do colaborador aparece primeiro, com destaque azul. Em seguida aparecem suas atividades apontadas mais recentemente, da mais recente para a mais antiga, e as ainda não apontadas em ordem alfabética. As encerradas ficam sempre no fim, com aparência apagada. O histórico é consultado por colaborador e mantido após sair ou recarregar a página.
 
@@ -41,7 +41,7 @@ O teste real de navegador usa Playwright, uma conta administrativa e um funcion�
 | `KAIRO_PRODUCTION_UNIT` | Unidade da conta de produção |
 | `KAIRO_BROWSER` | Canal do navegador instalado; padrão `msedge` |
 
-O teste verifica a criação pela interface, os valores padrão, a tooltip, os dois tipos de login, o filtro, início/pausa/retomada, o bloqueio de rotas, o contador, a expiração com polling, a preservação do apontamento e a tela móvel. Ele mantém a conta de produção criada e remove a atividade temporária. Se precisar criar uma equipe temporária, desativa-a ao final. Resultados e capturas ficam em `frontend/test-results/production/`, ignorados pelo Git.
+O teste verifica a criação pela interface, os valores padrão, a tooltip, os dois tipos de login, o filtro, início/pausa/retomada, o bloqueio de rotas, o contador, a expiração com polling, a preservação do apontamento e a tela móvel. Também verifica a listagem de vários times vinculados, a exclusão de times sem vínculo e o bloqueio do início de apontamentos após remover um membro. Ele mantém a conta de produção criada, remove as atividades temporárias e desativa as equipes criadas para o teste. Resultados e capturas ficam em `frontend/test-results/production/`, ignorados pelo Git.
 
 ## Auditoria de dependências em 22/10/2026
 

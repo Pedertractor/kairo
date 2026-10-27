@@ -566,13 +566,8 @@ export class TimeEntryService {
     activityId: string,
     userId: string,
   ): Promise<ActiveTimer> {
-    const user = await this.assertActiveUser(userId);
-    if (user.production) {
-      const team = await this.teamRepository.findById(teamId);
-      if (!team?.active) throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    } else {
-      await this.assertTeamMember(teamId, userId);
-    }
+    await this.assertActiveUser(userId);
+    await this.assertTeamMember(teamId, userId);
 
     const card = await this.cardRepository.findActivityById(activityId);
 

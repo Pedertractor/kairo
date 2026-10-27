@@ -61,7 +61,11 @@ export async function productionRoutes(app: FastifyInstance) {
 
   app.get('/production/activities', { preHandler: [requireProduction] }, async (request, reply) => {
     const activities = await app.prisma.card.findMany({
-      where: { type: 'ACTIVITY', deletedAt: null, team: { active: true } },
+      where: {
+        type: 'ACTIVITY',
+        deletedAt: null,
+        team: { active: true, members: { some: { userId: request.user.sub } } },
+      },
       select: { id: true, title: true, teamId: true, status: true, team: { select: { name: true } } },
       orderBy: [{ title: 'asc' }, { id: 'asc' }],
     });

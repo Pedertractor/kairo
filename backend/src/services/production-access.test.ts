@@ -18,6 +18,7 @@ const user = { id: 'production-user', employeeId: 'TRACTOR-1', unit: 'TRACTOR', 
 let lastActivityAt = new Date();
 let active = true;
 let production = true;
+let hasMemberships = true;
 const app = Fastify();
 app.decorate('prisma', {
   user: { findUnique: async ({ where }: { where: { id?: string; unit_cardNumber?: { unit: string; cardNumber: string } } }) => {
@@ -32,10 +33,14 @@ app.decorate('prisma', {
       where.id === 'session-1' && where.userId === user.id && lastActivityAt > where.lastActivityAt.gt ? { id: 'session-1', lastActivityAt } : null,
   },
   card: { findMany: async ({ where }: { where: unknown }) => {
-    assert.deepEqual(where, { type: 'ACTIVITY', deletedAt: null, team: { active: true } });
+    assert.deepEqual(where, {
+      type: 'ACTIVITY', deletedAt: null,
+      team: { active: true, members: { some: { userId: user.id } } },
+    });
+    if (!hasMemberships) return [];
     return [
       { id: 'activity', title: 'Activity', teamId: 'team', status: 'TODO', team: { name: 'Team' } },
-      { id: 'untouched', title: 'Untouched', teamId: 'team', status: 'TODO', team: { name: 'Team' } },
+      { id: 'untouched', title: 'Untouched', teamId: 'other-member-team', status: 'TODO', team: { name: 'Other member team' } },
     ];
   } },
   timeEntry: { groupBy: async ({ by, where, _max }: { by: string[]; where: unknown; _max: unknown }) => {
@@ -92,6 +97,16 @@ it('only gives activity access to a valid production-scoped token', async () => 
 it('blocks direct API access to users, teams and timeline even with a valid kiosk token', async () => {
   for (const url of ['/api/users', '/api/teams', '/api/time-entries/day']) {
     assert.equal((await app.inject({ url, headers: headers({ sub: user.id, productionSessionId: 'session-1' }) })).statusCode, 403);
+  }
+});
+it('returns no activities or personal history when the operator has no team memberships', async () => {
+  hasMemberships = false;
+  try {
+    const response = await app.inject({ url: '/api/production/activities', headers: headers({ sub: user.id, productionSessionId: 'session-1' }) });
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.json().dados.activities, []);
+  } finally {
+    hasMemberships = true;
   }
 });
 it('rejects production access after inactivity, even when the JWT is still valid', async () => {
