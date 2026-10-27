@@ -25,15 +25,26 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { api } from '@/lib/api-handler'
 import {
   canFinishStatus,
+  CARD_STATUSES,
   CARD_STATUS_BADGE_CLASS,
   CARD_STATUS_CARD_CLASS,
-  isFinishedStatus,
+  STATUS_LABELS,
 } from '@/lib/card-status'
+import {
+  ALL_PROJECT_STATUSES,
+  filterAndSortTeamProjects,
+  type ProjectOrder,
+  type ProjectStatusFilter,
+} from '@/lib/team-project-filters'
 import { cn } from '@/lib/utils'
 import type { ProjectSummary, ProjectsListResponse } from '@/types/card'
 
-const VISIBILITY_ACTIVE = 'active'
-const VISIBILITY_ALL = 'all'
+const PROJECT_ORDER_LABELS: Record<ProjectOrder, string> = {
+  newest: 'Mais recentes',
+  oldest: 'Mais antigos',
+  'name-asc': 'Nome (A–Z)',
+  'name-desc': 'Nome (Z–A)',
+}
 
 interface TeamProjectsSectionProps {
   team: Pick<TeamSummary, 'role' | 'membersCanDeleteCards'>
@@ -58,7 +69,9 @@ export function TeamProjectsSection({
     useState<ProjectSummary | null>(null)
   const [projectToDelete, setProjectToDelete] =
     useState<ProjectSummary | null>(null)
-  const [visibilityFilter, setVisibilityFilter] = useState(VISIBILITY_ACTIVE)
+  const [statusFilter, setStatusFilter] =
+    useState<ProjectStatusFilter>(ALL_PROJECT_STATUSES)
+  const [projectOrder, setProjectOrder] = useState<ProjectOrder>('newest')
 
   const loadProjects = useCallback(async () => {
     setIsLoading(true)
@@ -78,18 +91,13 @@ export function TeamProjectsSection({
     void loadProjects()
   }, [loadProjects])
 
-  const filteredProjects = useMemo(() => {
-    const showFinished = visibilityFilter === VISIBILITY_ALL
+  const filteredProjects = useMemo(
+    () => filterAndSortTeamProjects(projects, statusFilter, projectOrder),
+    [projects, statusFilter, projectOrder],
+  )
 
-    return projects.filter(
-      (project) => showFinished || !isFinishedStatus(project.status),
-    )
-  }, [projects, visibilityFilter])
-
-  const hasSheetFilters = visibilityFilter !== VISIBILITY_ACTIVE
-  const hasFinishedHidden =
-    visibilityFilter === VISIBILITY_ACTIVE &&
-    projects.some((project) => isFinishedStatus(project.status))
+  const hasSheetFilters =
+    statusFilter !== ALL_PROJECT_STATUSES || projectOrder !== 'newest'
 
   return (
     <div className="flex flex-col gap-4">
@@ -153,38 +161,76 @@ export function TeamProjectsSection({
       {!isLoading && projects.length > 0 ? (
         <div className="flex items-end">
           <ResponsiveFilters
-            description="Filtrar os projetos desta equipe."
+            description="Filtrar e ordenar os projetos desta equipe."
             hasActiveFilters={hasSheetFilters}
           >
             {(idPrefix, itemClassName) => (
-              <FilterField
-                id={`${idPrefix}-visibility`}
-                label="Filtrar por situação"
-                className={itemClassName}
-              >
-                <Select
-                  value={visibilityFilter}
-                  onValueChange={(value) =>
-                    setVisibilityFilter(value ?? VISIBILITY_ACTIVE)
-                  }
+              <>
+                <FilterField
+                  id={`${idPrefix}-status`}
+                  label="Filtrar por status"
+                  className={itemClassName}
                 >
-                  <SelectTrigger
-                    id={`${idPrefix}-visibility`}
-                    className="w-full"
-                    aria-label="Filtrar concluídos"
+                  <Select
+                    value={statusFilter}
+                    onValueChange={(value) =>
+                      setStatusFilter((value ?? ALL_PROJECT_STATUSES) as ProjectStatusFilter)
+                    }
                   >
-                    <SelectValue>
-                      {(selectedValue) =>
-                        selectedValue === VISIBILITY_ALL ? 'Todos' : 'Ativos'
-                      }
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={VISIBILITY_ACTIVE}>Ativos</SelectItem>
-                    <SelectItem value={VISIBILITY_ALL}>Todos</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FilterField>
+                    <SelectTrigger
+                      id={`${idPrefix}-status`}
+                      className="w-full"
+                      aria-label="Filtrar por status"
+                    >
+                      <SelectValue>
+                        {(selectedValue) =>
+                          selectedValue === ALL_PROJECT_STATUSES
+                            ? 'Todos os status'
+                            : STATUS_LABELS[selectedValue as keyof typeof STATUS_LABELS]
+                        }
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ALL_PROJECT_STATUSES}>Todos os status</SelectItem>
+                      {CARD_STATUSES.map((status) => (
+                        <SelectItem key={status} value={status}>
+                          {STATUS_LABELS[status]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FilterField>
+
+                <FilterField
+                  id={`${idPrefix}-order`}
+                  label="Ordenar por"
+                  className={itemClassName}
+                >
+                  <Select
+                    value={projectOrder}
+                    onValueChange={(value) =>
+                      setProjectOrder((value ?? 'newest') as ProjectOrder)
+                    }
+                  >
+                    <SelectTrigger
+                      id={`${idPrefix}-order`}
+                      className="w-full"
+                      aria-label="Ordenar por"
+                    >
+                      <SelectValue>
+                        {(selectedValue) => PROJECT_ORDER_LABELS[selectedValue as ProjectOrder]}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(PROJECT_ORDER_LABELS).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FilterField>
+              </>
             )}
           </ResponsiveFilters>
         </div>
@@ -207,9 +253,7 @@ export function TeamProjectsSection({
         <div className="flex min-h-48 flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/30 p-8 text-center">
           <p className="text-sm font-medium">Nenhum projeto encontrado</p>
           <p className="max-w-sm text-sm text-muted-foreground">
-            {hasFinishedHidden
-              ? 'Há projetos concluídos ocultos. Selecione "Todos" para exibi-los.'
-              : 'Os projetos desta equipe aparecerão aqui.'}
+            Tente ajustar o filtro de status.
           </p>
         </div>
       ) : (
