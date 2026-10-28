@@ -41,7 +41,7 @@ export function parseShiftBounds(
   const startMinutes = parseTimeToMinutes(start);
   const endMinutes = parseTimeToMinutes(end);
 
-  if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
+  if (startMinutes === null || endMinutes === null || endMinutes === startMinutes) {
     return null;
   }
 
@@ -64,6 +64,11 @@ export function parseExternalTimeToMinutes(value: string): number | null {
 
   if (plainTime !== null) {
     return plainTime;
+  }
+
+  // Do not let Date reinterpret invalid plain times as permissive date strings.
+  if (TIME_REGEX.test(trimmed)) {
+    return null;
   }
 
   const instant = new Date(trimmed);
@@ -95,8 +100,8 @@ export function parseExternalShiftBounds(
     return null;
   }
 
-  // Shifts must close on the same day; overnight ranges are out of scope.
-  if (endMinutes <= startMinutes) {
+  // Equal bounds do not represent a registered shift (24-hour shifts are unsupported).
+  if (endMinutes === startMinutes) {
     return null;
   }
 

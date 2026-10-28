@@ -3,6 +3,7 @@ import {
   isWeekendDateKey,
   parseDayBounds,
   shiftDateKey,
+  zonedDateTimeToUtc,
 } from './app-timezone.js';
 
 export const DAILY_AVAILABILITY_SECONDS = 8 * 60 * 60 + 48 * 60;
@@ -94,12 +95,26 @@ function getPeriodDaySlices(
   return slices;
 }
 
+// Share wall-clock conversions across users with the same schedule, as the
+// dashboard does for day boundaries. Bound the cache for long-lived processes.
+const shiftBoundaryCache = new Map<string, number>();
+function shiftBoundaryMs(dateKey: string, minutes: number): number {
+  const key = dateKey + ':' + minutes;
+  const cached = shiftBoundaryCache.get(key);
+  if (cached !== undefined) return cached;
+  const instant = zonedDateTimeToUtc(dateKey, Math.floor(minutes / 60), minutes % 60).getTime();
+  if (shiftBoundaryCache.size >= 4096) shiftBoundaryCache.clear();
+  shiftBoundaryCache.set(key, instant);
+  return instant;
+}
+
 function buildDayCapacityWindow(
   slice: DaySlice,
   shift: ShiftPeriodInterval | null,
 ): { window: TimeInterval; dailyCapacitySeconds: number } | null {
+  const overnight = shift !== null && shift.endMinutes < shift.startMinutes;
   const rawShiftSeconds = shift
-    ? (shift.endMinutes - shift.startMinutes) * 60
+    ? (shift.endMinutes - shift.startMinutes + (overnight ? 1440 : 0)) * 60
     : DAILY_AVAILABILITY_SECONDS;
   const dailyCapacitySeconds = Math.min(
     DAILY_AVAILABILITY_SECONDS,
@@ -110,20 +125,18 @@ function buildDayCapacityWindow(
     return null;
   }
 
-  const { dayStart } = parseDayBounds(slice.dateKey);
-  const dayStartMs = dayStart.getTime();
   const windowStart = shift
-    ? dayStartMs + shift.startMinutes * 60_000
+    ? shiftBoundaryMs(slice.dateKey, shift.startMinutes)
     : slice.start;
   const windowEnd = shift
-    ? dayStartMs + shift.endMinutes * 60_000
+    ? shiftBoundaryMs(overnight ? shiftDateKey(slice.dateKey, 1) : slice.dateKey, shift.endMinutes)
     : slice.end;
 
   const window: TimeInterval = {
-    start: Math.max(slice.start, windowStart),
+    start: windowStart,
     // Use the full scheduled shift, not elapsed time. Capacity is the day's
     // shift (capped at 8h 48min), even if the turn has just started.
-    end: Math.min(slice.end, windowEnd),
+    end: windowEnd,
   };
 
   if (window.start >= window.end) {
@@ -137,6 +150,7 @@ function resolveShiftForDay(
   shifts: ShiftPeriodInterval[],
   dayStartMs: number,
   dayEndMs: number,
+  dateKey: string,
 ): ShiftPeriodInterval | null {
   let match: ShiftPeriodInterval | null = null;
 
@@ -149,6 +163,17 @@ function resolveShiftForDay(
       continue;
     }
 
+    // Once an overnight occurrence starts, later edits apply to the next
+    // occurrence; its continuation keeps the original schedule.
+    if (match && match.endMinutes < match.startMinutes) {
+      const start = shiftBoundaryMs(dateKey, match.startMinutes);
+      if (shift.startedAt.getTime() > start) continue;
+    }
+    if (shift.endMinutes < shift.startMinutes) {
+      const start = shiftBoundaryMs(dateKey, shift.startMinutes);
+      if (shift.startedAt.getTime() > start ||
+          (shift.endedAt !== null && shift.endedAt.getTime() <= start)) continue;
+    }
     match = shift;
   }
 
@@ -288,8 +313,8 @@ function sortShifts(shifts: ShiftPeriodInterval[]): ShiftPeriodInterval[] {
 
 /**
  * Per-day open availability intervals after absences, with the daily 8h 48min
- * cap applied first so a later stretch of the shift cannot refill hours that
- * an absence already removed. Saturdays and Sundays contribute no capacity.
+ * cap applied before report clipping or absences. Overnight occurrences belong
+ * to their starting weekday, including Friday continuations into Saturday.
  */
 export function getOpenAvailabilityIntervals(
   absences: AbsenceInterval[],
@@ -298,7 +323,13 @@ export function getOpenAvailabilityIntervals(
   now = new Date(),
   shifts: ShiftPeriodInterval[] = [],
 ): TimeInterval[] {
-  const slices = getPeriodDaySlices(periodStart, periodEndExclusive);
+  if (periodStart >= periodEndExclusive) return [];
+  const previousDate = shiftDateKey(formatDateKey(periodStart), -1);
+  const previousBounds = parseDayBounds(previousDate);
+  const slices = [
+    { dateKey: previousDate, start: previousBounds.dayStart.getTime(), end: previousBounds.dayEnd.getTime() },
+    ...getPeriodDaySlices(periodStart, periodEndExclusive),
+  ];
   const sortedAbsences = sortAbsences(absences);
   const sortedShifts = sortShifts(shifts);
   const nowMs = now.getTime();
@@ -314,7 +345,17 @@ export function getOpenAvailabilityIntervals(
       sortedShifts,
       dayStart.getTime(),
       dayEnd.getTime(),
+      slice.dateKey,
     );
+    // A newly registered overnight schedule cannot manufacture fallback
+    // capacity for an occurrence that started before it became effective.
+    if (!shift && sortedShifts.some((period) =>
+      period.endMinutes < period.startMinutes &&
+      period.startedAt.getTime() < dayEnd.getTime() &&
+      (period.endedAt === null || period.endedAt.getTime() > dayStart.getTime())
+    )) continue;
+    // The extra day only contributes an overnight continuation, never fallback.
+    if (slice.dateKey === previousDate && (!shift || shift.endMinutes >= shift.startMinutes)) continue;
     const capacity = buildDayCapacityWindow(slice, shift);
 
     if (!capacity) {
@@ -351,7 +392,12 @@ export function getOpenAvailabilityIntervals(
       capacity.dailyCapacitySeconds,
     );
 
-    for (const window of cappedWindows) {
+    for (const capped of cappedWindows) {
+      const window = {
+        start: Math.max(capped.start, periodStart.getTime()),
+        end: Math.min(capped.end, periodEndExclusive.getTime()),
+      };
+      if (window.start >= window.end) continue;
       open.push(
         ...subtractIntervals(
           window,
@@ -361,7 +407,15 @@ export function getOpenAvailabilityIntervals(
     }
   }
 
-  return open;
+  // Schedule changes can create overlapping windows. Capacity counts each
+  // instant once, including when the report contains multiple start days.
+  const merged: TimeInterval[] = [];
+  for (const interval of open.sort((a, b) => a.start - b.start)) {
+    const last = merged[merged.length - 1];
+    if (last && interval.start <= last.end) last.end = Math.max(last.end, interval.end);
+    else merged.push({ ...interval });
+  }
+  return merged;
 }
 
 export function calculateAvailabilitySeconds(

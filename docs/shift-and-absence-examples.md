@@ -1,8 +1,8 @@
 # Shift, absence, and occupation examples
 
-Examples from the product discussion. Times are wall-clock in `America/Sao_Paulo`. Dates like `10/07` are day/month (10 July). Occupation is `round(loggedSeconds / availabilitySeconds * 100)`, the same formula used on analytics and the admin dashboard. Saturdays and Sundays do not add available time — only Monday–Friday count as workdays.
+Examples from the product discussion. Times are wall-clock in `America/Sao_Paulo`. Dates like `10/07` are day/month (10 July). Occupation is `round(loggedSeconds / availabilitySeconds * 100)`, the same formula used on analytics and the admin dashboard. Only shifts starting Monday–Friday add available time. An overnight shift starting Friday continues into Saturday; shifts starting Saturday or Sunday are excluded.
 
-Available time is the elapsed portion of the person's shift, minus overlapping absences. Time that has not happened yet is not counted. Lunch punches (`firstExit`, `secondEntry`) are ignored; only `firstEntry` and `secondExit` define the shift.
+Available time is the full scheduled shift within the report range, capped at 8h 48min per shift occurrence, minus overlapping absences. Scheduled hours later in the report range are included, matching the existing calculation and tests. Lunch punches (`firstExit`, `secondEntry`) are ignored; only `firstEntry` and `secondExit` define the shift.
 
 These cases are covered by `npm test` in `backend`.
 
@@ -36,7 +36,7 @@ Each change (API sync or a leader edit) closes the previous `UserShiftPeriod` an
 
 - Available time includes the idle gap 06:15–09:15 (three hours), plus worked time 09:15–12:00.
 - Logged time is only 09:15–12:00.
-- Occupation is pulled down (about 48% at 12:00). Those three hours are lost if nobody marked an absence.
+- Occupation is pulled down (about 31% at 12:00 against the full 8h 48min shift). Those three hours are lost if nobody marked an absence.
 
 ---
 
@@ -52,7 +52,7 @@ Each change (API sync or a leader edit) closes the previous `UserShiftPeriod` an
 **Expected**
 
 - 06:15–09:14 is removed from available time.
-- Occupation stays close to 100% (99% at 12:00 because of the one-minute gap 09:14–09:15).
+- Occupation is about 47% at 12:00 (2h 45min logged / 5h 49min available); at shift end, working the remaining time brings it close to 100%.
 - The person had fewer available hours; the delay does not look like idle occupation.
 
 ---
@@ -130,3 +130,24 @@ A person in more than one team does **not** get 8h 48min of disponibilidade on e
 | Other team they belong to but never “own” | `0` |
 
 This applies on Analytics (`/analytics`). The admin Painel still counts each person once globally.
+
+
+## 8. Overnight shifts
+
+An end earlier than the start means the next day: **20:00–02:00** is six hours. Equal bounds are invalid; the HR API's 00:00–00:00 placeholder remains ignored. Manual edits and HR imports follow the same rule.
+
+For a shift starting Monday 06/07/2026 at 20:00:
+
+| Report window | Available time before absences |
+| --- | --- |
+| Monday | 4 hours (20:00–24:00) |
+| Tuesday 00:00–02:00 | 2 hours carried from Monday |
+| Monday 20:00–Tuesday 02:00 | 6 hours |
+
+A recurring Tuesday evening shift contributes its own hours to a full Tuesday report. Daily totals and combined-range totals count each instant once. Logged time stays on its actual calendar date, so occupation compares the same report window.
+
+The 8h 48min cap applies once to the continuous occurrence, before clipping to the report or subtracting absences. For 20:00–10:00, capacity ends at 04:48 the next day. An absence from 23:00–01:00 removes two hours and does not refill the cap with later hours.
+
+Friday 20:00–Saturday 02:00 contributes all six hours. Sunday 20:00–Monday 02:00 contributes none. An overnight occurrence uses the schedule effective at its start; an edit after it starts applies to later occurrences. Reports load the previous local start day's shift history to preserve carry-over, even across month/year boundaries. Absences and team switches apply at their actual timestamps.
+
+These examples are covered in shift parsing/schema and work-availability tests. No database migration or shift-history rewrite is needed.
