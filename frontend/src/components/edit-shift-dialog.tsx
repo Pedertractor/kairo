@@ -65,7 +65,7 @@ export function EditShiftDialog({
   const isValid =
     start !== '' &&
     end !== '' &&
-    start < end
+    start !== end
 
   const hasChanges =
     target !== null &&
@@ -150,6 +150,12 @@ export function EditShiftDialog({
             />
           </Field>
         </div>
+
+        {isValid && end < start && (
+          <p className="text-sm text-muted-foreground">
+            Saída no dia seguinte.
+          </p>
+        )}
 
         <DialogFooter>
           <Button

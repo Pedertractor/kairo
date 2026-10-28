@@ -1,3 +1,4 @@
+import { formatDateKey, parseDayBounds, shiftDateKey } from '../utils/app-timezone.js';
 import type {
   PrismaClient,
   ShiftSource,
@@ -42,11 +43,13 @@ export class ShiftRepository {
       return Promise.resolve([] as ShiftPeriodRecord[]);
     }
 
+    // Load the previous start day for overnight carry-over.
+    const historyStart = parseDayBounds(shiftDateKey(formatDateKey(rangeStart), -1)).dayStart;
     return this.prisma.userShiftPeriod.findMany({
       where: {
         userId: { in: userIds },
         startedAt: { lt: rangeEnd },
-        OR: [{ endedAt: null }, { endedAt: { gt: rangeStart } }],
+        OR: [{ endedAt: null }, { endedAt: { gt: historyStart } }],
       },
       orderBy: { startedAt: 'asc' },
     });

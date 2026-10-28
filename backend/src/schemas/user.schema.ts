@@ -1,3 +1,4 @@
+import { parseShiftBounds } from '../utils/shift.js';
 import { z } from 'zod';
 
 export const userIdParamSchema = z.object({
@@ -33,10 +34,6 @@ export const updateUserShiftSchema = z
     end: timeSchema,
   })
   .refine(
-    (data) => {
-      const [startH, startM] = data.start.split(':').map(Number);
-      const [endH, endM] = data.end.split(':').map(Number);
-      return endH * 60 + endM > startH * 60 + startM;
-    },
-    { message: 'O fim do turno deve ser posterior ao início' },
+    (data) => parseShiftBounds(data.start, data.end) !== null,
+    { message: 'Horário de turno inválido. Entrada e saída devem ser diferentes' },
   );

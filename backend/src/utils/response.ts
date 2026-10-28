@@ -111,7 +111,7 @@ export const MENSAGENS = {
   FUNCIONARIO_INATIVO: 'Este funcionário não está ativo na API externa',
   ERRO_API_EXTERNA: 'Não foi possível consultar a API externa',
   TURNO_INVALIDO:
-    'Horário de turno inválido. O fim deve ser posterior ao início',
+    'Horário de turno inválido. Entrada e saída devem ser diferentes',
   TURNO_ATUALIZADO_SUCESSO: 'Turno atualizado com sucesso',
   TURNOS_SINCRONIZADOS_SUCESSO: 'Turnos sincronizados com sucesso',
   DOCUMENTO_TIPO_INVALIDO:

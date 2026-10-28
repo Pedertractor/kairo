@@ -466,3 +466,104 @@ describe('weekends do not count toward availability', () => {
     assert.equal(withWeekendAbsence, DAILY_AVAILABILITY_SECONDS);
   });
 });
+
+
+describe('overnight availability and occupation', () => {
+  const date = (day: string, hour = 0, minute = 0) => zonedDateTimeToUtc(day, hour, minute);
+  const shifts: ShiftPeriodInterval[] = [{
+    startMinutes: 1200, endMinutes: 120,
+    startedAt: date('2026-06-01'), endedAt: null,
+  }];
+  const seconds = (start: Date, end: Date, periods = shifts, absences: Parameters<typeof calculateAvailabilitySeconds>[0] = []) =>
+    calculateAvailabilitySeconds(absences, start, end, end, periods);
+
+  it('splits Monday into 4h and Tuesday continuation into 2h without duplication', () => {
+    const mon = date('2026-07-06'), tue = date('2026-07-07'), end = date('2026-07-07', 2);
+    assert.equal(seconds(mon, tue), 4 * 3600);
+    assert.equal(seconds(tue, end), 2 * 3600);
+    assert.equal(seconds(mon, end), seconds(mon, tue) + seconds(tue, end));
+    assert.equal(occupationPercent(6 * 3600, seconds(mon, end)), 100);
+    assert.equal(seconds(date('2026-07-06', 23), date('2026-07-07', 1)), 2 * 3600);
+  });
+
+  it('caps once before clipping, and never refills capacity removed by an absence', () => {
+    const long = [{ ...shifts[0], endMinutes: 600 }];
+    const start = date('2026-07-06', 20), midnight = date('2026-07-07'), end = date('2026-07-07', 10);
+    const absences = [{ startedAt: date('2026-07-06', 23), endedAt: date('2026-07-07', 1) }];
+    assert.equal(seconds(start, end, long), DAILY_AVAILABILITY_SECONDS);
+    assert.equal(seconds(midnight, end, long), 4 * 3600 + 48 * 60);
+    assert.equal(seconds(start, end, long, absences), DAILY_AVAILABILITY_SECONDS - 2 * 3600);
+    assert.equal(seconds(start, midnight, long, absences) + seconds(midnight, end, long, absences),
+      seconds(start, end, long, absences));
+  });
+
+  it('subtracts overlapping absences across midnight only once, including open absences', () => {
+    const start = date('2026-07-06', 20), end = date('2026-07-07', 2);
+    const absences = [
+      { startedAt: date('2026-07-06', 23), endedAt: date('2026-07-07', 1) },
+      { startedAt: date('2026-07-07'), endedAt: date('2026-07-07', 1, 30) },
+    ];
+    assert.equal(seconds(start, end, shifts, absences), 3.5 * 3600);
+    assert.equal(seconds(start, end, shifts, [{ startedAt: date('2026-07-07', 1), endedAt: null }]), 5 * 3600);
+  });
+
+  it('includes Friday continuation on Saturday but excludes weekend start days', () => {
+    assert.equal(seconds(date('2026-07-10', 20), date('2026-07-11', 2)), 6 * 3600);
+    assert.equal(seconds(date('2026-07-11'), date('2026-07-12')), 2 * 3600);
+    assert.equal(seconds(date('2026-07-12'), date('2026-07-13')), 0);
+    assert.equal(seconds(date('2026-07-13'), date('2026-07-13', 2)), 0);
+  });
+
+  it('includes continuation across month and year boundaries', () => {
+    for (const [start, end] of [['2026-06-30', '2026-07-01'], ['2026-12-31', '2027-01-01']]) {
+      assert.equal(seconds(date(start, 20), date(end, 2)), 6 * 3600);
+      assert.equal(seconds(date(end), date(end, 2)), 2 * 3600);
+    }
+  });
+
+  it('preserves the original occurrence when the shift is edited after midnight', () => {
+    const changed = date('2026-07-07', 1);
+    const history = [
+      { ...shifts[0], endedAt: changed },
+      { startMinutes: 480, endMinutes: 720, startedAt: changed, endedAt: null },
+    ];
+    assert.equal(seconds(date('2026-07-06', 20), date('2026-07-07', 2), history), 6 * 3600);
+    assert.equal(seconds(date('2026-07-07'), date('2026-07-08'), history), 6 * 3600);
+  });
+
+  it('does not create an occurrence before an overnight schedule became effective', () => {
+    const history = [{ ...shifts[0], startedAt: date('2026-07-06', 21) }];
+    assert.equal(seconds(date('2026-07-06', 20), date('2026-07-07', 2), history), 0);
+  });
+
+  it('allocates capacity to the owning team on each side of midnight', () => {
+    const start = date('2026-07-06', 20), end = date('2026-07-07', 2);
+    const open = getOpenAvailabilityIntervals([], start, end, end, shifts);
+    const segments = buildTeamAllocationSegments(start, end, 'a', [
+      { startedAt: date('2026-07-07', 1), teamId: 'b' },
+    ]);
+    assert.equal(allocateAvailabilitySeconds(open, segments, ['a']), 5 * 3600);
+    assert.equal(allocateAvailabilitySeconds(open, segments, ['b']), 3600);
+    assert.equal(allocateAvailabilitySeconds(open, segments, ['a', 'b']), seconds(start, end));
+  });
+});
+
+
+describe('overnight transition boundaries', () => {
+  const date = (day: string, hour = 0) => zonedDateTimeToUtc(day, hour);
+  it('counts overlapping old/new occurrences only once', () => {
+    const changed = date('2026-07-07');
+    const periods = [
+      { startMinutes: 1200, endMinutes: 120, startedAt: date('2026-07-06'), endedAt: changed },
+      { startMinutes: 60, endMinutes: 240, startedAt: changed, endedAt: null },
+    ];
+    const start = date('2026-07-06', 20), end = date('2026-07-07', 4);
+    assert.equal(calculateAvailabilitySeconds([], start, end, end, periods), 8 * 3600);
+  });
+  it('ends exactly at midnight without adding next-day capacity', () => {
+    const periods = [{ startMinutes: 1200, endMinutes: 0, startedAt: date('2026-07-06'), endedAt: null }];
+    const start = date('2026-07-06', 20), midnight = date('2026-07-07'), end = date('2026-07-07', 2);
+    assert.equal(calculateAvailabilitySeconds([], start, midnight, end, periods), 4 * 3600);
+    assert.equal(calculateAvailabilitySeconds([], midnight, end, end, periods), 0);
+  });
+});
