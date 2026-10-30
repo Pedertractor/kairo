@@ -32,4 +32,13 @@ export async function documentRoutes(app: FastifyInstance) {
     { preHandler: [app.authenticate] },
     controller.delete,
   );
+  app.get('/teams/:teamId/projects/:projectId/documents',
+    { preHandler: [app.authenticate] }, controller.list);
+  app.post('/teams/:teamId/projects/:projectId/documents',
+    { preHandler: [app.authenticate] }, controller.upload);
+  app.get('/teams/:teamId/projects/:projectId/documents/:documentId/file',
+    { preHandler: [app.authenticate] }, controller.download);
+  app.delete('/teams/:teamId/projects/:projectId/documents/:documentId',
+    { preHandler: [app.authenticate] }, controller.delete);
+
 }

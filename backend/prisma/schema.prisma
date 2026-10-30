@@ -301,6 +301,9 @@ model TeamDocument {
   teamId String
   team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
+  projectId String?
+  project Card? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
   uploadedById String
   uploadedBy   User   @relation(fields: [uploadedById], references: [id])
 
@@ -313,6 +316,7 @@ model TeamDocument {
   updatedAt DateTime @updatedAt
 
   @@index([teamId])
+  @@index([teamId, projectId])
   @@map("team_documents")
 }
 
@@ -423,6 +427,7 @@ model Card {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  documents     TeamDocument[]
   tasks         Task[]
   timeEntries   TimeEntry[]
   favorites     UserFavorite[]

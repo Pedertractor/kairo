@@ -12,23 +12,31 @@ const uploadedBySelect = {
 export class DocumentRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  findByTeamId(teamId: string) {
+  findProject(id: string, teamId: string) {
+    return this.prisma.card.findFirst({
+      where: { id, teamId, type: 'PROJECT', deletedAt: null },
+      select: { id: true },
+    });
+  }
+
+  findByTeamId(teamId: string, projectId: string | null = null) {
     return this.prisma.teamDocument.findMany({
-      where: { teamId },
+      where: { teamId, projectId },
       include: uploadedBySelect,
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  findByIdAndTeamId(id: string, teamId: string) {
+  findByIdAndTeamId(id: string, teamId: string, projectId: string | null = null) {
     return this.prisma.teamDocument.findFirst({
-      where: { id, teamId },
+      where: { id, teamId, projectId },
       include: uploadedBySelect,
     });
   }
 
   create(data: {
     teamId: string;
+    projectId?: string | null;
     uploadedById: string;
     originalName: string;
     mimeType: string;

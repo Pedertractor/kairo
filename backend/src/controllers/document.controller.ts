@@ -41,6 +41,7 @@ export class DocumentController {
       const documents = await this.service.list(
         parsed.data.teamId,
         request.user.sub,
+        parsed.data.projectId,
       );
 
       return sendSuccess(reply, { documents });
@@ -86,6 +87,7 @@ export class DocumentController {
           mimetype: file.mimetype,
           buffer,
         },
+        parsed.data.projectId,
       );
 
       return sendSuccess(
@@ -111,6 +113,7 @@ export class DocumentController {
         parsed.data.teamId,
         parsed.data.documentId,
         request.user.sub,
+        parsed.data.projectId,
       );
 
       return reply
@@ -134,6 +137,7 @@ export class DocumentController {
         parsed.data.teamId,
         parsed.data.documentId,
         request.user.sub,
+        parsed.data.projectId,
       );
 
       return sendSuccess(

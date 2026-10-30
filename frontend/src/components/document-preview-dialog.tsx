@@ -13,7 +13,7 @@ import { apiBlob } from '@/lib/api-handler'
 import type { DocumentSummary } from '@/types/document'
 
 interface DocumentPreviewDialogProps {
-  teamId: string
+  documentsPath: string
   document: DocumentSummary | null
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -24,7 +24,7 @@ function isImageMimeType(mimeType: string) {
 }
 
 export function DocumentPreviewDialog({
-  teamId,
+  documentsPath,
   document,
   open,
   onOpenChange,
@@ -54,7 +54,7 @@ export function DocumentPreviewDialog({
 
       try {
         const blob = await apiBlob(
-          `/teams/${teamId}/documents/${document.id}/file`,
+          `${documentsPath}/${document.id}/file`,
           { toastOnError: false },
         )
 
@@ -89,7 +89,7 @@ export function DocumentPreviewDialog({
         URL.revokeObjectURL(objectUrl)
       }
     }
-  }, [document, open, teamId])
+  }, [document, open, documentsPath])
 
   const isImage = document ? isImageMimeType(document.mimeType) : false
 
@@ -132,10 +132,10 @@ export function DocumentPreviewDialog({
 }
 
 export function DocumentThumbnail({
-  teamId,
+  documentsPath,
   document,
 }: {
-  teamId: string
+  documentsPath: string
   document: DocumentSummary
 }) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null)
@@ -151,7 +151,7 @@ export function DocumentThumbnail({
     async function loadThumbnail() {
       try {
         const blob = await apiBlob(
-          `/teams/${teamId}/documents/${document.id}/file`,
+          `${documentsPath}/${document.id}/file`,
           { toastOnError: false },
         )
 
@@ -182,7 +182,7 @@ export function DocumentThumbnail({
         URL.revokeObjectURL(objectUrl)
       }
     }
-  }, [document.id, document.mimeType, teamId])
+  }, [document.id, document.mimeType, documentsPath])
 
   if (!isImageMimeType(document.mimeType)) {
     return (
