@@ -1,7 +1,11 @@
 import { useCanDeleteCard } from '@/hooks/use-can-delete-card'
 import { useEffect, useState } from 'react'
 import { Pencil } from 'lucide-react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+
+import { DocumentsSection } from '@/components/documents-section'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import type { TeamResponse } from '@/types/team'
 
 import { BackButton } from '@/components/back-button'
 import { DeleteProjectDialog } from '@/components/delete-project-dialog'
@@ -23,6 +27,9 @@ import type { ProjectResponse, ProjectSummary } from '@/types/card'
 
 export function ProjectDetailPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeTab = searchParams.get('tab') === 'documentos' ? 'documentos' : 'tarefas'
+  const [adminTeamId, setAdminTeamId] = useState<string | null>(null)
   const { projectId } = useParams<{ projectId: string }>()
   const [project, setProject] = useState<ProjectSummary | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -67,6 +74,20 @@ export function ProjectDetailPage() {
       cancelled = true
     }
   }, [projectId])
+
+  useEffect(() => {
+    let cancelled = false
+    setAdminTeamId(null)
+    if (project?.teamId) {
+      const teamId = project.teamId
+      void api<TeamResponse>(`/teams/${teamId}`, { toastOnError: false })
+        .then(({ team }) => {
+          if (!cancelled && team.role === 'ADMIN') setAdminTeamId(teamId)
+        })
+        .catch(() => {})
+    }
+    return () => { cancelled = true }
+  }, [project?.teamId])
 
   async function reloadProject() {
     if (!projectId) {
@@ -224,10 +245,42 @@ export function ProjectDetailPage() {
             onDeleted={() => navigate('/projetos', { replace: true })}
           />
 
-          <ProjectTasksSection
-            projectId={project.id}
-            teamId={project.teamId}
-          />
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => {
+              setSearchParams((current) => {
+                const next = new URLSearchParams(current)
+                next.set('tab', value)
+                return next
+              }, { replace: true })
+            }}
+            className="min-w-0 flex-1"
+          >
+            <TabsList className="border-sidebar-border">
+              <TabsTrigger
+                value="tarefas"
+                className="data-[state=active]:border-sidebar-primary data-[state=active]:text-sidebar-primary"
+              >
+                Tarefas
+              </TabsTrigger>
+              <TabsTrigger
+                value="documentos"
+                className="data-[state=active]:border-sidebar-primary data-[state=active]:text-sidebar-primary"
+              >
+                Documentos
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="tarefas">
+              <ProjectTasksSection projectId={project.id} teamId={project.teamId} />
+            </TabsContent>
+            <TabsContent value="documentos">
+              <DocumentsSection
+                key={project.id}
+                documentsPath={`/teams/${project.teamId}/projects/${project.id}/documents`}
+                canDelete={adminTeamId === project.teamId}
+              />
+            </TabsContent>
+          </Tabs>
         </>
       ) : (
         <p className="text-sm text-muted-foreground">Projeto não encontrado.</p>

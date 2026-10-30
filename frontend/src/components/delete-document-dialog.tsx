@@ -13,7 +13,7 @@ import { api } from '@/lib/api-handler'
 import type { DocumentSummary } from '@/types/document'
 
 interface DeleteDocumentDialogProps {
-  teamId: string
+  documentsPath: string
   document: DocumentSummary | null
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -21,7 +21,7 @@ interface DeleteDocumentDialogProps {
 }
 
 export function DeleteDocumentDialog({
-  teamId,
+  documentsPath,
   document,
   open,
   onOpenChange,
@@ -37,7 +37,7 @@ export function DeleteDocumentDialog({
     setIsSubmitting(true)
 
     try {
-      await api(`/teams/${teamId}/documents/${document.id}`, {
+      await api(`${documentsPath}/${document.id}`, {
         method: 'DELETE',
       })
       onOpenChange(false)

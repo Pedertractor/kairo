@@ -10,6 +10,7 @@
     "test": "node --experimental-strip-types --test tests/production-idle.test.ts tests/team-project-filters.test.ts",
     "test:browser": "node tests/production.browser.cjs",
     "test:team-projects:browser": "node tests/team-projects.browser.cjs",
+    "test:project-documents:browser": "node tests/project-documents.browser.cjs",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix"
   },

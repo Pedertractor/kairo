@@ -46,19 +46,34 @@ export class DocumentService {
     private readonly teamRepository: TeamRepository,
   ) {}
 
-  private async assertTeamMember(teamId: string, userId: string) {
+  private async assertTeamMember(
+    teamId: string,
+    userId: string,
+    projectId: string | null = null,
+  ) {
     const membership = await this.teamRepository.findMembershipByTeamAndUser(
       teamId,
       userId,
     );
 
-    return assertTeamMembership(membership);
+    const access = assertTeamMembership(membership);
+    if (
+      projectId !== null &&
+      !(await this.documentRepository.findProject(projectId, teamId))
+    ) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+    return access;
   }
 
-  async list(teamId: string, userId: string): Promise<DocumentSummary[]> {
-    await this.assertTeamMember(teamId, userId);
+  async list(
+    teamId: string,
+    userId: string,
+    projectId: string | null = null,
+  ): Promise<DocumentSummary[]> {
+    await this.assertTeamMember(teamId, userId, projectId);
 
-    const documents = await this.documentRepository.findByTeamId(teamId);
+    const documents = await this.documentRepository.findByTeamId(teamId, projectId);
     return documents.map(toDocumentSummary);
   }
 
@@ -70,8 +85,9 @@ export class DocumentService {
       mimetype: string;
       buffer: Buffer;
     },
+    projectId: string | null = null,
   ): Promise<DocumentSummary> {
-    await this.assertTeamMember(teamId, userId);
+    await this.assertTeamMember(teamId, userId, projectId);
 
     const mimeType = resolveDocumentMimeType(file.mimetype, file.filename);
 
@@ -92,6 +108,7 @@ export class DocumentService {
 
     const created = await this.documentRepository.create({
       teamId,
+      projectId,
       uploadedById: userId,
       originalName,
       mimeType,
@@ -99,7 +116,10 @@ export class DocumentService {
       storageKey: pendingKey,
     });
 
-    const storageKey = `teams/${teamId}/${created.id}${extensionForMimeType(mimeType)}`;
+    const directory = projectId === null
+      ? `teams/${teamId}`
+      : `teams/${teamId}/projects/${projectId}`;
+    const storageKey = `${directory}/${created.id}${extensionForMimeType(mimeType)}`;
 
     try {
       await writeStoredFile(storageKey, file.buffer);
@@ -119,12 +139,14 @@ export class DocumentService {
     teamId: string,
     documentId: string,
     userId: string,
+    projectId: string | null = null,
   ): Promise<DocumentFile> {
-    await this.assertTeamMember(teamId, userId);
+    await this.assertTeamMember(teamId, userId, projectId);
 
     const document = await this.documentRepository.findByIdAndTeamId(
       documentId,
       teamId,
+      projectId,
     );
 
     if (!document) {
@@ -142,8 +164,9 @@ export class DocumentService {
     teamId: string,
     documentId: string,
     userId: string,
+    projectId: string | null = null,
   ): Promise<void> {
-    const membership = await this.assertTeamMember(teamId, userId);
+    const membership = await this.assertTeamMember(teamId, userId, projectId);
 
     if (membership.role !== TeamRole.ADMIN) {
       throw new AppError(403, MENSAGENS.PROIBIDO);
@@ -152,6 +175,7 @@ export class DocumentService {
     const document = await this.documentRepository.findByIdAndTeamId(
       documentId,
       teamId,
+      projectId,
     );
 
     if (!document) {
