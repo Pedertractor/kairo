@@ -65,8 +65,8 @@ function WorkItemCard({
           <>
             {overview.total === 1 ? itemLabel : itemLabelPlural}{' '}
             {overview.total === 1
-              ? `${createdLabel} no período`
-              : `${createdLabelPlural} no período`}
+              ? `${createdLabel} ou ${finishedLabel} no período`
+              : `${createdLabelPlural} ou ${finishedLabelPlural} no período`}
             {' · '}
             {overview.finishedInPeriod}{' '}
             {overview.finishedInPeriod === 1
@@ -161,7 +161,7 @@ export function AnalyticsActivityOverview({
     return (
       <div className='rounded-2xl border border-dashed p-10 text-center text-sm text-muted-foreground'>
         {scope === 'period'
-          ? 'Nenhuma atividade, projeto ou tarefa criada no período.'
+          ? 'Nenhuma atividade, projeto ou tarefa criada ou concluída no período.'
           : 'Nenhuma atividade, projeto ou tarefa cadastrada.'}
       </div>
     )
@@ -245,7 +245,7 @@ export function AnalyticsActivityOverview({
         <h3 className='mb-1 text-sm font-semibold'>Atividades por etiqueta</h3>
         <p className='mb-4 text-xs text-muted-foreground'>
           {scope === 'period'
-            ? 'Atividades criadas no período, agrupadas por etiqueta.'
+            ? 'Atividades criadas ou concluídas no período, agrupadas por etiqueta.'
             : 'Todas as atividades já criadas, agrupadas por etiqueta.'}
         </p>
         <UsageBarList

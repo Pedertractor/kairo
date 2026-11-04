@@ -260,7 +260,12 @@ export class AnalyticsRepository {
     });
   }
 
-  findCardsForStatusOverview(teamIds: string[], employeeId?: string) {
+  findCardsForStatusOverview(
+    teamIds: string[],
+    periodStart: Date,
+    periodEnd: Date,
+    employeeId?: string,
+  ) {
     return this.prisma.card.findMany({
       where: {
         teamId: { in: teamIds },
@@ -273,6 +278,14 @@ export class AnalyticsRepository {
         status: true,
         createdAt: true,
         updatedAt: true,
+        historyEvents: {
+          where: {
+            type: 'STATUS_CHANGED',
+            createdAt: { gte: periodStart, lt: periodEnd },
+          },
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          select: { toStatus: true },
+        },
         tagId: true,
         tag: { select: { name: true, color: true } },
       },
@@ -312,9 +325,14 @@ export class AnalyticsRepository {
       where: {
         teamId: { in: teamIds },
         type: 'ACTIVITY',
-        status: 'DONE',
         deletedAt: null,
-        updatedAt: { gte: periodStart, lt: periodEnd },
+        historyEvents: {
+          some: {
+            type: 'STATUS_CHANGED',
+            toStatus: 'DONE',
+            createdAt: { gte: periodStart, lt: periodEnd },
+          },
+        },
         assignedToId: employeeId ? employeeId : { not: null },
       },
       select: {

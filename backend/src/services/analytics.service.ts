@@ -231,6 +231,8 @@ export class AnalyticsService {
       ),
       this.repository.findCardsForStatusOverview(
         scopedTeamIds,
+        periodStart,
+        periodEnd,
         options.employeeId,
       ),
       this.repository.findTasksForStatusOverview(
@@ -565,7 +567,7 @@ export class AnalyticsService {
     const isInPeriod = (date: Date) =>
       date >= periodStart && date < periodEnd;
 
-    const isActivityFinishedInPeriod = (card: {
+    const isProjectFinishedInPeriod = (card: {
       status: CardStatus;
       updatedAt: Date;
     }) => card.status === 'DONE' && isInPeriod(card.updatedAt);
@@ -622,9 +624,9 @@ export class AnalyticsService {
 
     for (const card of overviewCards) {
       const createdInPeriod = isInPeriod(card.createdAt);
-      const finishedInPeriod = isActivityFinishedInPeriod(card);
 
       if (card.type === 'PROJECT') {
+        const finishedInPeriod = isProjectFinishedInPeriod(card);
         projectTotal += 1;
         allTimeProjectStatusCounts.set(
           card.status,
@@ -648,6 +650,10 @@ export class AnalyticsService {
         continue;
       }
 
+      // The repository limits these events to the selected period.
+      const finishedInPeriod = card.historyEvents.some(
+        (event) => event.toStatus === 'DONE',
+      );
       activityTotal += 1;
       allTimeActivityStatusCounts.set(
         card.status,
@@ -670,9 +676,15 @@ export class AnalyticsService {
           activitiesCreatedInPeriod += 1;
           allTimeTagBucket.createdInPeriod += 1;
         }
+        // A completion remains in its original period after edits or reopening.
+        // Otherwise, use the last status recorded in the period for newly
+        // created activities, which start at TODO.
+        const periodStatus = finishedInPeriod
+          ? 'DONE'
+          : (card.historyEvents[0]?.toStatus ?? 'TODO');
         periodActivityStatusCounts.set(
-          card.status,
-          (periodActivityStatusCounts.get(card.status) ?? 0) + 1,
+          periodStatus,
+          (periodActivityStatusCounts.get(periodStatus) ?? 0) + 1,
         );
 
         const periodTagBucket = ensureTagBucket(periodTagBuckets, card);
@@ -681,8 +693,8 @@ export class AnalyticsService {
           periodTagBucket.createdInPeriod += 1;
         }
         periodTagBucket.statusCounts.set(
-          card.status,
-          (periodTagBucket.statusCounts.get(card.status) ?? 0) + 1,
+          periodStatus,
+          (periodTagBucket.statusCounts.get(periodStatus) ?? 0) + 1,
         );
       }
     }
