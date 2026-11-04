@@ -79,6 +79,8 @@ export async function integrationRoutes(app: FastifyInstance) {
 
   const auth = { preHandler: [app.authenticateApiKey] };
 
+  app.post('/integrations/v1/teams/:teamId/activities/:activityId/cancel', auth, controller.cancelActivity);
+  app.post('/integrations/v1/teams/:teamId/projects/:projectId/cancel', auth, controller.cancelProject);
   app.get('/integrations/v1/me', auth, controller.me);
   app.get(
     '/integrations/v1/occupation/:month',

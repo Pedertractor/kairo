@@ -25,6 +25,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useActiveTimer } from '@/hooks/use-active-timer';
 import { api } from '@/lib/api-handler';
 import { subscribeTaskDataInvalidation } from '@/lib/task-data-invalidation';
+import { useVisibleRefresh } from '@/hooks/use-visible-refresh';
 import {
   canFinishTaskStatus,
   isFinishedTaskStatus,
@@ -112,6 +113,8 @@ export function ProjectTasksSection({
   useEffect(() => {
     void loadTasks();
   }, [loadTasks]);
+
+  useVisibleRefresh(() => loadTasks({ silent: true }));
 
   useEffect(() => {
     let cancelled = false;

@@ -1,5 +1,6 @@
 import { useAuth } from '@/hooks/use-auth'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useVisibleRefresh } from '@/hooks/use-visible-refresh'
 import { Copy } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
@@ -101,6 +102,8 @@ export function AtividadesPage() {
   useEffect(() => {
     void loadActivities()
   }, [loadActivities])
+
+  useVisibleRefresh(() => loadActivities({ silent: true }))
 
   useEffect(
     () =>

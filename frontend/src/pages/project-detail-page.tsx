@@ -1,5 +1,6 @@
 import { useCanDeleteCard } from '@/hooks/use-can-delete-card'
 import { useEffect, useState } from 'react'
+import { useVisibleRefresh } from '@/hooks/use-visible-refresh'
 import { Pencil } from 'lucide-react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
@@ -94,9 +95,13 @@ export function ProjectDetailPage() {
       return
     }
 
-    const data = await api<ProjectResponse>(`/projects/${projectId}`)
+    const data = await api<ProjectResponse>(`/projects/${projectId}`, { toastOnError: false })
     setProject(data.project)
   }
+
+  useVisibleRefresh(reloadProject, Boolean(projectId)
+    && !isStatusDialogOpen && !isEditDialogOpen && !isEditHoursDialogOpen
+    && !isFinishDialogOpen && !isDeleteDialogOpen)
 
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-6">

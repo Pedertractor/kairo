@@ -1,5 +1,6 @@
 import { useAuth } from '@/hooks/use-auth'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useVisibleRefresh } from '@/hooks/use-visible-refresh'
 import { Search } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
@@ -70,13 +71,13 @@ export function ProjetosPage() {
   const [teams, setTeams] = useState<TeamSummary[]>([])
   const [canCreateProject, setCanCreateProject] = useState(false)
 
-  const loadProjects = useCallback(async () => {
-    setIsLoading(true)
+  const loadProjects = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) setIsLoading(true)
 
     try {
       const [projectsData, teamsData] = await Promise.all([
-        api<ProjectsListResponse>('/projects'),
-        api<TeamsListResponse>('/teams'),
+        api<ProjectsListResponse>('/projects', { toastOnError: !options?.silent }),
+        api<TeamsListResponse>('/teams', { toastOnError: !options?.silent }),
       ])
       setProjects(projectsData.projects)
       setTeams(
@@ -84,13 +85,15 @@ export function ProjetosPage() {
       )
       setCanCreateProject(teamsData.teams.some(canCreateTeamProjects))
     } finally {
-      setIsLoading(false)
+      if (!options?.silent) setIsLoading(false)
     }
   }, [])
 
   useEffect(() => {
     void loadProjects()
   }, [loadProjects])
+
+  useVisibleRefresh(() => loadProjects({ silent: true }))
 
   const filteredProjects = useMemo(() => {
     const query = nameFilter.trim().toLowerCase()

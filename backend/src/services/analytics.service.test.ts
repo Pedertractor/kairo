@@ -120,7 +120,10 @@ describe('Analytics completion history queries', () => {
     const { repository, queries } = setupRepository();
     await repository.findCardsForStatusOverview(['team-1'], periodStart, periodEnd, 'member-1');
     assert.deepEqual(queries[0].select.historyEvents, {
-      where: { type: 'STATUS_CHANGED', createdAt: { gte: periodStart, lt: periodEnd } },
+      where: { OR: [
+        { type: 'STATUS_CHANGED', createdAt: { gte: periodStart, lt: periodEnd } },
+        { type: 'COMPLETION_ESTIMATED', toStatus: 'DONE', estimatedCompletedAt: { gte: periodStart, lt: periodEnd } },
+      ] },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       select: { toStatus: true },
     });
@@ -132,7 +135,10 @@ describe('Analytics completion history queries', () => {
     await repository.findFinishedActivitiesForPeriod(['team-1'], periodStart, periodEnd, 'member-1');
     assert.deepEqual(queries[0].where, {
       teamId: { in: ['team-1'] }, type: 'ACTIVITY', deletedAt: null,
-      historyEvents: { some: { type: 'STATUS_CHANGED', toStatus: 'DONE', createdAt: { gte: periodStart, lt: periodEnd } } },
+      historyEvents: { some: { OR: [
+        { type: 'STATUS_CHANGED', toStatus: 'DONE', createdAt: { gte: periodStart, lt: periodEnd } },
+        { type: 'COMPLETION_ESTIMATED', toStatus: 'DONE', estimatedCompletedAt: { gte: periodStart, lt: periodEnd } },
+      ] } },
       assignedToId: 'member-1',
     });
     assert.equal(queries[0].where.status, undefined);

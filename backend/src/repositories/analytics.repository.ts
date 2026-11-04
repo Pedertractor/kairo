@@ -1,4 +1,25 @@
-import type { PrismaClient } from '../generated/client.js';
+import type { Prisma, PrismaClient } from '../generated/client.js';
+
+export function activityHistoryInPeriod(
+  periodStart: Date,
+  periodEnd: Date,
+  onlyCompletions = false,
+): Prisma.CardHistoryEventWhereInput {
+  return {
+    OR: [
+      {
+        type: 'STATUS_CHANGED',
+        ...(onlyCompletions ? { toStatus: 'DONE' as const } : {}),
+        createdAt: { gte: periodStart, lt: periodEnd },
+      },
+      {
+        type: 'COMPLETION_ESTIMATED',
+        toStatus: 'DONE',
+        estimatedCompletedAt: { gte: periodStart, lt: periodEnd },
+      },
+    ],
+  };
+}
 
 export class AnalyticsRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -279,10 +300,7 @@ export class AnalyticsRepository {
         createdAt: true,
         updatedAt: true,
         historyEvents: {
-          where: {
-            type: 'STATUS_CHANGED',
-            createdAt: { gte: periodStart, lt: periodEnd },
-          },
+          where: activityHistoryInPeriod(periodStart, periodEnd),
           orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
           select: { toStatus: true },
         },
@@ -327,11 +345,7 @@ export class AnalyticsRepository {
         type: 'ACTIVITY',
         deletedAt: null,
         historyEvents: {
-          some: {
-            type: 'STATUS_CHANGED',
-            toStatus: 'DONE',
-            createdAt: { gte: periodStart, lt: periodEnd },
-          },
+          some: activityHistoryInPeriod(periodStart, periodEnd, true),
         },
         assignedToId: employeeId ? employeeId : { not: null },
       },

@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useActiveTimer } from '@/hooks/use-active-timer';
 import { subscribeActivityDataInvalidation } from '@/lib/activity-data-invalidation';
+import { useVisibleRefresh } from '@/hooks/use-visible-refresh';
 import { api } from '@/lib/api-handler';
 import { CardTimeBudget } from '@/components/card-time-budget';
 import { CardCreatedAt } from '@/components/card-created-at';
@@ -108,6 +109,8 @@ export function TeamActivitiesSection({
   useEffect(() => {
     void loadActivities();
   }, [loadActivities]);
+
+  useVisibleRefresh(() => loadActivities({ silent: true }));
 
   useEffect(
     () =>

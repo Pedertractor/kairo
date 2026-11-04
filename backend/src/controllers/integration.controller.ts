@@ -138,6 +138,22 @@ export class IntegrationController {
     }
   };
 
+  cancelActivity = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { teamId, activityId } = activityParamSchema.parse(request.params);
+      const activity = await this.cardService.cancelIntegrationActivity(teamId, activityId, request.user.sub);
+      return sendSuccess(reply, { activity });
+    } catch (error) { return handleControllerError(error, reply); }
+  };
+
+  cancelProject = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { teamId, projectId } = projectParamSchema.parse(request.params);
+      const project = await this.cardService.cancelIntegrationProject(teamId, projectId, request.user.sub);
+      return sendSuccess(reply, { project });
+    } catch (error) { return handleControllerError(error, reply); }
+  };
+
   deleteActivity = async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const parsed = activityParamSchema.safeParse(request.params);

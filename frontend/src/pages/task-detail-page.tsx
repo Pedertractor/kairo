@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useVisibleRefresh } from '@/hooks/use-visible-refresh'
 import { Pencil } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 
@@ -50,9 +51,14 @@ export function TaskDetailPage() {
 
     const data = await api<TaskDetailResponse>(
       `/projects/${projectId}/tasks/${taskId}`,
+      { toastOnError: false },
     )
     setTask(data.task)
   }, [projectId, taskId])
+
+  useVisibleRefresh(loadTask, Boolean(projectId && taskId)
+    && !isEditTitleDialogOpen && !isEditTagDialogOpen && !isEditHoursDialogOpen
+    && !isFinishDialogOpen && !isDeleteDialogOpen)
 
   useEffect(() => {
     if (!projectId || !taskId) {

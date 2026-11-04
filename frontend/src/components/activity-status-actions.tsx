@@ -43,7 +43,7 @@ export function ActivityStatusActions({
       <StartActivityTimerButton
         teamId={teamId}
         activityId={activity.id}
-        canStart={canStartTimer}
+        canStart={canStartTimer && !['DONE', 'CANCELED'].includes(activity.status)}
         className="text-muted-foreground hover:text-sidebar-primary"
       />
       {canChangeStatus ? (

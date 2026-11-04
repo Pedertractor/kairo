@@ -92,6 +92,7 @@ function toActivitySummary(
     description: card.description,
     status: card.status,
     completedAt: card.completedAt?.toISOString() ?? null,
+    completionDateEstimated: card.completionDateEstimated ?? false,
     complexityLevel: card.complexityLevel,
     estimatedHours: card.estimatedHours?.toString() ?? null,
     loggedSeconds,
@@ -551,13 +552,14 @@ export class CardService {
       cardId: event.cardId,
       type: event.type,
       changedById: event.changedById,
-      changedByName: event.changedBy.name,
+      changedByName: event.changedBy?.name ?? null,
       fromAssignedToId: event.fromAssignedToId,
       fromAssignedToName: event.fromAssignedToName,
       toAssignedToId: event.toAssignedToId,
       toAssignedToName: event.toAssignedToName,
       fromStatus: event.fromStatus,
       toStatus: event.toStatus,
+      estimatedCompletedAt: event.estimatedCompletedAt?.toISOString() ?? null,
       createdAt: event.createdAt.toISOString(),
     }));
   }
@@ -737,6 +739,33 @@ export class CardService {
       loggedByProject.get(projectId) ?? 0,
       card.team.name,
     );
+  }
+
+  async cancelIntegrationActivity(teamId: string, activityId: string, userId: string) {
+    const membership = await this.assertTeamMember(teamId, userId);
+    const card = await this.cardRepository.findActivityByIdIncludingDeleted(activityId);
+    if (!card || card.teamId !== teamId || card.type !== 'ACTIVITY') throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    if (card.deletedAt || ['DONE', 'CANCELED'].includes(card.status)) return toActivitySummary(card);
+    assertCanChangeActivityStatus(membership.role, membership.team.membersCanEditActivities, card.assignedToId, userId);
+    const endedAt = new Date();
+    for (const entry of await this.timeEntryRepository.findActiveManyByCardId(activityId)) {
+      await this.timeEntryRepository.stopEntry(entry, endedAt);
+    }
+    return this.updateActivityStatus(teamId, activityId, userId, 'CANCELED');
+  }
+
+  async cancelIntegrationProject(teamId: string, projectId: string, userId: string) {
+    await this.assertTeamMember(teamId, userId);
+    const card = await this.cardRepository.findProjectByIdIncludingDeleted(projectId);
+    if (!card || card.teamId !== teamId || card.type !== 'PROJECT') throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    const logged = await this.timeEntryRepository.getLoggedSecondsByProjectIds([projectId]);
+    if (card.deletedAt || ['DONE', 'CANCELED'].includes(card.status)) return toProjectSummary(card, logged.get(projectId) ?? 0, card.team.name);
+    const endedAt = new Date();
+    for (const entry of await this.timeEntryRepository.findActiveManyByProjectId(projectId)) {
+      await this.timeEntryRepository.stopEntry(entry, endedAt);
+    }
+    await this.cardRepository.pauseInProgressProjectTasks(projectId);
+    return this.updateProjectStatus(teamId, projectId, userId, 'CANCELED');
   }
 
   async deleteActivity(

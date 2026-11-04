@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useVisibleRefresh } from '@/hooks/use-visible-refresh';
 import { Pencil } from 'lucide-react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { BackButton } from '@/components/back-button';
@@ -82,6 +83,11 @@ export function TeamDetailPage() {
   const [activeTab, setActiveTab] = useState<TeamTab>(
     tabFromUrl ?? 'atividades',
   );
+
+  useVisibleRefresh(async () => {
+    const data = await api<ProjectsListResponse>(`/teams/${teamId}/projects`, { toastOnError: false });
+    setProjects(data.projects);
+  }, Boolean(teamId) && activeTab === 'projetos');
 
   useEffect(() => {
     if (!team) {

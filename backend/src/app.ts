@@ -44,6 +44,12 @@ export async function buildApp() {
       return sendError(reply, 400, MENSAGENS.DOCUMENTO_TAMANHO_INVALIDO);
     }
 
+    if (error instanceof Error && 'statusCode' in error && 'code' in error
+      && typeof error.statusCode === 'number' && error.statusCode >= 400 && error.statusCode < 500
+      && typeof error.code === 'string' && error.code.startsWith('FST_')) {
+      return sendError(reply, error.statusCode, MENSAGENS.REQUISICAO_INVALIDA);
+    }
+
     app.log.error(error);
     return sendError(reply, 500, MENSAGENS.ERRO_INTERNO);
   });
