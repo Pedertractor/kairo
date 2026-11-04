@@ -76,6 +76,7 @@ enum ApiKeyScope {
 
 enum CardHistoryEventType {
   ASSIGNEE_CHANGED
+  STATUS_CHANGED
 }
 
 model User {
@@ -413,6 +414,7 @@ model Card {
 
   type   CardType
   status CardStatus @default(TODO)
+  completedAt DateTime?
 
   complexityLevel ComplexityLevel?
 
@@ -461,6 +463,9 @@ model CardHistoryEvent {
   fromAssignedToName String?
   toAssignedToId     String?
   toAssignedToName   String?
+
+  fromStatus CardStatus?
+  toStatus   CardStatus?
 
   createdAt DateTime @default(now())
 

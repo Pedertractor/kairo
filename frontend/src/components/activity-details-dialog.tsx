@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import dayjs from 'dayjs'
-import { Loader2 } from 'lucide-react'
+import { History, Loader2 } from 'lucide-react'
 
 import { ActivityTagBadge } from '@/components/activity-tag-badge'
+import { ActivityHistorySection } from '@/components/activity-history-section'
 import { CardTimeBudget } from '@/components/card-time-budget'
 import { ComplexityLevelMeter } from '@/components/complexity-level-meter'
 import { Button } from '@/components/ui/button'
@@ -21,6 +22,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from '@/components/ui/dialog'
 import {
   Field,
@@ -686,10 +688,32 @@ export function ActivityDetailsDialog({
                     Criada em{' '}
                     {dayjs(activity.createdAt).format('DD/MM/YYYY [às] HH:mm')}
                   </p>
+                  {activity.status === 'DONE' ? (
+                    <p>
+                      {activity.completedAt
+                        ? `Concluída em ${dayjs(activity.completedAt).format('DD-MM-YYYY [às] HH:mm')}`
+                        : 'Data de conclusão não registrada.'}
+                    </p>
+                  ) : null}
                   <p>
                     Última atualização em{' '}
                     {dayjs(activity.updatedAt).format('DD/MM/YYYY [às] HH:mm')}
                   </p>
+                  <Dialog>
+                    <DialogTrigger
+                      render={<Button type="button" variant="outline" size="sm" className="mt-2 self-start" />}
+                    >
+                      <History />
+                      Ver histórico
+                    </DialogTrigger>
+                    <DialogContent className="max-h-[85vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Histórico da atividade</DialogTitle>
+                        <DialogDescription>{activity.title}</DialogDescription>
+                      </DialogHeader>
+                      <ActivityHistorySection teamId={teamId} activityId={activity.id} />
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </>
             ) : null}

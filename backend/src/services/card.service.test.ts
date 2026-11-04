@@ -84,3 +84,56 @@ it('accepts false as a standalone team setting update', () => {
   });
   assert.equal(updateTeamSchema.safeParse({ membersCanDeleteCards: 'false' }).success, false);
 });
+
+describe('Activity status history', () => {
+  function setup(options: { status?: string; role?: string; activeCount?: number } = {}) {
+    const mutations: unknown[][] = [];
+    const card = {
+      id: 'card-1', teamId: 'team-1', type: 'ACTIVITY', title: 'Activity',
+      status: options.status ?? 'TODO', assignedToId: null, estimatedHours: null,
+      createdAt: new Date(), updatedAt: new Date(),
+    };
+    const service = new CardService(...[
+      {
+        findActivityById: async () => card,
+        updateActivity: async (...args: unknown[]) => {
+          mutations.push(args);
+          return { ...card, ...args[1] as object };
+        },
+      },
+      { findMembershipByTeamAndUser: async () => ({ role: options.role ?? 'ADMIN', team: { active: true, membersCanEditActivities: false } }) },
+      { countActiveByCardId: async () => options.activeCount ?? 0, getLoggedSecondsByCardIds: async () => new Map() },
+      { findActivityFavorite: async () => null },
+      {}, {}, {}, {}, {},
+    ] as unknown as ConstructorParameters<typeof CardService>);
+    return { service, mutations };
+  }
+
+  for (const status of ['IN_PROGRESS', 'PAUSED', 'DONE', 'CANCELED'] as const) {
+    it(`includes the actor and transition when changing to ${status}`, async () => {
+      const { service, mutations } = setup();
+      await service.updateActivityStatus('team-1', 'card-1', 'user-1', status);
+      assert.deepEqual(mutations, [['card-1', { status }, { changedById: 'user-1', fromStatus: 'TODO', toStatus: status }]]);
+    });
+  }
+
+  it('does not log a status that has not changed', async () => {
+    const { service, mutations } = setup();
+    await service.updateActivityStatus('team-1', 'card-1', 'user-1', 'TODO');
+    assert.equal(mutations[0][2], undefined);
+  });
+
+  it('does not log an unrelated activity edit', async () => {
+    const { service, mutations } = setup();
+    await service.updateActivity('team-1', 'card-1', 'user-1', { title: 'Renamed' });
+    assert.equal(mutations[0][2], undefined);
+  });
+
+  for (const options of [{ role: 'MEMBER' }, { activeCount: 1 }]) {
+    it(`does not write status or history for a rejected change ${JSON.stringify(options)}`, async () => {
+      const { service, mutations } = setup(options);
+      await assert.rejects(service.updateActivityStatus('team-1', 'card-1', 'user-1', 'DONE'), AppError);
+      assert.deepEqual(mutations, []);
+    });
+  }
+});

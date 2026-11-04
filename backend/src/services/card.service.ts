@@ -91,6 +91,7 @@ function toActivitySummary(
     title: card.title,
     description: card.description,
     status: card.status,
+    completedAt: card.completedAt?.toISOString() ?? null,
     complexityLevel: card.complexityLevel,
     estimatedHours: card.estimatedHours?.toString() ?? null,
     loggedSeconds,
@@ -499,7 +500,13 @@ export class CardService {
       }
     }
 
-    const updated = await this.cardRepository.updateActivity(activityId, data);
+    const updated = await this.cardRepository.updateActivity(
+      activityId,
+      data,
+      data.status !== undefined && data.status !== card.status
+        ? { changedById: userId, fromStatus: card.status, toStatus: data.status }
+        : undefined,
+    );
 
     if (assigneeChanged) {
       await this.cardHistoryRepository.createAssigneeChange({
@@ -549,6 +556,8 @@ export class CardService {
       fromAssignedToName: event.fromAssignedToName,
       toAssignedToId: event.toAssignedToId,
       toAssignedToName: event.toAssignedToName,
+      fromStatus: event.fromStatus,
+      toStatus: event.toStatus,
       createdAt: event.createdAt.toISOString(),
     }));
   }

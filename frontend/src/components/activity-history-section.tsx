@@ -9,6 +9,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { subscribeActivityDataInvalidation } from '@/lib/activity-data-invalidation'
 import { api } from '@/lib/api-handler'
+import { STATUS_LABELS } from '@/lib/card-status'
 import { formatDateTime } from '@/lib/time-format'
 import { cn } from '@/lib/utils'
 import type {
@@ -64,6 +65,25 @@ function describeAssigneeChange(event: ActivityHistoryEvent) {
   )
 }
 
+function describeHistoryEvent(event: ActivityHistoryEvent) {
+  if (event.type === 'STATUS_CHANGED') {
+    return (
+      <>
+        <span className="font-medium text-foreground">{event.changedByName}</span>{' '}
+        alterou o status de{' '}
+        <span className="font-medium text-foreground">
+          {event.fromStatus ? STATUS_LABELS[event.fromStatus] : 'desconhecido'}
+        </span>{' '}para{' '}
+        <span className="font-medium text-foreground">
+          {event.toStatus ? STATUS_LABELS[event.toStatus] : 'desconhecido'}
+        </span>
+      </>
+    )
+  }
+
+  return describeAssigneeChange(event)
+}
+
 export function ActivityHistorySection({
   teamId,
   activityId,
@@ -117,7 +137,7 @@ export function ActivityHistorySection({
         </div>
         {open ? (
           <p className="text-sm text-muted-foreground">
-            Alterações de responsável nesta atividade.
+            Alterações de status e responsável nesta atividade.
           </p>
         ) : null}
       </div>
@@ -141,7 +161,7 @@ export function ActivityHistorySection({
                   className="absolute -left-[1.3125rem] top-1.5 size-2.5 rounded-full border-2 border-background bg-sidebar-primary"
                 />
                 <p className="text-sm text-muted-foreground">
-                  {describeAssigneeChange(event)}
+                  {describeHistoryEvent(event)}
                 </p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   {formatDateTime(event.createdAt)}

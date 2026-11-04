@@ -531,6 +531,7 @@ export class TimeEntryService {
   private async pauseWorkForStoppedEntry(
     taskId: string | null | undefined,
     cardId: string | null | undefined,
+    userId: string,
   ): Promise<void> {
     await releaseTaskIfIdle(
       this.timeEntryRepository,
@@ -541,6 +542,7 @@ export class TimeEntryService {
       this.timeEntryRepository,
       this.cardRepository,
       cardId,
+      userId,
     );
   }
 
@@ -593,6 +595,7 @@ export class TimeEntryService {
       await this.pauseWorkForStoppedEntry(
         activeEntry.taskId,
         activeEntry.cardId,
+        userId,
       );
     }
 
@@ -607,7 +610,7 @@ export class TimeEntryService {
     const marked = await this.cardRepository.updateStatusIfOpen(
       activityId,
       'IN_PROGRESS',
-      { assignedToId: userId },
+      { assignedToId: userId, changedById: userId },
     );
 
     if (marked.count === 0) {
@@ -676,6 +679,7 @@ export class TimeEntryService {
       await this.pauseWorkForStoppedEntry(
         activeEntry.taskId,
         activeEntry.cardId,
+        userId,
       );
     }
 
@@ -726,6 +730,7 @@ export class TimeEntryService {
     await this.pauseWorkForStoppedEntry(
       activeEntry.taskId,
       activeEntry.cardId,
+      userId,
     );
 
     return toTimeEntrySummary(stopped);
@@ -860,7 +865,7 @@ export class TimeEntryService {
       endedAtDate,
     );
 
-    await this.pauseWorkForStoppedEntry(taskId, null);
+    await this.pauseWorkForStoppedEntry(taskId, null, userId);
 
     return toTaskTimeEntrySummary(updated);
   }
@@ -902,7 +907,7 @@ export class TimeEntryService {
       endedAtDate,
     );
 
-    await this.pauseWorkForStoppedEntry(entry.taskId, entry.cardId);
+    await this.pauseWorkForStoppedEntry(entry.taskId, entry.cardId, userId);
 
     const updated =
       await this.timeEntryRepository.findByIdWithRelations(timeEntryId);
