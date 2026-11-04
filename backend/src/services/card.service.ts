@@ -92,6 +92,7 @@ function toActivitySummary(
     description: card.description,
     status: card.status,
     completedAt: card.completedAt?.toISOString() ?? null,
+    completionDateEstimated: card.completionDateEstimated ?? false,
     complexityLevel: card.complexityLevel,
     estimatedHours: card.estimatedHours?.toString() ?? null,
     loggedSeconds,
@@ -551,13 +552,14 @@ export class CardService {
       cardId: event.cardId,
       type: event.type,
       changedById: event.changedById,
-      changedByName: event.changedBy.name,
+      changedByName: event.changedBy?.name ?? null,
       fromAssignedToId: event.fromAssignedToId,
       fromAssignedToName: event.fromAssignedToName,
       toAssignedToId: event.toAssignedToId,
       toAssignedToName: event.toAssignedToName,
       fromStatus: event.fromStatus,
       toStatus: event.toStatus,
+      estimatedCompletedAt: event.estimatedCompletedAt?.toISOString() ?? null,
       createdAt: event.createdAt.toISOString(),
     }));
   }

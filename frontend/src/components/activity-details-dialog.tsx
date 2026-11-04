@@ -693,6 +693,7 @@ export function ActivityDetailsDialog({
                       {activity.completedAt
                         ? `Concluída em ${dayjs(activity.completedAt).format('DD-MM-YYYY [às] HH:mm')}`
                         : 'Data de conclusão não registrada.'}
+                      {activity.completedAt && activity.completionDateEstimated ? ' (estimada)' : null}
                     </p>
                   ) : null}
                   <p>

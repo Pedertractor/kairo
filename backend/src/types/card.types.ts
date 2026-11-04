@@ -25,6 +25,7 @@ export interface ActivitySummary {
   description: string | null;
   status: CardStatus;
   completedAt: string | null;
+  completionDateEstimated: boolean;
   complexityLevel: ComplexityLevel | null;
   estimatedHours: string | null;
   loggedSeconds: number;

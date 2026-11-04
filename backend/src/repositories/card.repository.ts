@@ -209,6 +209,7 @@ export class CardRepository {
       data: {
         ...(statusChange ? {
           completedAt: statusChange.toStatus === 'DONE' ? changedAt : null,
+          completionDateEstimated: false,
           historyEvents: {
             create: { type: 'STATUS_CHANGED', ...statusChange, createdAt: changedAt },
           },

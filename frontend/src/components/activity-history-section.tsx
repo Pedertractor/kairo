@@ -66,6 +66,18 @@ function describeAssigneeChange(event: ActivityHistoryEvent) {
 }
 
 function describeHistoryEvent(event: ActivityHistoryEvent) {
+  if (event.type === 'COMPLETION_ESTIMATED') {
+    return (
+      <>
+        <span className="font-medium text-foreground">Sistema</span>{' '}
+        preencheu a conclusão estimada em{' '}
+        <span className="font-medium text-foreground">
+          {event.estimatedCompletedAt ? formatDateTime(event.estimatedCompletedAt) : 'data não registrada'}
+        </span>{' '}
+        com base na última atualização da atividade.
+      </>
+    )
+  }
   if (event.type === 'STATUS_CHANGED') {
     return (
       <>

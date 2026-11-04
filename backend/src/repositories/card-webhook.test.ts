@@ -59,6 +59,7 @@ describe('Activity status history persistence', () => {
     });
     assert.equal(mutation.data.status, 'DONE');
     assert.ok(mutation.data.completedAt instanceof Date);
+    assert.equal(mutation.data.completionDateEstimated, false);
 
     await repo.updateActivity('card-1', { title: 'Renamed' });
     assert.equal(mutation.data.historyEvents, undefined);
@@ -68,6 +69,7 @@ describe('Activity status history persistence', () => {
       changedById: 'user-1', fromStatus: 'DONE', toStatus: 'TODO',
     });
     assert.equal(mutation.data.completedAt, null);
+    assert.equal(mutation.data.completionDateEstimated, false);
   });
 
   function setup(status: string, options: { failHistory?: boolean; race?: boolean } = {}) {
