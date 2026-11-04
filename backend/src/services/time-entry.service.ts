@@ -659,7 +659,8 @@ export class TimeEntryService {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
     }
 
-    if (task.status === 'DONE' || task.status === 'CANCELED') {
+    if (task.status === 'DONE' || task.status === 'CANCELED'
+      || task.card.status === 'DONE' || task.card.status === 'CANCELED' || task.card.deletedAt) {
       throw new AppError(400, MENSAGENS.TAREFA_TIMER_STATUS_INVALIDO);
     }
 

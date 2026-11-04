@@ -11,6 +11,7 @@ import {
 } from 'react';
 
 import { useAuth } from '@/hooks/use-auth';
+import { useVisibleRefresh } from '@/hooks/use-visible-refresh';
 import { api } from '@/lib/api-handler';
 import { invalidateActivityData } from '@/lib/activity-data-invalidation';
 import { invalidateHomeData } from '@/lib/home-data-invalidation';
@@ -130,6 +131,8 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
       clearPausedTarget();
     }
   }, [clearPausedTarget]);
+
+  useVisibleRefresh(refresh, Boolean(user) && !isStarting && !isPausing);
 
   useEffect(() => {
     void refresh().catch(() => {});

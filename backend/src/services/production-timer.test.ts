@@ -3,6 +3,19 @@ import { it } from 'node:test';
 import { TimeEntryService } from './time-entry.service.js';
 import { AppError } from '../utils/errors.js';
 
+for (const parent of [{ status: 'DONE' }, { status: 'CANCELED' }, { status: 'TODO', deletedAt: new Date() }]) {
+  it(`rejects task timers in a closed or deleted project ${JSON.stringify(parent)}`, async () => {
+    const service = new TimeEntryService(...[
+      {}, {}, {},
+      { findById: async () => ({ id: 'task', cardId: 'project', status: 'PAUSED',
+        card: { id: 'project', type: 'PROJECT', teamId: 'team', ...parent } }) },
+      { findById: async () => ({ id: 'user', active: true }) }, {}, {},
+    ] as unknown as ConstructorParameters<typeof TimeEntryService>);
+    await assert.rejects(service.startTaskTimer('project', 'task', 'user'),
+      (e: unknown) => e instanceof AppError && e.statusCode === 400);
+  });
+}
+
 function setup(options: { production?: boolean; member?: boolean; active?: boolean; teamActive?: boolean; cardTeam?: string; cardType?: string; status?: string; deleted?: boolean } = {}) {
   const effects: string[] = [];
   const user = { id: 'user', name: 'Operator', active: options.active ?? true, production: options.production ?? true };

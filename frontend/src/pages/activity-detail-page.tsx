@@ -1,4 +1,5 @@
 import { useAuth } from '@/hooks/use-auth'
+import { useVisibleRefresh } from '@/hooks/use-visible-refresh'
 import { useCallback, useEffect, useState } from 'react'
 import { Pencil } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -55,9 +56,14 @@ export function ActivityDetailPage() {
 
     const data = await api<ActivityResponse>(
       `/teams/${teamId}/activities/${activityId}`,
+      { toastOnError: false },
     )
     setActivity(data.activity)
   }, [teamId, activityId])
+
+  useVisibleRefresh(loadActivity, Boolean(teamId && activityId)
+    && !isStatusDialogOpen && !isEditTitleDialogOpen && !isEditTagDialogOpen
+    && !isFinishDialogOpen && !isDeleteDialogOpen)
 
   useEffect(() => {
     if (!teamId || !activityId) {

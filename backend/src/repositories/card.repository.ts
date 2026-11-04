@@ -58,6 +58,13 @@ const projectInclude = {
 } as const;
 
 export class CardRepository {
+  pauseInProgressProjectTasks(projectId: string) {
+    return this.prisma.task.updateMany({
+      where: { cardId: projectId, status: 'IN_PROGRESS' },
+      data: { status: 'PAUSED' },
+    });
+  }
+
   constructor(
     private readonly prisma: PrismaClient,
     private readonly onCardChanged = notifySolicitationCardChanged,

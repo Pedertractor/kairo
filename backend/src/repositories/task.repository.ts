@@ -31,6 +31,8 @@ export class TaskRepository {
             id: true,
             title: true,
             type: true,
+            status: true,
+            deletedAt: true,
             teamId: true,
           },
         },

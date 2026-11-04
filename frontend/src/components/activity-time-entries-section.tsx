@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useVisibleRefresh } from '@/hooks/use-visible-refresh'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,8 +29,8 @@ export function ActivityTimeEntriesSection({
   const [selectedDate, setSelectedDate] = useState(toDateKey(new Date()))
   const [isLoading, setIsLoading] = useState(true)
 
-  const loadTimeEntries = useCallback(async () => {
-    setIsLoading(true)
+  const loadTimeEntries = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) setIsLoading(true)
 
     try {
       const params = new URLSearchParams({
@@ -40,19 +41,22 @@ export function ActivityTimeEntriesSection({
 
       const data = await api<TaskTimeEntriesResponse>(
         `/teams/${teamId}/activities/${activityId}/time-entries?${params.toString()}`,
+        { toastOnError: !options?.silent },
       )
 
       setTimeEntries(data.timeEntries)
       setTotal(data.pagination.total)
       setTotalPages(data.pagination.totalPages)
     } finally {
-      setIsLoading(false)
+      if (!options?.silent) setIsLoading(false)
     }
   }, [teamId, activityId, page, selectedDate])
 
   useEffect(() => {
     void loadTimeEntries()
   }, [loadTimeEntries])
+
+  useVisibleRefresh(() => loadTimeEntries({ silent: true }))
 
   useEffect(() => {
     setPage(1)

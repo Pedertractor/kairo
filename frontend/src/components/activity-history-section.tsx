@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useVisibleRefresh } from '@/hooks/use-visible-refresh'
 import { ChevronDown } from 'lucide-react'
 
 import {
@@ -104,22 +105,25 @@ export function ActivityHistorySection({
   const [isLoading, setIsLoading] = useState(true)
   const [open, setOpen] = useState(true)
 
-  const loadHistory = useCallback(async () => {
-    setIsLoading(true)
+  const loadHistory = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) setIsLoading(true)
 
     try {
       const data = await api<ActivityHistoryResponse>(
         `/teams/${teamId}/activities/${activityId}/history`,
+        { toastOnError: !options?.silent },
       )
       setHistory(data.history)
     } finally {
-      setIsLoading(false)
+      if (!options?.silent) setIsLoading(false)
     }
   }, [teamId, activityId])
 
   useEffect(() => {
     void loadHistory()
   }, [loadHistory])
+
+  useVisibleRefresh(() => loadHistory({ silent: true }), open)
 
   useEffect(
     () => subscribeActivityDataInvalidation(() => void loadHistory()),
