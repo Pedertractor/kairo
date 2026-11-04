@@ -12,6 +12,7 @@ export async function releaseActivityIfIdle(
   timeEntryRepository: TimeEntryRepository,
   cardRepository: CardRepository,
   cardId: string | null | undefined,
+  changedById: string,
 ): Promise<void> {
   if (!cardId) {
     return;
@@ -23,5 +24,5 @@ export async function releaseActivityIfIdle(
     return;
   }
 
-  await cardRepository.updateStatusIfOpen(cardId, 'PAUSED');
+  await cardRepository.updateStatusIfOpen(cardId, 'PAUSED', { changedById });
 }

@@ -45,3 +45,106 @@ describe('Card mutation notifications', () => {
     }
   });
 });
+
+describe('Activity status history persistence', () => {
+  it('writes manual status history inside the activity update', async () => {
+    let mutation: any;
+    const repo = new CardRepository({ card: {
+      update: async (args: unknown) => { mutation = args; return { id: 'card-1' }; },
+    } } as never, () => {});
+    const transition = { changedById: 'user-1', fromStatus: 'TODO' as const, toStatus: 'DONE' as const };
+    await repo.updateActivity('card-1', { status: 'DONE' }, transition);
+    assert.deepEqual(mutation.data.historyEvents, {
+      create: { type: 'STATUS_CHANGED', ...transition, createdAt: mutation.data.completedAt },
+    });
+    assert.equal(mutation.data.status, 'DONE');
+    assert.ok(mutation.data.completedAt instanceof Date);
+
+    await repo.updateActivity('card-1', { title: 'Renamed' });
+    assert.equal(mutation.data.historyEvents, undefined);
+    assert.equal(mutation.data.completedAt, undefined);
+
+    await repo.updateActivity('card-1', { status: 'TODO' }, {
+      changedById: 'user-1', fromStatus: 'DONE', toStatus: 'TODO',
+    });
+    assert.equal(mutation.data.completedAt, null);
+  });
+
+  function setup(status: string, options: { failHistory?: boolean; race?: boolean } = {}) {
+    const history: unknown[] = [];
+    const effects: string[] = [];
+    let currentStatus = status;
+    let race = options.race;
+    const prisma = {
+      card: { findUnique: async () => ({ id: 'card-1' }) },
+      $transaction: async (run: (tx: unknown) => Promise<unknown>) => {
+        const initialStatus = currentStatus;
+        try {
+          const result = await run({
+            card: {
+              findUnique: async () => ({ status: currentStatus, type: 'ACTIVITY', deletedAt: null }),
+              updateMany: async ({ where, data }: any) => {
+                assert.equal(where.status, currentStatus);
+                if (race) { race = false; currentStatus = 'IN_PROGRESS'; return { count: 0 }; }
+                currentStatus = data.status;
+                return { count: 1 };
+              },
+            },
+            cardHistoryEvent: { create: async ({ data }: any) => {
+              if (options.failHistory) throw new Error('history failed');
+              history.push(data);
+            } },
+          });
+          effects.push('commit');
+          return result;
+        } catch (error) {
+          currentStatus = initialStatus;
+          throw error;
+        }
+      },
+    };
+    return {
+      repo: new CardRepository(prisma as never, () => effects.push('notify')),
+      history, effects, status: () => currentStatus,
+    };
+  }
+
+  for (const [from, to] of [['TODO', 'IN_PROGRESS'], ['IN_PROGRESS', 'PAUSED']] as const) {
+    it(`records timer transitions from ${from} to ${to}`, async () => {
+      const { repo, history, effects } = setup(from);
+      assert.deepEqual(await repo.updateStatusIfOpen('card-1', to, { changedById: 'user-1' }), { count: 1 });
+      await new Promise((resolve) => setImmediate(resolve));
+      assert.deepEqual(history, [{ cardId: 'card-1', changedById: 'user-1', type: 'STATUS_CHANGED', fromStatus: from, toStatus: to }]);
+      assert.deepEqual(effects, ['commit', 'notify']);
+    });
+  }
+
+  it('does not duplicate history for an unchanged status', async () => {
+    const { repo, history } = setup('IN_PROGRESS');
+    assert.deepEqual(await repo.updateStatusIfOpen('card-1', 'IN_PROGRESS', { changedById: 'user-2', assignedToId: 'user-2' }), { count: 1 });
+    assert.deepEqual(history, []);
+  });
+
+  for (const status of ['DONE', 'CANCELED']) {
+    it(`does not change or log a timer transition for ${status}`, async () => {
+      const { repo, history, effects } = setup(status);
+      assert.deepEqual(await repo.updateStatusIfOpen('card-1', 'IN_PROGRESS', { changedById: 'user-1' }), { count: 0 });
+      assert.deepEqual(history, []);
+      assert.deepEqual(effects, ['commit']);
+    });
+  }
+
+  it('retries a concurrent change using the latest previous status', async () => {
+    const { repo, history } = setup('TODO', { race: true });
+    await repo.updateStatusIfOpen('card-1', 'PAUSED', { changedById: 'user-1' });
+    assert.deepEqual(history, [{ cardId: 'card-1', changedById: 'user-1', type: 'STATUS_CHANGED', fromStatus: 'IN_PROGRESS', toStatus: 'PAUSED' }]);
+  });
+
+  it('rolls back the status and sends no notification when history fails', async () => {
+    const { repo, history, effects, status } = setup('TODO', { failHistory: true });
+    await assert.rejects(repo.updateStatusIfOpen('card-1', 'IN_PROGRESS', { changedById: 'user-1' }), /history failed/);
+    assert.equal(status(), 'TODO');
+    assert.deepEqual(history, []);
+    assert.deepEqual(effects, []);
+  });
+});

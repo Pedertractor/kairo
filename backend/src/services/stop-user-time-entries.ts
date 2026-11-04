@@ -31,6 +31,7 @@ export async function stopUnfinishedTimeEntriesForUser(
       timeEntryRepository,
       cardRepository,
       entry.cardId,
+      userId,
     );
   }
 }

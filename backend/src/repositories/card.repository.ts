@@ -132,14 +132,17 @@ export class CardRepository {
   async updateStatusIfOpen(
     cardId: string,
     status: CardStatus,
-    options?: { assignedToId?: string },
+    options?: { assignedToId?: string; changedById?: string },
   ) {
-    const result = await this.prisma.card.updateMany({
+    const update = (
+      prisma: Pick<PrismaClient, 'card'>,
+      fromStatus?: CardStatus,
+    ) => prisma.card.updateMany({
       where: {
         id: cardId,
         type: 'ACTIVITY',
         deletedAt: null,
-        status: { notIn: ['DONE', 'CANCELED'] },
+        status: fromStatus ?? { notIn: ['DONE', 'CANCELED'] },
       },
       data: {
         status,
@@ -148,6 +151,35 @@ export class CardRepository {
           : {}),
       },
     });
+    const changedById = options?.changedById;
+    const result = changedById
+      ? await this.prisma.$transaction(async (tx) => {
+          // Compare and retry so concurrent timer updates record each transition once.
+          while (true) {
+            const card = await tx.card.findUnique({ where: { id: cardId } });
+            if (
+              !card || card.type !== 'ACTIVITY' || card.deletedAt ||
+              card.status === 'DONE' || card.status === 'CANCELED'
+            ) {
+              return { count: 0 };
+            }
+            const result = await update(tx, card.status);
+            if (result.count === 0) continue;
+            if (card.status !== status) {
+              await tx.cardHistoryEvent.create({
+                data: {
+                  cardId,
+                  changedById,
+                  type: 'STATUS_CHANGED',
+                  fromStatus: card.status,
+                  toStatus: status,
+                },
+              });
+            }
+            return result;
+          }
+        })
+      : await update(this.prisma);
     if (result.count > 0) void this.notifyById(cardId);
     return result;
   }
@@ -165,10 +197,22 @@ export class CardRepository {
       assignedToId?: string | null;
       complexityLevel?: ComplexityLevel | null;
     },
+    statusChange?: {
+      changedById: string;
+      fromStatus: CardStatus;
+      toStatus: CardStatus;
+    },
   ) {
+    const changedAt = statusChange ? new Date() : undefined;
     return this.notifyUpdated(this.prisma.card.update({
       where: { id: activityId },
       data: {
+        ...(statusChange ? {
+          completedAt: statusChange.toStatus === 'DONE' ? changedAt : null,
+          historyEvents: {
+            create: { type: 'STATUS_CHANGED', ...statusChange, createdAt: changedAt },
+          },
+        } : {}),
         ...(data.title !== undefined ? { title: data.title } : {}),
         ...(data.status !== undefined ? { status: data.status } : {}),
         ...(data.tagId !== undefined ? { tagId: data.tagId } : {}),
@@ -207,6 +251,7 @@ export class CardRepository {
   }) {
     return this.prisma.card.create({
       data: {
+        ...(data.status === 'DONE' ? { completedAt: new Date() } : {}),
         teamId: data.teamId,
         createdById: data.createdById,
         title: data.title,

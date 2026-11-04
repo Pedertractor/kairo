@@ -402,6 +402,7 @@ export class AbsenceService {
           this.timeEntryRepository,
           this.cardRepository,
           activeEntry.cardId,
+          options.createdById,
         );
       }
     }
@@ -459,6 +460,7 @@ export class AbsenceService {
       this.timeEntryRepository,
       this.cardRepository,
       activeEntry.cardId,
+      covering.createdById,
     );
   }
 

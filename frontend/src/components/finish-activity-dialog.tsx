@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog'
 import { useActiveTimer } from '@/contexts/active-timer-context'
 import { api } from '@/lib/api-handler'
+import { invalidateActivityData } from '@/lib/activity-data-invalidation'
 import type { ActivityResponse, ActivitySummary } from '@/types/card'
 
 interface FinishActivityDialogProps {
@@ -48,6 +49,7 @@ export function FinishActivityDialog({
         },
       )
       onOpenChange(false)
+      invalidateActivityData()
       onFinished()
     } finally {
       setIsSubmitting(false)

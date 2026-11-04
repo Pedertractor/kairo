@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select'
 import { useActiveTimer } from '@/contexts/active-timer-context'
 import { api } from '@/lib/api-handler'
+import { invalidateActivityData } from '@/lib/activity-data-invalidation'
 import { CARD_STATUSES, STATUS_LABELS } from '@/lib/card-status'
 import type { ActivityResponse, ActivitySummary, CardStatus } from '@/types/card'
 
@@ -74,6 +75,7 @@ export function UpdateActivityStatusDialog({
       )
 
       onOpenChange(false)
+      invalidateActivityData()
       onUpdated()
     } finally {
       setIsSubmitting(false)

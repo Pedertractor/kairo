@@ -1,4 +1,6 @@
-export type CardHistoryEventType = 'ASSIGNEE_CHANGED';
+import type { CardStatus } from '../generated/client.js';
+
+export type CardHistoryEventType = 'ASSIGNEE_CHANGED' | 'STATUS_CHANGED';
 
 export interface ActivityHistoryEvent {
   id: string;
@@ -10,5 +12,7 @@ export interface ActivityHistoryEvent {
   fromAssignedToName: string | null;
   toAssignedToId: string | null;
   toAssignedToName: string | null;
+  fromStatus: CardStatus | null;
+  toStatus: CardStatus | null;
   createdAt: string;
 }
