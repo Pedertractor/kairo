@@ -13,7 +13,7 @@ export interface InfractionPerson {
   name: string
   cardNumber: string
   unit: string
-  monthlyAverage: InfractionTimeSummary
+  monthlyAverage: Omit<InfractionTimeSummary, 'percent'> & { percent: number | null }
   infractionCount: number
   infractions: Infraction[]
 }
@@ -24,4 +24,10 @@ export interface InfractionsReport {
   totalPeople: number
   totalInfractions: number
   people: InfractionPerson[]
+}
+
+export interface InfractionLeader {
+  id: string
+  name: string
+  members: { unit: string; cardNumber: string }[]
 }

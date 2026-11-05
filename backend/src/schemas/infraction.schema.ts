@@ -22,7 +22,7 @@ export const infractionsResponseSchema = z.object({
     name: z.string(),
     cardNumber: z.string(),
     unit: z.string(),
-    monthlyAverage: timeSummarySchema,
+    monthlyAverage: timeSummarySchema.extend({ percent: z.number().nonnegative().nullable() }),
     infractionCount: z.number().int().nonnegative(),
     infractions: z.array(timeSummarySchema.extend({
       date: z.iso.date(),
