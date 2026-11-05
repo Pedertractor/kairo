@@ -1,6 +1,6 @@
 import { OccupationRepository } from '../repositories/occupation.repository.js';
 import type { OccupationResponse } from '../types/occupation.types.js';
-import { parseDayBounds, shiftDateKey } from '../utils/app-timezone.js';
+import { formatDateKey, parseDayBounds, shiftDateKey } from '../utils/app-timezone.js';
 
 function getMonthBounds(month: string) {
   const startDate = `${month}-01`;
@@ -78,6 +78,10 @@ export class OccupationService {
           unit: member.unit,
           name: member.name,
           role: member.role as 'ADMIN' | 'USER',
+          userCreatedAt: member.createdAt.toISOString(),
+          firstAppointmentDate: member.timeEntries[0]
+            ? formatDateKey(member.timeEntries[0].startedAt)
+            : null,
           hoursByDate,
         };
       }),

@@ -18,6 +18,12 @@ export class OccupationRepository {
         cardNumber: true,
         unit: true,
         role: true,
+        createdAt: true,
+        timeEntries: {
+          orderBy: { startedAt: 'asc' },
+          take: 1,
+          select: { startedAt: true },
+        },
       },
     });
   }
