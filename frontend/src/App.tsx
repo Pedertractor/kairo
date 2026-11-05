@@ -4,6 +4,7 @@ import { AppLayout } from '@/components/app-layout'
 import { useAuth } from '@/hooks/use-auth'
 import { AdminDashboardPage } from '@/pages/admin-dashboard-page'
 import { AbsencesPage } from '@/pages/absences-page'
+import { InfractionsPage } from '@/pages/infractions-page'
 import { AnalyticsPage } from '@/pages/analytics-page'
 import { ChangePasswordPage } from '@/pages/change-password-page'
 import { HomePage } from '@/pages/home-page'
@@ -161,6 +162,14 @@ function App() {
         element={
           <ProtectedRoute key="painel" title="Painel" requireAdmin>
             <AdminDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/infracoes"
+        element={
+          <ProtectedRoute key="infracoes" title="Infrações" requireAdmin>
+            <InfractionsPage />
           </ProtectedRoute>
         }
       />

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import type { OccupationRepository } from '../repositories/occupation.repository.js';
+import { OccupationRepository } from '../repositories/occupation.repository.js';
 import { OccupationService } from './occupation.service.js';
 
 type Member = Awaited<ReturnType<OccupationRepository['findActiveNonLeaderMembers']>>[number];
@@ -9,9 +9,13 @@ type Entry = Awaited<ReturnType<OccupationRepository['findTimeEntries']>>[number
 
 const ana: Member = {
   id: 'ana', cardNumber: '100', unit: 'TRACTOR', name: 'Ana', role: 'USER',
+  createdAt: new Date('2026-07-01T10:40:00-03:00'),
+  timeEntries: [{ startedAt: new Date('2026-07-03T13:00:00Z') }],
 };
 const bruno: Member = {
   id: 'bruno', cardNumber: '200', unit: 'PEDERTRACTOR', name: 'Bruno', role: 'ADMIN',
+  createdAt: new Date('2026-08-01T12:00:00Z'),
+  timeEntries: [],
 };
 
 function entry(startedAt: string, endedAt: string | null, userId = ana.id): Entry {
@@ -50,9 +54,11 @@ describe('OccupationService daily logged hours', () => {
     assert.equal(result.members[0].hoursByDate['2026-10-02'], 0.0008);
     assert.equal(result.members[1].hoursByDate['2026-10-01'], 1.75);
     assert.equal(result.members[1].hoursByDate['2026-10-02'], 0);
-    assert.deepEqual(Object.keys(result.members[0]), ['cardNumber', 'unit', 'name', 'role', 'hoursByDate']);
+    assert.deepEqual(Object.keys(result.members[0]), [
+      'cardNumber', 'unit', 'name', 'role', 'userCreatedAt', 'firstAppointmentDate', 'hoursByDate',
+    ]);
     assert.deepEqual(
-      result.members.map(({ hoursByDate, ...identity }) => identity),
+      result.members.map(({ hoursByDate, userCreatedAt, firstAppointmentDate, ...identity }) => identity),
       membersIdentity(),
     );
   });
@@ -153,5 +159,78 @@ describe('OccupationService daily logged hours', () => {
 });
 
 function membersIdentity() {
-  return [ana, bruno].map(({ id, ...identity }) => identity);
+  return [ana, bruno].map(({ id, createdAt, timeEntries, ...identity }) => identity);
 }
+
+describe('OccupationService member dates', () => {
+  it('serializes the user creation instant in UTC', async () => {
+    const { service } = createService();
+    const { members } = await service.getMonthlyOccupation('2026-10');
+    assert.equal(members[0].userCreatedAt, '2026-07-01T13:40:00.000Z');
+    assert.equal(members[1].userCreatedAt, '2026-08-01T12:00:00.000Z');
+  });
+
+  it('uses the first historical entry regardless of the queried month or its entries', async () => {
+    const { service } = createService([
+      entry('2026-10-02T11:00:00Z', '2026-10-02T12:00:00Z'),
+      entry('2026-10-01T11:00:00Z', '2026-10-01T12:00:00Z'),
+    ]);
+    const { members } = await service.getMonthlyOccupation('2026-10');
+    assert.equal(members[0].firstAppointmentDate, '2026-07-03');
+
+    const { service: emptyMonthService } = createService();
+    const emptyMonth = await emptyMonthService.getMonthlyOccupation('2026-06');
+    assert.equal(emptyMonth.members[0].firstAppointmentDate, '2026-07-03');
+  });
+
+  it('returns an explicit null for a user who has never logged time', async () => {
+    const { service } = createService();
+    const { members } = await service.getMonthlyOccupation('2026-10');
+    assert.equal(members[1].firstAppointmentDate, null);
+    assert.ok(Object.hasOwn(members[1], 'firstAppointmentDate'));
+  });
+
+  it('formats the first entry date in Sao Paulo around local midnight', async () => {
+    for (const [startedAt, expected] of [
+      ['2026-07-03T02:59:59Z', '2026-07-02'],
+      ['2026-07-03T03:00:00Z', '2026-07-03'],
+    ]) {
+      const { service } = createService([], [{
+        ...ana,
+        timeEntries: [{ startedAt: new Date(startedAt) }],
+      }]);
+      const { members } = await service.getMonthlyOccupation('2026-10');
+      assert.equal(members[0].firstAppointmentDate, expected);
+    }
+  });
+});
+
+describe('OccupationRepository member dates', () => {
+  it('selects the earliest startedAt across all history without deletion, type or end filters', async () => {
+    const repository = new OccupationRepository({
+      user: {
+        findMany: async (query: unknown) => {
+          assert.deepEqual(query, {
+            where: { active: true, role: { in: ['ADMIN', 'USER'] } },
+            orderBy: { name: 'asc' },
+            select: {
+              id: true,
+              name: true,
+              cardNumber: true,
+              unit: true,
+              role: true,
+              createdAt: true,
+              timeEntries: {
+                orderBy: { startedAt: 'asc' },
+                take: 1,
+                select: { startedAt: true },
+              },
+            },
+          });
+          return [ana, bruno];
+        },
+      },
+    } as never);
+    assert.deepEqual(await repository.findActiveNonLeaderMembers(), [ana, bruno]);
+  });
+});

@@ -3,6 +3,8 @@ export interface OccupationMember {
   unit: 'PEDERTRACTOR' | 'TRACTOR';
   name: string;
   role: 'ADMIN' | 'USER';
+  userCreatedAt: string;
+  firstAppointmentDate: string | null;
   hoursByDate: Record<string, number>;
 }
 

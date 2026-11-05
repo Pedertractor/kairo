@@ -12,7 +12,8 @@
     "test:team-projects:browser": "node tests/team-projects.browser.cjs",
     "test:project-documents:browser": "node tests/project-documents.browser.cjs",
     "lint": "oxlint",
-    "lint:fix": "oxlint --fix"
+    "lint:fix": "oxlint --fix",
+    "test:infractions:browser": "node tests/infractions.browser.cjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

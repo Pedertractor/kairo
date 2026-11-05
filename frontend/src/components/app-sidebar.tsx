@@ -16,6 +16,7 @@ import { useUnseenAbsencesCount } from '@/hooks/use-unseen-absences';
 import type { UnitType } from '@/types/auth';
 import {
   ChartNoAxesCombinedIcon,
+  ShieldAlertIcon,
   CalendarOffIcon,
   ClockIcon,
   ClipboardListIcon,
@@ -77,6 +78,11 @@ const adminDashboardNavItems = [
     title: 'Painel',
     url: '/painel',
     icon: <LayoutDashboardIcon />,
+  },
+  {
+    title: 'Infrações',
+    url: '/infracoes',
+    icon: <ShieldAlertIcon />,
   },
 ];
 
