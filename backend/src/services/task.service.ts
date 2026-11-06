@@ -206,7 +206,7 @@ export class TaskService {
     taskId: string,
     userId: string,
   ): Promise<TaskDetail> {
-    await this.assertProjectAccess(projectId, userId);
+    const project = await this.assertProjectAccess(projectId, userId);
 
     const task = await this.taskRepository.findById(taskId);
 
@@ -222,6 +222,8 @@ export class TaskService {
     return {
       ...toTaskSummary(task, favorite !== null),
       loggedSeconds,
+      projectTitle: project.title,
+      completedAt: task.completedAt?.toISOString() ?? null,
     };
   }
 
@@ -330,6 +332,8 @@ export class TaskService {
     return {
       ...toTaskSummary(updated, favorite !== null),
       loggedSeconds,
+      projectTitle: project.title,
+      completedAt: updated.completedAt?.toISOString() ?? null,
     };
   }
 

@@ -35,4 +35,6 @@ export interface TaskSummary {
 
 export interface TaskDetail extends TaskSummary {
   loggedSeconds: number;
+  projectTitle: string;
+  completedAt: string | null;
 }

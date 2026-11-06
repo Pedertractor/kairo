@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { formatDuration } from '@/lib/time-format'
 import { cn } from '@/lib/utils'
 
@@ -108,7 +110,7 @@ export function UsageBarList({
   emptyLabel,
   valueFormatter = formatDuration,
 }: {
-  items: Array<{ label: string; value: number; hint?: string }>
+  items: Array<{ label: string; value: number; hint?: string; details?: ReactNode }>
   emptyLabel: string
   valueFormatter?: (value: number) => string
 }) {
@@ -128,8 +130,8 @@ export function UsageBarList({
         const widthPercent = Math.max(4, Math.round((item.value / maxValue) * 100))
         const color = CHART_COLORS[index % CHART_COLORS.length]
 
-        return (
-          <div key={`${item.label}-${index}`} className="space-y-1.5">
+        const content = (
+          <div className="space-y-1.5">
             <div className="flex items-end justify-between gap-3">
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">{item.label}</p>
@@ -139,6 +141,7 @@ export function UsageBarList({
               </div>
               <p className="shrink-0 text-sm font-bold tabular-nums">
                 {valueFormatter(item.value)}
+                {item.details ? <ChevronDown className="ml-2 inline size-4 transition-transform group-open:rotate-180" /> : null}
               </p>
             </div>
             <div className="h-2.5 overflow-hidden rounded-full bg-muted">
@@ -148,6 +151,17 @@ export function UsageBarList({
               />
             </div>
           </div>
+        )
+
+        return item.details ? (
+          <details key={`${item.label}-${index}`} className="group">
+            <summary className="cursor-pointer list-none rounded-md p-1 -m-1 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+              {content}
+            </summary>
+            <div className="mt-3">{item.details}</div>
+          </details>
+        ) : (
+          <div key={`${item.label}-${index}`}>{content}</div>
         )
       })}
     </div>

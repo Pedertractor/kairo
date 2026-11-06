@@ -84,6 +84,17 @@ export interface ActivityStatusCount {
   count: number
 }
 
+export interface ActivityTagItem {
+  id: string
+  teamId: string
+  projectId: string | null
+  title: string
+  type: 'ACTIVITY' | 'TASK'
+  status: AnalyticsCardStatus
+  completedAt: string | null
+  completionDateEstimated: boolean
+}
+
 export interface ActivityTagOverview {
   tagId: string | null
   tagName: string
@@ -91,6 +102,7 @@ export interface ActivityTagOverview {
   count: number
   createdInPeriod: number
   byStatus: ActivityStatusCount[]
+  items: ActivityTagItem[]
 }
 
 export interface WorkItemStatusOverview {

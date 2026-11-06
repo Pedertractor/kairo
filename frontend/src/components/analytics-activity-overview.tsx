@@ -1,9 +1,12 @@
+import { useState } from 'react'
 import { UsageBarList, UsageDonut } from '@/components/admin-usage-charts'
+import { AnalyticsItemDetailsDialog } from '@/components/analytics-item-details-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { STATUS_LABELS } from '@/lib/card-status'
 import { cn } from '@/lib/utils'
 import type {
   ActivityOverview,
+  ActivityTagItem,
   AnalyticsCardStatus,
   WorkItemStatusOverview,
 } from '@/types/analytics'
@@ -145,6 +148,8 @@ export function AnalyticsActivityOverview({
   isLoading: boolean
   scope?: ActivityOverviewScope
 }) {
+  const [selectedItem, setSelectedItem] = useState<ActivityTagItem | null>(null)
+
   if (isLoading || !overview) {
     return (
       <div className='grid gap-4 lg:grid-cols-2'>
@@ -245,8 +250,9 @@ export function AnalyticsActivityOverview({
         <h3 className='mb-1 text-sm font-semibold'>Atividades por etiqueta</h3>
         <p className='mb-4 text-xs text-muted-foreground'>
           {scope === 'period'
-            ? 'Atividades criadas ou concluídas no período, agrupadas por etiqueta.'
+            ? 'Atividades criadas ou concluídas no período, com o status no fim do período. Datas recuperadas do histórico são identificadas como estimadas.'
             : 'Todas as atividades já criadas, agrupadas por etiqueta.'}
+          {' Clique em uma etiqueta para ver a lista.'}
         </p>
         <UsageBarList
           items={overview.byTag.map((tag) => ({
@@ -256,6 +262,32 @@ export function AnalyticsActivityOverview({
               .filter((status) => status.count > 0)
               .map((status) => `${STATUS_LABELS[status.status]} ${status.count}`)
               .join(' · '),
+            details: (
+              <ul aria-label={`Atividades de ${tag.tagName}`} className='max-h-80 divide-y overflow-y-auto rounded-xl border bg-muted/20'>
+                {tag.items?.length ? tag.items.map((item) => (
+                  <li key={`${item.type}-${item.id}`}>
+                    <button
+                      type='button'
+                      onClick={() => setSelectedItem(item)}
+                      aria-label={`Ver detalhes de ${item.title}`}
+                      className='flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-1 px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring'
+                    >
+                    <div className='min-w-0 flex-1'>
+                      <p className='break-words font-medium'>{item.title}</p>
+                      <p className='text-xs text-muted-foreground'>{item.type === 'TASK' ? 'Tarefa' : 'Atividade'}</p>
+                    </div>
+                    <span className='flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground'>
+                      <span className='size-2 rounded-full' style={{ backgroundColor: STATUS_CHART_COLORS[item.status] }} />
+                      {STATUS_LABELS[item.status]}
+                      {item.completionDateEstimated ? ' (data estimada)' : null}
+                    </span>
+                    </button>
+                  </li>
+                )) : (
+                  <li className='p-3 text-sm text-muted-foreground'>Nenhuma atividade nesta etiqueta.</li>
+                )}
+              </ul>
+            ),
           }))}
           emptyLabel='Nenhuma etiqueta cadastrada.'
           valueFormatter={(value) => String(value)}
@@ -324,6 +356,14 @@ export function AnalyticsActivityOverview({
           </div>
         ))}
       </div>
+      {selectedItem ? (
+        <AnalyticsItemDetailsDialog
+          key={`${selectedItem.type}-${selectedItem.id}`}
+          item={selectedItem}
+          scope={scope}
+          onClose={() => setSelectedItem(null)}
+        />
+      ) : null}
     </div>
   )
 }

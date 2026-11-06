@@ -885,7 +885,7 @@ export function AnalyticsPage() {
         description={
           showAllTimeOverview
             ? 'Histórico completo das equipes filtradas, com o status atual de cada item. O período filtrado aparece como destaque "criadas no período".'
-            : 'Atividades, projetos e tarefas criados no período filtrado, com o status atual de cada um. Marque "Histórico completo" para ver todo o cadastro.'
+            : 'Itens criados ou concluídos no período, com o status no fim do período filtrado. Conclusões recuperadas usam a data histórica, identificada como estimada.'
         }
         toolbar={
           <label
