@@ -25,7 +25,7 @@ export class InfractionService {
 
     try {
       const response = await this.request(url, {
-        headers: { Accept: 'application/json', 'X-Api-Key': apiKey },
+        headers: { Accept: 'application/json', 'X-Kairo-API-Key': apiKey },
         signal,
         redirect: 'error',
       });

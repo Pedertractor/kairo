@@ -45,7 +45,19 @@ const users = {
   inactive: { id: 'inactive', active: false, role: 'ADMIN', production: false },
 };
 app.decorate('prisma', {
-  user: { findUnique: async ({ where }: { where: { id: keyof typeof users } }) => users[where.id] ?? null },
+  user: {
+    findUnique: async ({ where }: { where: { id: keyof typeof users } }) => users[where.id] ?? null,
+    findMany: async (options: any) => {
+      assert.deepEqual(options.where, { role: 'LEADER', active: true });
+      assert.deepEqual(options.select.memberships.where, { role: 'ADMIN', team: { active: true } });
+      assert.deepEqual(options.select.memberships.select.team.select.members.where, { user: { active: true } });
+      const tractor = { user: { unit: 'TRACTOR', cardNumber: '1234' } };
+      return [{ id: 'leader', name: 'Líder Teste', memberships: [
+        { team: { members: [tractor, { user: { unit: 'PEDERTRACTOR', cardNumber: '1234' } }] } },
+        { team: { members: [tractor] } },
+      ] }, { id: 'empty-leader', name: 'Sem equipe', memberships: [] }];
+    },
+  },
 } as unknown as PrismaClient);
 app.setErrorHandler((error, _request, reply) => {
   reply.code(error instanceof AppError ? error.statusCode : 500).send({ mensagem: error.message });
@@ -89,6 +101,21 @@ it('validates required integer month and year without contacting P5', async () =
   assert.equal(requests, count);
 });
 
+it('restricts leader metadata to administrators and deduplicates members by unit and card without contacting P5', async () => {
+  const count = requests;
+  assert.equal((await app.inject({ url: '/api/infractions/leaders' })).statusCode, 401);
+  for (const [sub, status] of [['user', 403], ['leader', 403], ['inactive', 401]] as const) {
+    assert.equal((await app.inject({ url: '/api/infractions/leaders', headers: headers(sub) })).statusCode, status);
+  }
+  const response = await app.inject({ url: '/api/infractions/leaders', headers: headers('admin') });
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.json().dados.leaders, [
+    { id: 'leader', name: 'Líder Teste', members: [{ unit: 'TRACTOR', cardNumber: '1234' }, { unit: 'PEDERTRACTOR', cardNumber: '1234' }] },
+    { id: 'empty-leader', name: 'Sem equipe', members: [] },
+  ]);
+  assert.equal(requests, count);
+});
+
 it('returns the supplied contract in dados and sends filters and the dedicated key only to P5', async () => {
   const response = await app.inject({ url: '/api/infractions?month=10&year=2026', headers: headers('admin') });
   assert.equal(response.statusCode, 200);
@@ -96,7 +123,7 @@ it('returns the supplied contract in dados and sends filters and the dedicated k
   assert.equal(lastUrl?.pathname, '/api/p5/integrations/kairo/infractions');
   assert.equal(lastUrl?.searchParams.get('month'), '10');
   assert.equal(lastUrl?.searchParams.get('year'), '2026');
-  assert.equal(new Headers(lastOptions?.headers).get('X-Api-Key'), config.P5_INFRACTIONS_API_KEY);
+  assert.equal(new Headers(lastOptions?.headers).get('X-Kairo-API-Key'), config.P5_INFRACTIONS_API_KEY);
   assert.equal(new Headers(lastOptions?.headers).get('Authorization'), null);
   assert.equal(lastOptions?.redirect, 'error');
   assert.ok(lastOptions?.signal instanceof AbortSignal);
@@ -111,6 +138,13 @@ it('preserves P5 totals, zero values, unknown types and people without local acc
   data.people[1].infractions[0].type = 'NEW_TYPE';
   const service = new InfractionService(config, async () => Response.json(data));
   assert.deepEqual(await service.getReport(query), data);
+});
+
+it('preserves an unavailable monthly average returned as null by P5', async () => {
+  const data = { ...report, people: [{ ...report.people[0], monthlyAverage: {
+    percent: null, loggedSeconds: 0, workedSeconds: 0,
+  } }] };
+  assert.deepEqual(await new InfractionService(config, async () => Response.json(data)).getReport(query), data);
 });
 
 it('returns an empty period without inventing data', async () => {

@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton'
 import { api } from '@/lib/api-handler'
 import { formatLoggedDuration } from '@/lib/format-duration'
-import type { InfractionPerson, InfractionsReport } from '@/types/infraction'
+import { filterInfractionsByLeader } from '@/lib/infraction-filters'
+import type { InfractionLeader, InfractionPerson, InfractionsReport } from '@/types/infraction'
 
 const MONTHS = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -27,7 +28,8 @@ const TYPE_STYLES: Record<string, string> = {
 }
 const percentFormatter = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 })
 
-function percent(value: number) {
+function percent(value: number | null) {
+  if (value === null) return '—'
   return `${percentFormatter.format(value)}%`
 }
 
@@ -113,8 +115,29 @@ export function InfractionsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(false)
   const [attempt, setAttempt] = useState(0)
+  const [leaders, setLeaders] = useState<InfractionLeader[]>([])
+  const [leaderId, setLeaderId] = useState('all')
+  const [leadersState, setLeadersState] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [leadersAttempt, setLeadersAttempt] = useState(0)
   const validYear = /^\d+$/.test(year) && Number.isSafeInteger(Number(year)) && Number(year) > 0
   const period = `${year}-${month}`
+  const selectedLeader = leaders.find((leader) => leader.id === leaderId) ?? null
+  const visibleReport = report ? filterInfractionsByLeader(report, selectedLeader) : null
+
+  useEffect(() => {
+    let current = true
+    const controller = new AbortController()
+    setLeadersState('loading')
+    void api<{ leaders: InfractionLeader[] }>('/infractions/leaders', {
+      signal: controller.signal, toastOnError: false, toastOnSuccess: false,
+    }).then((data) => {
+      if (!current) return
+      setLeaders(data.leaders)
+      setLeaderId((value) => value === 'all' || data.leaders.some((leader) => leader.id === value) ? value : 'all')
+      setLeadersState('ready')
+    }).catch(() => { if (current) setLeadersState('error') })
+    return () => { current = false; controller.abort() }
+  }, [leadersAttempt])
 
   useEffect(() => {
     let current = true
@@ -150,6 +173,24 @@ export function InfractionsPage() {
       </div>
 
       <div className="flex flex-wrap items-start gap-4">
+        <div className="grid w-full gap-2 sm:w-72">
+          <Label htmlFor="infractions-leader">Líder</Label>
+          <Select value={leaderId} onValueChange={(value) => { if (value) setLeaderId(value) }} disabled={leadersState !== 'ready'} items={[
+            { value: 'all', label: 'Todos os líderes' },
+            ...leaders.map((leader) => ({ value: leader.id, label: leader.name })),
+          ]}>
+            <SelectTrigger id="infractions-leader" className="w-full"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os líderes</SelectItem>
+              {leaders.map((leader) => <SelectItem key={leader.id} value={leader.id}>{leader.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">Colaboradores das equipes ativas administradas pelo líder.</p>
+          {leadersState === 'error' && <div role="alert" className="text-sm text-destructive">
+            Não foi possível carregar os líderes.
+            <Button variant="link" onClick={() => setLeadersAttempt((value) => value + 1)}>Tentar carregar líderes novamente</Button>
+          </div>}
+        </div>
         <div className="grid w-full gap-2 sm:w-48">
           <Label htmlFor="infractions-month">Mês</Label>
           <Select value={month} onValueChange={(value) => { if (value) setMonth(value) }} items={MONTHS.map((label, index) => ({ value: String(index + 1), label }))}>
@@ -183,23 +224,23 @@ export function InfractionsPage() {
               <RefreshCw aria-hidden="true" /> Tentar novamente
             </Button>
           </div>
-        ) : report ? (
+        ) : visibleReport ? (
           <div className="space-y-5">
             <dl className="grid gap-4 sm:grid-cols-2">
               <div className="rounded-xl border bg-card p-5">
                 <dt className="flex items-center gap-2 text-sm text-muted-foreground"><Users aria-hidden="true" className="size-4" />Colaboradores</dt>
-                <dd className="mt-2 text-3xl font-semibold tabular-nums">{report.totalPeople}</dd>
+                <dd className="mt-2 text-3xl font-semibold tabular-nums">{visibleReport.totalPeople}</dd>
               </div>
               <div className="rounded-xl border bg-card p-5">
                 <dt className="flex items-center gap-2 text-sm text-muted-foreground"><AlertTriangle aria-hidden="true" className="size-4" />Infrações no período</dt>
-                <dd className="mt-2 text-3xl font-semibold tabular-nums">{report.totalInfractions}</dd>
+                <dd className="mt-2 text-3xl font-semibold tabular-nums">{visibleReport.totalInfractions}</dd>
               </div>
             </dl>
-            {report.people.length === 0 ? (
-              <p className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">Nenhuma infração encontrada para o período selecionado.</p>
+            {visibleReport.people.length === 0 ? (
+              <p className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">{selectedLeader ? 'Nenhuma infração encontrada para este líder no período selecionado.' : 'Nenhuma infração encontrada para o período selecionado.'}</p>
             ) : (
               <div className="space-y-3">
-                {report.people.map((person) => <PersonInfractions key={JSON.stringify([period, person.unit, person.cardNumber])} person={person} />)}
+                {visibleReport.people.map((person) => <PersonInfractions key={JSON.stringify([period, person.unit, person.cardNumber])} person={person} />)}
               </div>
             )}
           </div>

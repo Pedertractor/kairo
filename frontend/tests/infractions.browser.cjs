@@ -46,6 +46,11 @@ async function setup(browser, { mobile = false, role = 'ADMIN', authenticated = 
     else if (endpoint === '/time-entries/recent') dados = { items: [] }
     else if (endpoint === '/time-entries/day') dados = { blocks: [], absences: [] }
     else if (endpoint === '/absences/unseen-count') dados = { count: 0 }
+    else if (endpoint === '/infractions/leaders') dados = { leaders: [
+      { id: 'leader-tractor', name: 'Líder Tractor', members: [{ unit: 'TRACTOR', cardNumber: '1234' }] },
+      { id: 'leader-pedertractor', name: 'Líder Pedertractor', members: [{ unit: 'PEDERTRACTOR', cardNumber: '1234' }] },
+      { id: 'leader-empty', name: 'Líder sem equipe', members: [] },
+    ] }
     else if (endpoint === '/infractions') {
       requests.push(url)
       return respond(route, url)
@@ -130,6 +135,26 @@ async function checkStates(browser) {
     assert.equal(await second.getAttribute('aria-expanded'), 'true')
     await page.getByText('NEW_TYPE', { exact: true }).waitFor()
     await page.getByText('50h 00m', { exact: true }).waitFor()
+
+    const beforeLeaderFilter = requests.length
+    async function chooseLeader(label) {
+      await page.getByRole('combobox', { name: 'Líder', exact: true }).click()
+      await page.getByRole('option', { name: label, exact: true }).click()
+    }
+    await chooseLeader('Líder Tractor')
+    await first.waitFor()
+    assert.equal(await second.count(), 0)
+    assert.equal(await page.getByText('Colaboradores', { exact: true }).locator('..').locator('dd').innerText(), '1')
+    assert.equal(await page.getByText('Infrações no período', { exact: true }).locator('..').locator('dd').innerText(), '3')
+    await chooseLeader('Líder Pedertractor')
+    await second.waitFor()
+    assert.equal(await first.count(), 0)
+    await chooseLeader('Líder sem equipe')
+    await page.getByText('Nenhuma infração encontrada para este líder no período selecionado.', { exact: true }).waitFor()
+    await chooseLeader('Todos os líderes')
+    await first.waitFor()
+    await second.waitFor()
+    assert.equal(requests.length, beforeLeaderFilter, 'leader filtering must not make new P5 requests')
 
     fixture.setResponder(async (route, url) => route.fulfill({ json: { dados: report(url, []) } }))
     await selectMonth(page, 'Outubro')
