@@ -88,6 +88,7 @@ export async function integrationRoutes(app: FastifyInstance) {
     controller.getOccupation,
   );
   app.get('/integrations/v1/teams', auth, controller.listTeams);
+  app.get('/integrations/v1/teams/:teamId/indicator-activities', auth, controller.getIndicatorActivities);
   app.get('/integrations/v1/clients', auth, controller.listClients);
   app.get(
     '/integrations/v1/teams/:teamId/tags',

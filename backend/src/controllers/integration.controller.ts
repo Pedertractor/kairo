@@ -1,6 +1,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import {
   activityParamSchema,
+  indicatorPeriodSchema,
   createIntegrationActivitySchema,
   createIntegrationProjectSchema,
   projectParamSchema,
@@ -39,6 +40,24 @@ export class IntegrationController {
     try {
       const teams = await this.teamService.listUserTeams(request.user.sub, true);
       return sendSuccess(reply, { teams });
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
+
+  getIndicatorActivities = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const params = teamIdParamSchema.safeParse(request.params);
+      const period = indicatorPeriodSchema.safeParse(request.query);
+      if (!params.success || !period.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+      const { teamId } = params.data;
+      const { start, end } = period.data;
+      const activities = await this.cardService.getIndicatorActivities(
+        teamId, request.user.sub, start, end,
+      );
+      return sendSuccess(reply, { activities });
     } catch (error) {
       return handleControllerError(error, reply);
     }

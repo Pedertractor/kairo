@@ -4,6 +4,12 @@ export const teamIdParamSchema = z.object({
   teamId: z.string().min(1),
 });
 
+export const indicatorPeriodSchema = z.object({
+  start: z.iso.datetime({ offset: true }).transform(value => new Date(value)),
+  end: z.iso.datetime({ offset: true }).transform(value => new Date(value)),
+}).refine(value => value.end > value.start &&
+  value.end.getTime() - value.start.getTime() <= 366 * 24 * 60 * 60 * 1000);
+
 export const activityParamSchema = z.object({
   teamId: z.string().min(1),
   activityId: z.string().min(1),
