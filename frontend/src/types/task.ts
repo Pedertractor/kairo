@@ -42,6 +42,8 @@ export interface TaskResponse {
 
 export interface TaskDetail extends TaskSummary {
   loggedSeconds: number
+  projectTitle: string
+  completedAt: string | null
 }
 
 export interface TaskDetailResponse {

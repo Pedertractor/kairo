@@ -13,8 +13,7 @@ export function activityHistoryInPeriod(
         createdAt: { gte: periodStart, lt: periodEnd },
       },
       {
-        type: 'COMPLETION_ESTIMATED',
-        toStatus: 'DONE',
+        type: 'COMPLETION_ESTIMATED', toStatus: 'DONE',
         estimatedCompletedAt: { gte: periodStart, lt: periodEnd },
       },
     ],
@@ -295,14 +294,22 @@ export class AnalyticsRepository {
       },
       select: {
         id: true,
+        teamId: true,
+        title: true,
         type: true,
         status: true,
         createdAt: true,
         updatedAt: true,
+        completedAt: true,
+        completionDateEstimated: true,
         historyEvents: {
-          where: activityHistoryInPeriod(periodStart, periodEnd),
+          // Imported legacy completions are dated by estimatedCompletedAt.
+          where: { OR: [
+            { type: 'STATUS_CHANGED', createdAt: { lt: periodEnd } },
+            { type: 'COMPLETION_ESTIMATED', estimatedCompletedAt: { lt: periodEnd } },
+          ] },
           orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-          select: { toStatus: true },
+          select: { id: true, type: true, toStatus: true, createdAt: true, estimatedCompletedAt: true },
         },
         tagId: true,
         tag: { select: { name: true, color: true } },
@@ -323,6 +330,9 @@ export class AnalyticsRepository {
       },
       select: {
         id: true,
+        cardId: true,
+        card: { select: { teamId: true } },
+        title: true,
         status: true,
         createdAt: true,
         updatedAt: true,
@@ -344,9 +354,10 @@ export class AnalyticsRepository {
         teamId: { in: teamIds },
         type: 'ACTIVITY',
         deletedAt: null,
-        historyEvents: {
-          some: activityHistoryInPeriod(periodStart, periodEnd, true),
-        },
+        OR: [
+          { historyEvents: { some: activityHistoryInPeriod(periodStart, periodEnd, true) } },
+          { completedAt: { gte: periodStart, lt: periodEnd } },
+        ],
         assignedToId: employeeId ? employeeId : { not: null },
       },
       select: {

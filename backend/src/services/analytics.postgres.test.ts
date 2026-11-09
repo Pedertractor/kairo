@@ -239,11 +239,7 @@ it('analytics completions and tags against isolated PostgreSQL', { skip: !url },
         assert.equal(result.memberFinishedActivities[0].activityCount, 1);
       }));
 
-      // These execute the desired historical rule and document reproducible gaps
-      // in main. TODO keeps the verification command usable without hiding them.
-      await t.test(`${label}: October-created task completed in November should stay out of October DONE breakdown`, {
-        todo: 'The task status breakdown uses current status rather than status in the selected month',
-      }, async () => using(tagged, async f => {
+      await t.test(`${label}: October-created task completed in November stays out of October DONE breakdown`, async () => using(tagged, async f => {
         await f.task({ createdAt: completion, completedAt: new Date('2026-11-02T12:00:00Z') });
         const result = await f.load();
         assert.equal(result.activityOverview.tasks.finishedInPeriod, 0);

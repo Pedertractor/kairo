@@ -4,6 +4,7 @@ import { AnalyticsRepository } from '../repositories/analytics.repository.js';
 import { ShiftRepository } from '../repositories/shift.repository.js';
 import type {
   ActivityOverview,
+  ActivityTagItem,
   ActivityStatusCount,
   ActivityTypeAnalytics,
   AnalyticsDashboard,
@@ -13,6 +14,7 @@ import type {
   MemberFinishedActivityAnalytics,
 } from '../types/analytics.types.js';
 import { formatDateKey, parseDayBounds } from '../utils/app-timezone.js';
+import { getActivityPeriodState } from '../utils/analytics-period-state.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 import { getEntryDurationSeconds } from '../utils/time-entry-duration.js';
@@ -545,6 +547,7 @@ export class AnalyticsService {
       count: number;
       createdInPeriod: number;
       statusCounts: Map<CardStatus, number>;
+      items: ActivityTagItem[];
     };
 
     const allTimeActivityStatusCounts = emptyStatusCounts();
@@ -569,8 +572,9 @@ export class AnalyticsService {
 
     const isProjectFinishedInPeriod = (card: {
       status: CardStatus;
+      completedAt: Date | null;
       updatedAt: Date;
-    }) => card.status === 'DONE' && isInPeriod(card.updatedAt);
+    }) => card.status === 'DONE' && isInPeriod(card.completedAt ?? card.updatedAt);
 
     const isTaskFinishedInPeriod = (task: {
       status: CardStatus;
@@ -579,6 +583,15 @@ export class AnalyticsService {
     }) =>
       task.status === 'DONE' &&
       isInPeriod(task.completedAt ?? task.updatedAt);
+
+    // Projects and tasks do not have a status audit trail. In particular,
+    // never project a completion after the cutoff into an earlier period.
+    const statusWithoutHistory = (item: {
+      status: CardStatus; completedAt: Date | null; updatedAt: Date;
+    }): CardStatus => {
+      if (item.completedAt) return item.completedAt < periodEnd ? 'DONE' : 'TODO';
+      return item.updatedAt < periodEnd ? item.status : 'TODO';
+    };
 
     const ensureTagBucket = (
       buckets: Map<string, OverviewTagBucket>,
@@ -595,6 +608,7 @@ export class AnalyticsService {
         count: 0,
         createdInPeriod: 0,
         statusCounts: emptyStatusCounts(),
+        items: [],
       };
       buckets.set(tagKey, tagBucket);
       return tagBucket;
@@ -609,6 +623,7 @@ export class AnalyticsService {
           count: bucket.count,
           createdInPeriod: bucket.createdInPeriod,
           byStatus: toStatusCounts(bucket.statusCounts),
+          items: bucket.items.sort((a, b) => a.title.localeCompare(b.title, 'pt-BR') || a.id.localeCompare(b.id)),
           _isNone: key === NONE_TAG_KEY,
         }))
         .sort((a, b) => {
@@ -642,18 +657,16 @@ export class AnalyticsService {
             projectsCreatedInPeriod += 1;
           }
           periodProjectStatusCounts.set(
-            card.status,
-            (periodProjectStatusCounts.get(card.status) ?? 0) + 1,
+            statusWithoutHistory(card),
+            (periodProjectStatusCounts.get(statusWithoutHistory(card)) ?? 0) + 1,
           );
         }
 
         continue;
       }
 
-      // The repository limits these events to the selected period.
-      const finishedInPeriod = card.historyEvents.some(
-        (event) => event.toStatus === 'DONE',
-      );
+      const periodState = getActivityPeriodState(card, periodStart, periodEnd);
+      const { finishedInPeriod } = periodState;
       activityTotal += 1;
       allTimeActivityStatusCounts.set(
         card.status,
@@ -662,6 +675,7 @@ export class AnalyticsService {
 
       const allTimeTagBucket = ensureTagBucket(allTimeTagBuckets, card);
       allTimeTagBucket.count += 1;
+      allTimeTagBucket.items.push({ id: card.id, teamId: card.teamId, projectId: null, title: card.title, type: 'ACTIVITY', status: card.status, completedAt: card.completedAt?.toISOString() ?? null, completionDateEstimated: card.completionDateEstimated });
       allTimeTagBucket.statusCounts.set(
         card.status,
         (allTimeTagBucket.statusCounts.get(card.status) ?? 0) + 1,
@@ -676,12 +690,9 @@ export class AnalyticsService {
           activitiesCreatedInPeriod += 1;
           allTimeTagBucket.createdInPeriod += 1;
         }
-        // A completion remains in its original period after edits or reopening.
-        // Otherwise, use the last status recorded in the period for newly
-        // created activities, which start at TODO.
-        const periodStatus = finishedInPeriod
-          ? 'DONE'
-          : (card.historyEvents[0]?.toStatus ?? 'TODO');
+        // Counts of completion events and the end-of-period status are distinct:
+        // an item completed then reopened within the period is open at cutoff.
+        const periodStatus = periodState.status;
         periodActivityStatusCounts.set(
           periodStatus,
           (periodActivityStatusCounts.get(periodStatus) ?? 0) + 1,
@@ -689,6 +700,7 @@ export class AnalyticsService {
 
         const periodTagBucket = ensureTagBucket(periodTagBuckets, card);
         periodTagBucket.count += 1;
+        periodTagBucket.items.push({ id: card.id, teamId: card.teamId, projectId: null, title: card.title, type: 'ACTIVITY', status: periodStatus, completedAt: periodState.completedAt, completionDateEstimated: periodState.completionDateEstimated });
         if (createdInPeriod) {
           periodTagBucket.createdInPeriod += 1;
         }
@@ -710,6 +722,7 @@ export class AnalyticsService {
 
       const allTimeTagBucket = ensureTagBucket(allTimeTagBuckets, task);
       allTimeTagBucket.count += 1;
+      allTimeTagBucket.items.push({ id: task.id, teamId: task.card.teamId, projectId: task.cardId, title: task.title, type: 'TASK', status: task.status, completedAt: task.completedAt?.toISOString() ?? null, completionDateEstimated: false });
       allTimeTagBucket.statusCounts.set(
         task.status,
         (allTimeTagBucket.statusCounts.get(task.status) ?? 0) + 1,
@@ -724,19 +737,21 @@ export class AnalyticsService {
           tasksCreatedInPeriod += 1;
           allTimeTagBucket.createdInPeriod += 1;
         }
+        const periodStatus = statusWithoutHistory(task);
         periodTaskStatusCounts.set(
-          task.status,
-          (periodTaskStatusCounts.get(task.status) ?? 0) + 1,
+          periodStatus,
+          (periodTaskStatusCounts.get(periodStatus) ?? 0) + 1,
         );
 
         const periodTagBucket = ensureTagBucket(periodTagBuckets, task);
         periodTagBucket.count += 1;
+        periodTagBucket.items.push({ id: task.id, teamId: task.card.teamId, projectId: task.cardId, title: task.title, type: 'TASK', status: periodStatus, completedAt: periodStatus === 'DONE' ? (task.completedAt ?? task.updatedAt).toISOString() : null, completionDateEstimated: periodStatus === 'DONE' && !task.completedAt });
         if (createdInPeriod) {
           periodTagBucket.createdInPeriod += 1;
         }
         periodTagBucket.statusCounts.set(
-          task.status,
-          (periodTagBucket.statusCounts.get(task.status) ?? 0) + 1,
+          periodStatus,
+          (periodTagBucket.statusCounts.get(periodStatus) ?? 0) + 1,
         );
       }
     }

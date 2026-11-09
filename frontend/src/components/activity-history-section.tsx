@@ -70,12 +70,11 @@ function describeHistoryEvent(event: ActivityHistoryEvent) {
   if (event.type === 'COMPLETION_ESTIMATED') {
     return (
       <>
-        <span className="font-medium text-foreground">Sistema</span>{' '}
-        preencheu a conclusão estimada em{' '}
+        Conclusão em{' '}
         <span className="font-medium text-foreground">
           {event.estimatedCompletedAt ? formatDateTime(event.estimatedCompletedAt) : 'data não registrada'}
         </span>{' '}
-        com base na última atualização da atividade.
+        (data estimada a partir da última atualização da atividade).
       </>
     )
   }
@@ -170,7 +169,10 @@ export function ActivityHistorySection({
           </p>
         ) : (
           <ol className="relative ml-2 border-l border-border pl-4">
-            {history.map((event) => (
+            {[...history].sort((a, b) =>
+              new Date(b.estimatedCompletedAt ?? b.createdAt).getTime()
+              - new Date(a.estimatedCompletedAt ?? a.createdAt).getTime(),
+            ).map((event) => (
               <li key={event.id} className="relative pb-4 last:pb-0">
                 <span
                   aria-hidden
@@ -180,6 +182,7 @@ export function ActivityHistorySection({
                   {describeHistoryEvent(event)}
                 </p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
+                  {event.type === 'COMPLETION_ESTIMATED' ? 'Registro histórico recuperado em ' : null}
                   {formatDateTime(event.createdAt)}
                 </p>
               </li>
