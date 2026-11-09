@@ -95,6 +95,17 @@ export class CardRepository {
     });
   }
 
+  findIndicatorActivities(teamId: string, start: Date, end: Date) {
+    return this.prisma.card.findMany({
+      where: { teamId, type: 'ACTIVITY', deletedAt: null, createdAt: { gte: start, lt: end } },
+      select: {
+        client: { select: { id: true, name: true } },
+        tag: { select: { id: true, name: true } },
+        assignedTo: { select: { id: true, name: true } },
+      },
+    });
+  }
+
   findActivitiesByUserId(userId: string) {
     return this.prisma.card.findMany({
       where: {

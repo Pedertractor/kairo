@@ -159,6 +159,11 @@ export class CardService {
     return assertTeamMembership(membership);
   }
 
+  async getIndicatorActivities(teamId: string, userId: string, start: Date, end: Date) {
+    await this.assertTeamMember(teamId, userId);
+    return this.cardRepository.findIndicatorActivities(teamId, start, end);
+  }
+
   private async assertCanEditEstimatedHours(
     teamRole: TeamRole,
     userId: string,
