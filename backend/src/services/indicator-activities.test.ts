@@ -8,12 +8,12 @@ import { AppError } from '../utils/errors.js';
 const start = new Date('2026-11-01T03:00:00Z');
 const end = new Date('2026-12-01T03:00:00Z');
 
-it('selects only non-deleted team activities created within the half-open period', async () => {
+it('selects only non-deleted, finished team activities completed within the half-open period', async () => {
   let query: any;
   const repo = new CardRepository({ card: { findMany: async (input: any) => { query = input; return []; } } } as any);
   await repo.findIndicatorActivities('engineering', start, end);
   assert.deepEqual(query.where, {
-    teamId: 'engineering', type: 'ACTIVITY', deletedAt: null, createdAt: { gte: start, lt: end },
+    teamId: 'engineering', type: 'ACTIVITY', status: 'DONE', deletedAt: null, completedAt: { gte: start, lt: end },
   });
   assert.deepEqual(Object.keys(query.select).sort(), ['assignedTo', 'client', 'tag']);
 });
