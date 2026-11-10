@@ -119,6 +119,7 @@ export class UserController {
         request.user.sub,
         params.data.id,
         body.data.role,
+        body.data.production,
       );
 
       return sendSuccess(
