@@ -237,6 +237,7 @@ export function UsuariosPage() {
                   <th className="px-4 py-3 font-medium">Cartão</th>
                   <th className="px-4 py-3 font-medium">Unidade</th>
                   <th className="px-4 py-3 font-medium">Função</th>
+                  <th className="px-4 py-3 font-medium">Produção</th>
                   <th className="px-4 py-3 font-medium">Turno</th>
                   <th className="px-4 py-3 font-medium">Estado</th>
                   <th className="px-4 py-3 text-right font-medium">Ações</th>
@@ -289,7 +290,8 @@ export function UsuariosPage() {
                     </td>
                     <td className="px-4 py-3">{user.cardNumber}</td>
                     <td className="px-4 py-3">{UNIT_LABELS[user.unit]}</td>
-                    <td className="px-4 py-3">{user.production ? 'Produção' : ROLE_LABELS[user.role]}</td>
+                    <td className="px-4 py-3">{ROLE_LABELS[user.role]}</td>
+                    <td className="px-4 py-3">{user.production ? 'Sim' : 'Não'}</td>
                     <td className="px-4 py-3">
                       {formatShiftLabel(user.shiftStart, user.shiftEnd)}
                     </td>
@@ -320,14 +322,14 @@ export function UsuariosPage() {
                           >
                             <EllipsisIcon />
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
+                          <DropdownMenuContent align="end" className="min-w-56">
                             {user.active ? (
                               <>
                                 <DropdownMenuItem
                                   onClick={() => openAction(user, 'role')}
                                 >
                                   <Shield />
-                                  Alterar função
+                                  Alterar função e acesso
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() => openAction(user, 'shift')}

@@ -157,11 +157,22 @@ export class UserRepository {
     id: string,
     data: {
       role: UserRole;
+      production?: boolean;
     },
   ) {
-    return this.prisma.user.update({
-      where: { id },
-      data,
+    return this.prisma.$transaction(async (tx) => {
+      const current = await tx.user.findUniqueOrThrow({ where: { id } });
+      const updated = await tx.user.update({ where: { id }, data });
+
+      if (updated.production !== current.production) {
+        await tx.productionSession.deleteMany({ where: { userId: id } });
+        await tx.refreshToken.updateMany({
+          where: { userId: id, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+      }
+
+      return updated;
     });
   }
 

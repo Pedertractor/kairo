@@ -10,6 +10,7 @@ export interface UserResponse {
 
 export interface UpdateUserRoleInput {
   role: UserRole
+  production?: boolean
 }
 
 export interface CreateUserInput {

@@ -22,6 +22,9 @@ export const createUserSchema = z.object({
 
 export const updateUserRoleSchema = z.object({
   role: z.enum(['ADMIN', 'LEADER', 'USER']),
+  production: z.boolean().optional(),
+}).refine((data) => !data.production || data.role === 'USER', {
+  message: 'Usuários de produção devem ter a função Usuário',
 });
 
 const timeSchema = z

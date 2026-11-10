@@ -256,6 +256,7 @@ export class UserService {
     actorUserId: string,
     targetUserId: string,
     role: UserRole,
+    production?: boolean,
   ): Promise<SafeUser> {
     const actor = await this.getActorOrThrow(actorUserId);
     const targetUser = await this.userRepository.findById(targetUserId);
@@ -270,7 +271,7 @@ export class UserService {
 
     await this.assertCanManageTarget(actor, targetUser);
 
-    if (targetUser.production && role !== UserRole.USER) {
+    if ((production ?? targetUser.production) && role !== UserRole.USER) {
       throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
     }
 
@@ -294,6 +295,7 @@ export class UserService {
 
     const updated = await this.userRepository.updateRole(targetUserId, {
       role,
+      ...(production !== undefined ? { production } : {}),
     });
     return this.toSafeUserWithShift(updated);
   }

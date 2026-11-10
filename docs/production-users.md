@@ -8,6 +8,12 @@ O apontamento em andamento pode ser pausado pelo botão **Pausar** no próprio c
 
 `User.production` tem valor padrão `false`, inclusive para os usuários existentes. No diálogo de criação, a opção **Usuário de produção** começa desmarcada. Contas de produção usam a função `USER` e não entram pelo login comum.
 
+Na lista de usuários, **Função** mostra a função da conta e **Produção** informa **Sim** ou **Não**. A ação **Alterar função e acesso** permite mudar as duas configurações juntas. Ao marcar **Usuário de produção**, a função passa para **Usuário** e fica bloqueada; ao desmarcar, pode ser escolhida novamente. Administradores e líderes seguem as mesmas permissões de gerenciamento e a proteção do último administrador.
+
+Mudar o acesso de produção revoga os refresh tokens e as sessões de produção na mesma transação da atualização. Quem converter a própria conta sai da sessão atual. Senha, primeiro acesso, equipes e apontamentos em andamento são preservados. Ao voltar ao acesso comum, o usuário utiliza sua senha existente ou o fluxo de reset de senha.
+
+A API `PATCH /users/:id/role` recebe `role` e, opcionalmente, `production` (booleano). Omitir `production` preserva o valor atual. A combinação final de produção com função diferente de `USER` é recusada.
+
 ## Sessão e segurança
 
 - A sessão de produção é persistida no banco e expira após 15 segundos sem interação. A API confere esse prazo em cada requisição, mesmo que o JWT ainda não tenha expirado.
@@ -27,6 +33,8 @@ No frontend, execute `npm run build`. Publique as rotas da SPA com fallback para
 ## Testes
 
 Execute `npm test` tanto no backend quanto no frontend.
+
+Com o frontend em execução, `npm run test:user-access:browser` verifica o editor de função e acesso em desktop e celular com respostas de API simuladas, sem escrever no banco. Cobre seleção automática da função, cancelamento, falha e nova tentativa, atualização da lista, recarga e saída após converter a própria conta. Use `KAIRO_WEB_URL` para definir o endereço do frontend (padrão `http://127.0.0.1:5173`) e `KAIRO_BROWSER` para o canal do navegador (padrão `msedge`). As capturas ficam em `frontend/test-results/user-access/`.
 
 O teste real de navegador usa Playwright, uma conta administrativa e um funcionário que possa ser cadastrado pela integração existente. Configure estas variáveis antes de executar `npm run test:browser` no frontend:
 

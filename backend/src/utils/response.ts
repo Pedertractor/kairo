@@ -97,7 +97,7 @@ export const MENSAGENS = {
   AUSENCIA_EDITADA_SUCESSO: 'Ausência atualizada com sucesso',
   AUSENCIA_EXCLUIDA_SUCESSO: 'Ausência excluída com sucesso',
   APONTAMENTO_ATUALIZADO_SUCESSO: 'Apontamento atualizado com sucesso',
-  USUARIO_ROLE_ATUALIZADO_SUCESSO: 'Função do usuário atualizada com sucesso',
+  USUARIO_ROLE_ATUALIZADO_SUCESSO: 'Função e acesso do usuário atualizados com sucesso',
   USUARIO_SENHA_REPOSTA_SUCESSO: 'Senha resetada com sucesso',
   USUARIO_DESATIVADO_SUCESSO: 'Usuário removido da aplicação com sucesso',
   USUARIO_REATIVADO_SUCESSO: 'Usuário reativado com sucesso',
