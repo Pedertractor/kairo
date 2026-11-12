@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -100,6 +100,14 @@ export function LoginForm({
             {isSubmitting ? 'Entrando...' : 'Entrar'}
           </Button>
         </Field>
+        <p className='text-center text-sm text-muted-foreground'>
+          <Link
+            to={production ? '/login' : '/producao'}
+            className='underline underline-offset-4 hover:text-primary'
+          >
+            {production ? 'Fazer acesso padrão' : 'Fazer acesso como produção'}
+          </Link>
+        </p>
       </FieldGroup>
     </form>
   );
