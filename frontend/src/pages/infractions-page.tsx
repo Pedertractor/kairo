@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { api } from '@/lib/api-handler'
+import { useAuth } from '@/hooks/use-auth'
 import { formatLoggedDuration } from '@/lib/format-duration'
 import { filterInfractionsByLeader } from '@/lib/infraction-filters'
 import type { InfractionLeader, InfractionPerson, InfractionsReport } from '@/types/infraction'
@@ -109,6 +110,8 @@ function PersonInfractions({ person }: { person: InfractionPerson }) {
 }
 
 export function InfractionsPage() {
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'ADMIN'
   const [month, setMonth] = useState(() => String(new Date().getMonth() + 1))
   const [year, setYear] = useState(() => String(new Date().getFullYear()))
   const [report, setReport] = useState<InfractionsReport | null>(null)
@@ -121,10 +124,11 @@ export function InfractionsPage() {
   const [leadersAttempt, setLeadersAttempt] = useState(0)
   const validYear = /^\d+$/.test(year) && Number.isSafeInteger(Number(year)) && Number(year) > 0
   const period = `${year}-${month}`
-  const selectedLeader = leaders.find((leader) => leader.id === leaderId) ?? null
+  const selectedLeader = isAdmin ? leaders.find((leader) => leader.id === leaderId) ?? null : null
   const visibleReport = report ? filterInfractionsByLeader(report, selectedLeader) : null
 
   useEffect(() => {
+    if (!isAdmin) return
     let current = true
     const controller = new AbortController()
     setLeadersState('loading')
@@ -137,7 +141,7 @@ export function InfractionsPage() {
       setLeadersState('ready')
     }).catch(() => { if (current) setLeadersState('error') })
     return () => { current = false; controller.abort() }
-  }, [leadersAttempt])
+  }, [isAdmin, leadersAttempt])
 
   useEffect(() => {
     let current = true
@@ -173,7 +177,7 @@ export function InfractionsPage() {
       </div>
 
       <div className="flex flex-wrap items-start gap-4">
-        <div className="grid w-full gap-2 sm:w-72">
+        {isAdmin && <div className="grid w-full gap-2 sm:w-72">
           <Label htmlFor="infractions-leader">Líder</Label>
           <Select value={leaderId} onValueChange={(value) => { if (value) setLeaderId(value) }} disabled={leadersState !== 'ready'} items={[
             { value: 'all', label: 'Todos os líderes' },
@@ -190,7 +194,7 @@ export function InfractionsPage() {
             Não foi possível carregar os líderes.
             <Button variant="link" onClick={() => setLeadersAttempt((value) => value + 1)}>Tentar carregar líderes novamente</Button>
           </div>}
-        </div>
+        </div>}
         <div className="grid w-full gap-2 sm:w-48">
           <Label htmlFor="infractions-month">Mês</Label>
           <Select value={month} onValueChange={(value) => { if (value) setMonth(value) }} items={MONTHS.map((label, index) => ({ value: String(index + 1), label }))}>

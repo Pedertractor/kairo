@@ -37,6 +37,9 @@ const report = {
 let requests = 0;
 let lastUrl: URL | undefined;
 let lastOptions: RequestInit | undefined;
+let managedCards = ['1234', '5678'];
+let membershipError = false;
+let upstreamReport = report;
 const app = Fastify();
 const users = {
   admin: { id: 'admin', active: true, role: 'ADMIN', production: false },
@@ -48,6 +51,14 @@ app.decorate('prisma', {
   user: {
     findUnique: async ({ where }: { where: { id: keyof typeof users } }) => users[where.id] ?? null,
     findMany: async (options: any) => {
+      if (options.where.memberships) {
+        assert.deepEqual(options.where, {
+          active: true,
+          memberships: { some: { team: { active: true, members: { some: { userId: 'leader', role: 'ADMIN' } } } } },
+        });
+        if (membershipError) throw new Error('membership lookup failed');
+        return managedCards.map((cardNumber) => ({ unit: 'TRACTOR', cardNumber }));
+      }
       assert.deepEqual(options.where, { role: 'LEADER', active: true });
       assert.deepEqual(options.select.memberships.where, { role: 'ADMIN', team: { active: true } });
       assert.deepEqual(options.select.memberships.select.team.select.members.where, { user: { active: true } });
@@ -68,7 +79,7 @@ before(async () => {
     requests++;
     lastUrl = new URL(url);
     lastOptions = options;
-    return Response.json(report);
+    return Response.json(upstreamReport);
   });
   await app.register(jwtPlugin);
   await app.register(infractionRoutes, { prefix: '/api' });
@@ -78,15 +89,67 @@ after(async () => { await app.close(); mock.restoreAll(); });
 const headers = (sub: string) => ({ authorization: `Bearer ${app.jwt.sign({ sub })}` });
 const isStatus = (status: number) => (error: unknown) => error instanceof AppError && error.statusCode === status;
 
-it('requires authentication and an active global administrator before contacting P5', async () => {
+it('requires authentication and an active administrator or leader before contacting P5', async () => {
   const count = requests;
   assert.equal((await app.inject({ url: '/api/infractions?month=10&year=2026' })).statusCode, 401);
-  for (const [sub, status] of [['user', 403], ['leader', 403], ['inactive', 401], ['missing', 401]] as const) {
+  for (const [sub, status] of [['user', 403], ['inactive', 401], ['missing', 401]] as const) {
     const response = await app.inject({ url: '/api/infractions?month=10&year=2026', headers: headers(sub) });
     assert.equal(response.statusCode, status);
     assert.equal(typeof response.json().mensagem, 'string');
   }
   assert.equal(requests, count);
+});
+
+it('scopes leader responses and totals by current managed users, matching both unit and card', async () => {
+  const person = report.people[0];
+  upstreamReport = {
+    ...report, totalPeople: 7, totalInfractions: 21,
+    people: [person, { ...person, cardNumber: '5678', name: 'Second managed team' },
+      { ...person, unit: 'PEDERTRACTOR', name: 'Same card, other unit' },
+      { ...person, cardNumber: 'unrelated', name: 'Unrelated team' },
+      { ...person, cardNumber: 'ordinary', name: 'Ordinary team membership' },
+      { ...person, cardNumber: 'inactive', name: 'Inactive user or team' },
+      { ...person, cardNumber: 'unknown', name: 'No local account' }],
+  };
+  try {
+    const response = await app.inject({
+      url: '/api/infractions?month=10&year=2026&leaderId=admin&teamId=unrelated&userId=unknown',
+      headers: headers('leader'),
+    });
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.json().dados, { ...query, people: upstreamReport.people.slice(0, 2), totalPeople: 2, totalInfractions: 6 });
+    for (const name of ['Same card, other unit', 'Unrelated team', 'Ordinary team membership', 'Inactive user or team', 'No local account']) {
+      assert.ok(!response.body.includes(name));
+    }
+    const admin = await app.inject({ url: '/api/infractions?month=10&year=2026', headers: headers('admin') });
+    assert.deepEqual(admin.json().dados, upstreamReport);
+
+    managedCards = ['5678'];
+    const removed = await app.inject({ url: '/api/infractions?month=10&year=2026', headers: headers('leader') });
+    assert.deepEqual(removed.json().dados.people, [upstreamReport.people[1]]);
+    assert.equal(removed.json().dados.totalInfractions, 3);
+
+    managedCards = [];
+    const count = requests;
+    const empty = await app.inject({ url: '/api/infractions?month=10&year=2026', headers: headers('leader') });
+    assert.deepEqual(empty.json().dados, { ...query, people: [], totalPeople: 0, totalInfractions: 0 });
+    assert.equal(requests, count);
+  } finally {
+    upstreamReport = report;
+    managedCards = ['1234', '5678'];
+  }
+});
+
+it('fails closed when a leader membership lookup fails', async () => {
+  const count = requests;
+  membershipError = true;
+  try {
+    const response = await app.inject({ url: '/api/infractions?month=10&year=2026', headers: headers('leader') });
+    assert.equal(response.statusCode, 500);
+    assert.equal(response.json().dados, undefined);
+    assert.ok(!response.body.includes(report.people[0].name));
+    assert.equal(requests, count);
+  } finally { membershipError = false; }
 });
 
 it('validates required integer month and year without contacting P5', async () => {

@@ -168,7 +168,7 @@ function App() {
       <Route
         path="/infracoes"
         element={
-          <ProtectedRoute key="infracoes" title="Infrações" requireAdmin>
+          <ProtectedRoute key="infracoes" title="Infrações" requireAdminOrLeader>
             <InfractionsPage />
           </ProtectedRoute>
         }

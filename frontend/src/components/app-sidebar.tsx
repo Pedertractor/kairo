@@ -79,6 +79,9 @@ const adminDashboardNavItems = [
     url: '/painel',
     icon: <LayoutDashboardIcon />,
   },
+];
+
+const infractionsNavItems = [
   {
     title: 'Infrações',
     url: '/infracoes',
@@ -102,6 +105,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   const navItems = [
     ...baseNavItems,
     ...(user?.role === 'ADMIN' ? adminDashboardNavItems : []),
+    ...(user?.role === 'ADMIN' || user?.role === 'LEADER' ? infractionsNavItems : []),
     ...(user?.hasOwnedTeams ? teamOwnerNavItems : []),
     ...(user?.role === 'ADMIN' || user?.role === 'LEADER'
       ? userManagementNavItems

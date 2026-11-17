@@ -32,6 +32,7 @@ async function setup(browser, { mobile = false, role = 'ADMIN', authenticated = 
   page.setDefaultTimeout(10000)
   const errors = []
   const requests = []
+  const leaderRequests = []
   let respond = async (route, url) => route.fulfill({ json: { dados: report(url) } })
   page.on('pageerror', (error) => errors.push(error.message))
   await context.route('**/api/**', async (route) => {
@@ -46,11 +47,14 @@ async function setup(browser, { mobile = false, role = 'ADMIN', authenticated = 
     else if (endpoint === '/time-entries/recent') dados = { items: [] }
     else if (endpoint === '/time-entries/day') dados = { blocks: [], absences: [] }
     else if (endpoint === '/absences/unseen-count') dados = { count: 0 }
-    else if (endpoint === '/infractions/leaders') dados = { leaders: [
+    else if (endpoint === '/infractions/leaders') {
+      leaderRequests.push(url)
+      dados = { leaders: [
       { id: 'leader-tractor', name: 'Líder Tractor', members: [{ unit: 'TRACTOR', cardNumber: '1234' }] },
       { id: 'leader-pedertractor', name: 'Líder Pedertractor', members: [{ unit: 'PEDERTRACTOR', cardNumber: '1234' }] },
       { id: 'leader-empty', name: 'Líder sem equipe', members: [] },
     ] }
+    }
     else if (endpoint === '/infractions') {
       requests.push(url)
       return respond(route, url)
@@ -60,7 +64,7 @@ async function setup(browser, { mobile = false, role = 'ADMIN', authenticated = 
     }
     return route.fulfill({ json: { dados } })
   })
-  return { context, page, errors, requests, setResponder: (handler) => { respond = handler } }
+  return { context, page, errors, requests, leaderRequests, setResponder: (handler) => { respond = handler } }
 }
 
 async function selectMonth(page, label) {
@@ -195,7 +199,7 @@ async function checkStates(browser) {
 }
 
 async function checkAccess(browser) {
-  for (const role of ['USER', 'LEADER']) {
+  for (const role of ['USER']) {
     const fixture = await setup(browser, { role })
     try {
       await fixture.page.goto(`${baseURL}/infracoes`)
@@ -212,7 +216,38 @@ async function checkAccess(browser) {
     assert.equal(fixture.requests.length, 0)
     assert.deepEqual(fixture.errors, [])
   } finally { await fixture.context.close() }
-  process.stdout.write('PASS infractions: non-admin direct URLs and sidebar access, unauthenticated redirect\n')
+  process.stdout.write('PASS infractions: ordinary user direct URLs and sidebar access, unauthenticated redirect\n')
+}
+
+async function checkLeader(browser) {
+  const fixture = await setup(browser, { role: 'LEADER' })
+  const { page, requests, leaderRequests, errors } = fixture
+  try {
+    await page.goto(`${baseURL}/infracoes`)
+    const personTrigger = page.getByRole('button', { name: /Infrações de Ana Exemplo/ })
+    await personTrigger.waitFor()
+    await page.locator('a[href="/infracoes"]').waitFor()
+    assert.equal(await page.getByRole('combobox', { name: 'Líder', exact: true }).count(), 0)
+    assert.equal(await page.getByText('Todos os líderes', { exact: true }).count(), 0)
+    assert.equal(leaderRequests.length, 0)
+    await selectMonth(page, 'Outubro')
+    await personTrigger.waitFor()
+    assert.equal(requests.at(-1).searchParams.get('month'), '10')
+    await page.getByLabel('Ano', { exact: true }).fill('2025')
+    await personTrigger.waitFor()
+    assert.equal(requests.at(-1).searchParams.get('year'), '2025')
+    fixture.setResponder(async (route, url) => route.fulfill({ json: { dados: report(url, []) } }))
+    await selectMonth(page, 'Setembro')
+    await page.getByText('Nenhuma infração encontrada para o período selecionado.', { exact: true }).waitFor()
+    assert.equal(await page.getByText('Colaboradores', { exact: true }).locator('..').locator('dd').innerText(), '0')
+    fixture.setResponder(async (route) => route.fulfill({ status: 500, json: { mensagem: 'Erro ao consultar equipes' } }))
+    await selectMonth(page, 'Agosto')
+    await page.getByRole('alert').filter({ hasText: 'Não foi possível carregar as infrações.' }).waitFor()
+    assert.equal(await personTrigger.count(), 0)
+    assert.equal(leaderRequests.length, 0)
+    assert.deepEqual(errors, [])
+    process.stdout.write('PASS infractions leader: navigation, no leader selector or metadata request, period selection, empty and error states\n')
+  } finally { await fixture.context.close() }
 }
 
 async function main() {
@@ -223,6 +258,7 @@ async function main() {
     await checkLayout(browser, true)
     await checkStates(browser)
     await checkAccess(browser)
+    await checkLeader(browser)
   } finally { await browser.close() }
 }
 main().catch((error) => { process.stderr.write(`${error.stack}\n`); process.exitCode = 1 })
