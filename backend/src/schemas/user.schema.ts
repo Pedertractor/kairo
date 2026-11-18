@@ -14,14 +14,14 @@ export const createUserSchema = z.object({
   cardNumber: z.string().min(1),
   unit: z.enum(['PEDERTRACTOR', 'TRACTOR']),
   teamId: z.string().min(1).optional(),
-  role: z.enum(['ADMIN', 'LEADER', 'USER']).default('USER'),
+  role: z.enum(['ADMIN', 'SUPERVISOR', 'LEADER', 'USER']).default('USER'),
   production: z.boolean().default(false),
 }).refine((data) => !data.production || data.role === 'USER', {
   message: 'Usuários de produção devem ter a função Usuário',
 });
 
 export const updateUserRoleSchema = z.object({
-  role: z.enum(['ADMIN', 'LEADER', 'USER']),
+  role: z.enum(['ADMIN', 'SUPERVISOR', 'LEADER', 'USER']),
   production: z.boolean().optional(),
 }).refine((data) => !data.production || data.role === 'USER', {
   message: 'Usuários de produção devem ter a função Usuário',

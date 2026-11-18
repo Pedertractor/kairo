@@ -1,8 +1,20 @@
 import { externalApi, ExternalApiError } from '../lib/external-api.js';
 import { CostCenterRepository } from '../repositories/cost-center.repository.js';
+import { HierarchyRepository } from '../repositories/hierarchy.repository.js';
 import type { CostCenterSummary } from '../types/cost-center.types.js';
+import {
+  assignUnits,
+  collectSupervisors,
+  toCostCenterSyncItem,
+  type CostCenterSyncItem,
+  type EmployeeIdentity,
+} from '../utils/cost-center-hierarchy.js';
+import { EmployeeService } from './employee.service.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
+
+export const COST_CENTER_SYNC_JOB_NAME = 'cost-center-sync';
+export const COST_CENTER_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 function toCostCenterSummary(item: {
   id: string;
@@ -38,43 +50,13 @@ function extractList(body: unknown): unknown[] {
   throw new AppError(502, MENSAGENS.ERRO_API_EXTERNA);
 }
 
-function toSyncItem(
-  item: unknown,
-): { costCenter: string; description: string } | null {
-  if (!item || typeof item !== 'object') {
-    return null;
-  }
-
-  const record = item as Record<string, unknown>;
-
-  if (record.STATUS !== true) {
-    return null;
-  }
-
-  const rawCode = record.CCUSTO;
-  let costCenter =
-    typeof rawCode === 'string'
-      ? rawCode.trim()
-      : typeof rawCode === 'number'
-        ? String(rawCode)
-        : '';
-
-  if (costCenter.startsWith('0')) {
-    costCenter = costCenter.slice(1);
-  }
-
-  if (!costCenter) {
-    return null;
-  }
-
-  const description =
-    typeof record.DESCRICAO === 'string' ? record.DESCRICAO.trim() : '';
-
-  return { costCenter, description };
-}
-
 export class CostCenterService {
-  constructor(private readonly costCenterRepository: CostCenterRepository) {}
+  constructor(
+    private readonly costCenterRepository: CostCenterRepository,
+    private readonly hierarchyRepository?: HierarchyRepository,
+    private readonly listEmployees: () => Promise<EmployeeIdentity[]> = () =>
+      new EmployeeService().listIdentities(),
+  ) {}
 
   async list(): Promise<CostCenterSummary[]> {
     const costCenters = await this.costCenterRepository.findMany();
@@ -84,6 +66,7 @@ export class CostCenterService {
   async syncFromExternal(): Promise<{
     synced: number;
     costCenters: CostCenterSummary[];
+    promotedSupervisors: number;
   }> {
     let body: unknown;
 
@@ -97,30 +80,72 @@ export class CostCenterService {
       throw error;
     }
 
-    const uniqueByCode = new Map<
-      string,
-      { costCenter: string; description: string }
-    >();
+    const uniqueByCode = new Map<string, CostCenterSyncItem>();
 
     for (const item of extractList(body)) {
-      const mapped = toSyncItem(item);
+      const mapped = toCostCenterSyncItem(item);
 
       if (mapped) {
         uniqueByCode.set(mapped.costCenter, mapped);
       }
     }
 
-    const items = [...uniqueByCode.values()];
+    // Badges come without unit; resolve each one against the employee list before
+    // saving. If that list fails, the whole sync fails so stored units stay intact.
+    const { items, unresolved } = assignUnits(
+      [...uniqueByCode.values()],
+      uniqueByCode.size > 0 ? await this.listEmployees() : [],
+    );
+
+    if (unresolved.length > 0) {
+      console.warn(
+        `[cost-center-sync] ${unresolved.length} badges not found in either unit's employee list: ${unresolved.join('; ')}`,
+      );
+    }
 
     if (items.length > 0) {
       await this.costCenterRepository.upsertMany(items);
     }
+
+    let promotedSupervisors = 0;
+
+    if (this.hierarchyRepository && items.length > 0) {
+      const result = await this.hierarchyRepository.promoteSupervisors(
+        collectSupervisors(items),
+      );
+      promotedSupervisors = result.promoted.length;
+    }
+
+    await this.costCenterRepository.upsertJob(
+      COST_CENTER_SYNC_JOB_NAME,
+      new Date(),
+    );
 
     const costCenters = await this.list();
 
     return {
       synced: items.length,
       costCenters,
+      promotedSupervisors,
+    };
+  }
+
+  async runScheduledSyncIfDue(now = new Date()): Promise<{
+    ran: boolean;
+    synced?: number;
+    promotedSupervisors?: number;
+  }> {
+    const job = await this.costCenterRepository.getJob(COST_CENTER_SYNC_JOB_NAME);
+
+    if (job && now.getTime() - job.lastRunAt.getTime() < COST_CENTER_SYNC_INTERVAL_MS) {
+      return { ran: false };
+    }
+
+    const result = await this.syncFromExternal();
+    return {
+      ran: true,
+      synced: result.synced,
+      promotedSupervisors: result.promotedSupervisors,
     };
   }
 }

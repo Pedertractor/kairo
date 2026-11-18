@@ -5,6 +5,7 @@ import type {
   EmployeeShiftInfo,
   ExternalEmployee,
 } from '../types/employee.types.js';
+import type { EmployeeIdentity } from '../utils/cost-center-hierarchy.js';
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 import { parseExternalShiftBounds } from '../utils/shift.js';
@@ -114,6 +115,35 @@ export class EmployeeService {
           throw new AppError(404, MENSAGENS.FUNCIONARIO_NAO_ENCONTRADO);
         }
 
+        throw new AppError(502, MENSAGENS.ERRO_API_EXTERNA);
+      }
+
+      throw error;
+    }
+  }
+
+  /** Every employee of both units (badge, name, unit, active), from one `/employee/get` call. */
+  async listIdentities(): Promise<EmployeeIdentity[]> {
+    try {
+      const body = await externalApi.get<unknown>('/employee/get');
+      const identities: EmployeeIdentity[] = [];
+
+      for (const employee of extractEmployees(body)) {
+        const unit = tryParseUnit(employee?.unit);
+
+        if (unit && employee.cardNumber && employee.name) {
+          identities.push({
+            name: employee.name,
+            cardNumber: String(employee.cardNumber),
+            unit,
+            active: isExternalEmployeeActive(employee),
+          });
+        }
+      }
+
+      return identities;
+    } catch (error) {
+      if (error instanceof ExternalApiError) {
         throw new AppError(502, MENSAGENS.ERRO_API_EXTERNA);
       }
 

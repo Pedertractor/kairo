@@ -196,13 +196,13 @@ export class TeamService {
   }
 
   async getTeamForMember(teamId: string, userId: string): Promise<TeamSummary> {
-    const membership = await this.teamRepository.findMembershipByTeamAndUser(
+    const access = await this.teamRepository.findReadAccessByTeamAndUser(
       teamId,
       userId,
     );
 
-    const allowed = assertTeamMembership(membership, {
-      allowInactiveAdmin: true,
+    const allowed = assertTeamMembership(access, {
+      allowInactiveAdmin: !access?.readOnly,
     });
 
     const { currentAbsenceByUserId, currentShiftByUserId } =
@@ -210,12 +210,42 @@ export class TeamService {
         allowed.team.members.map((member) => member.user.id),
       );
 
-    return toTeamSummary(
-      allowed.team,
-      allowed.role,
-      currentAbsenceByUserId,
-      currentShiftByUserId,
+    return {
+      ...toTeamSummary(
+        allowed.team,
+        allowed.role,
+        currentAbsenceByUserId,
+        currentShiftByUserId,
+      ),
+      viewerAccess: allowed.readOnly ? 'readonly' : 'member',
+    };
+  }
+
+  /** Active teams a leader administers, as seen (read-only) by their supervisor. */
+  async listTeamsOwnedBy(leaderUserId: string): Promise<TeamSummary[]> {
+    const memberships = await this.teamRepository.findMembershipsByUserId(
+      leaderUserId,
+      { active: true, adminOnly: true },
     );
+    const memberIds = [
+      ...new Set(
+        memberships.flatMap((membership) =>
+          membership.team.members.map((member) => member.user.id),
+        ),
+      ),
+    ];
+    const { currentAbsenceByUserId, currentShiftByUserId } =
+      await this.loadTeamContext(memberIds);
+
+    return memberships.map((membership) => ({
+      ...toTeamSummary(
+        membership.team,
+        TeamRole.ADMIN,
+        currentAbsenceByUserId,
+        currentShiftByUserId,
+      ),
+      viewerAccess: 'readonly' as const,
+    }));
   }
 
   async setTeamActive(

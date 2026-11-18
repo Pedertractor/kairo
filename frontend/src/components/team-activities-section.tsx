@@ -2,6 +2,7 @@ import { useAuth } from '@/hooks/use-auth'
 import {
   canChangeActivityStatus,
   canDeleteTeamCard,
+  isReadOnlyTeam,
 } from '@/lib/team-permissions'
 import { useCallback, useEffect, useState } from 'react';
 import { Copy, Tags } from 'lucide-react';
@@ -43,7 +44,7 @@ import type { TeamMemberSummary, TeamSummary } from '@/types/team';
 interface TeamActivitiesSectionProps {
   team: Pick<
     TeamSummary,
-    'role' | 'membersCanDeleteCards' | 'membersCanEditActivities'
+    'role' | 'membersCanDeleteCards' | 'membersCanEditActivities' | 'viewerAccess'
   >
   teamId: string;
   members: TeamMemberSummary[];
@@ -62,6 +63,7 @@ export function TeamActivitiesSection({
   canEditTags,
   canDeleteTags,
 }: TeamActivitiesSectionProps) {
+  const readOnly = isReadOnlyTeam(team);
   const { user } = useAuth()
   const { isActivityCurrent } = useActiveTimer();
   const [activities, setActivities] = useState<ActivitySummary[]>([]);
@@ -351,6 +353,7 @@ export function TeamActivitiesSection({
                         <Copy />
                       </Button>
                     ) : null}
+                    {readOnly ? null : (
                     <FavoriteButton
                       target={{
                         kind: 'activity',
@@ -368,11 +371,14 @@ export function TeamActivitiesSection({
                         );
                       }}
                     />
+                    )}
+                    {readOnly ? null : (
                     <StartActivityTimerButton
                       teamId={teamId}
                       activityId={activity.id}
                       className='text-muted-foreground hover:text-sidebar-primary'
                     />
+                    )}
                     <ItemActionsMenu
                       title={activity.title}
                       canFinish={

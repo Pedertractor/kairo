@@ -4,6 +4,7 @@ import { env } from '../config/env.js';
 import { EmployeeService } from './employee.service.js';
 import { ShiftService } from './shift.service.js';
 import { CardRepository } from '../repositories/card.repository.js';
+import type { HierarchyRepository } from '../repositories/hierarchy.repository.js';
 import { RefreshTokenRepository } from '../repositories/refresh-token.repository.js';
 import { TaskRepository } from '../repositories/task.repository.js';
 import { TeamRepository } from '../repositories/team.repository.js';
@@ -34,6 +35,11 @@ type UserRecord = {
   updatedAt: Date;
 };
 
+/** Roles that manage the teams they administer (supervisors keep leader powers over their own teams). */
+function isTeamManagerRole(role: UserRole): boolean {
+  return role === UserRole.LEADER || role === UserRole.SUPERVISOR;
+}
+
 export class UserService {
   private readonly employeeService = new EmployeeService();
 
@@ -45,6 +51,10 @@ export class UserService {
     private readonly taskRepository: TaskRepository,
     private readonly cardRepository: CardRepository,
     private readonly shiftService: ShiftService,
+    private readonly hierarchyRepository: Pick<
+      HierarchyRepository,
+      'findLeaderUserIdsOfSupervisor'
+    > = { findLeaderUserIdsOfSupervisor: async () => [] },
   ) {}
 
   private async getActorOrThrow(actorUserId: string) {
@@ -79,11 +89,11 @@ export class UserService {
       return;
     }
 
-    if (actor.role !== UserRole.LEADER) {
+    if (!isTeamManagerRole(actor.role)) {
       throw new AppError(403, MENSAGENS.PROIBIDO);
     }
 
-    if (target.role === UserRole.ADMIN) {
+    if (target.role === UserRole.ADMIN || target.role === UserRole.SUPERVISOR) {
       throw new AppError(403, MENSAGENS.PROIBIDO);
     }
 
@@ -135,18 +145,20 @@ export class UserService {
   ): Promise<SafeUser> {
     const actor = await this.getActorOrThrow(actorUserId);
 
-    if (!['ADMIN', 'LEADER'].includes(actor.role) || (production && role !== UserRole.USER)) {
-      throw new AppError(403, MENSAGENS.PROIBIDO);
-    }
+    const actorIsTeamManager = isTeamManagerRole(actor.role);
 
     if (
-      actor.role === UserRole.LEADER &&
-      (role === UserRole.ADMIN || role === UserRole.LEADER)
+      (actor.role !== UserRole.ADMIN && !actorIsTeamManager) ||
+      (production && role !== UserRole.USER)
     ) {
       throw new AppError(403, MENSAGENS.PROIBIDO);
     }
 
-    if (actor.role === UserRole.LEADER && teamId) {
+    if (actorIsTeamManager && role !== UserRole.USER) {
+      throw new AppError(403, MENSAGENS.PROIBIDO);
+    }
+
+    if (actorIsTeamManager && teamId) {
       const membership = await this.teamRepository.findMembershipByTeamAndUser(
         teamId,
         actorUserId,
@@ -186,7 +198,10 @@ export class UserService {
     const passwordHash = await bcrypt.hash(env.DEFAULT_PASSWORD, 10);
 
     if (existing) {
-      if (actor.role === UserRole.LEADER && existing.role === UserRole.ADMIN) {
+      if (
+        actorIsTeamManager &&
+        (existing.role === UserRole.ADMIN || existing.role === UserRole.SUPERVISOR)
+      ) {
         throw new AppError(403, MENSAGENS.PROIBIDO);
       }
 
@@ -197,7 +212,7 @@ export class UserService {
         production,
       });
 
-      if (actor.role === UserRole.LEADER && teamId) {
+      if (actorIsTeamManager && teamId) {
         const teamMembership =
           await this.teamRepository.findMembershipByTeamAndUser(
             teamId,
@@ -222,7 +237,7 @@ export class UserService {
       production,
     };
 
-    if (actor.role === UserRole.LEADER && teamId) {
+    if (actorIsTeamManager && teamId) {
       const user = await this.userRepository.createWithTeamMembership(
         createData,
         teamId,
@@ -248,6 +263,42 @@ export class UserService {
         active: true,
       });
       return this.toSafeUsers(users);
+    }
+
+    if (actor.role === UserRole.SUPERVISOR) {
+      // Own teams stay fully manageable; the leaders below and their teams are read-only.
+      const [ownUsers, leaderIds] = await Promise.all([
+        this.userRepository.findManagedByTeamAdmin(actorUserId, { active: true }),
+        this.hierarchyRepository.findLeaderUserIdsOfSupervisor({
+          unit: actor.unit,
+          card: actor.cardNumber,
+        }),
+      ]);
+      const hierarchyUsers = await this.userRepository.findManagedByTeamAdmins(
+        leaderIds,
+        { active: true },
+      );
+      const leaders = (
+        await Promise.all(leaderIds.map((id) => this.userRepository.findById(id)))
+      ).filter((user): user is UserRecord => user !== null && user.active);
+      const ownIds = new Set(ownUsers.map(({ id }) => id));
+      const byId = new Map<string, UserRecord>();
+
+      for (const user of [...ownUsers, ...hierarchyUsers, ...leaders]) {
+        if (user.id !== actorUserId) {
+          byId.set(user.id, user);
+        }
+      }
+
+      const users = [...byId.values()].sort((a, b) =>
+        a.name.localeCompare(b.name, 'pt-BR'),
+      );
+      const safeUsers = await this.toSafeUsers(users);
+
+      return safeUsers.map((user) => ({
+        ...user,
+        managedByViewer: ownIds.has(user.id),
+      }));
     }
 
     throw new AppError(403, MENSAGENS.PROIBIDO);
@@ -276,7 +327,10 @@ export class UserService {
       throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
     }
 
-    if (actor.role === UserRole.LEADER && role === UserRole.ADMIN) {
+    if (
+      isTeamManagerRole(actor.role) &&
+      (role === UserRole.ADMIN || role === UserRole.SUPERVISOR)
+    ) {
       throw new AppError(403, MENSAGENS.PROIBIDO);
     }
 

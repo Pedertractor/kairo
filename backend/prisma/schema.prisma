@@ -14,6 +14,7 @@ enum UnitType {
 
 enum UserRole {
   ADMIN
+  SUPERVISOR
   LEADER
   USER
 }
@@ -292,11 +293,34 @@ model CostCenter {
   id          String @id @default(cuid())
   costCenter  String @unique
   description String
+  group       String?
+  productive  Boolean?
+
+  // Badges come from the base API without unit; the unit is resolved at sync
+  // time by matching badge + name against the employee list (null = not found).
+  leaderDayCard       String?
+  leaderDayName       String?
+  leaderDayUnit       UnitType?
+  leaderNightCard     String?
+  leaderNightName     String?
+  leaderNightUnit     UnitType?
+  supervisorDayCard   String?
+  supervisorDayName   String?
+  supervisorDayUnit   UnitType?
+  supervisorNightCard String?
+  supervisorNightName String?
+  supervisorNightUnit UnitType?
+  managerCard         String?
+  managerName         String?
+  managerUnit         UnitType?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   teams TeamCostCenter[]
+
+  @@index([supervisorDayCard])
+  @@index([supervisorNightCard])
 
   @@map("cost_centers")
 }

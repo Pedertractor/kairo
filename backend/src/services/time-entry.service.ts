@@ -554,6 +554,16 @@ export class TimeEntryService {
     return assertTeamMembership(membership);
   }
 
+  /** Read-only endpoints also accept supervisors and admins via the hierarchy. */
+  private async assertTeamReader(teamId: string, userId: string) {
+    const access = await this.teamRepository.findReadAccessByTeamAndUser(
+      teamId,
+      userId,
+    );
+
+    return assertTeamMembership(access);
+  }
+
   private async assertActiveUser(userId: string) {
     const user = await this.userRepository.findById(userId);
 
@@ -754,7 +764,7 @@ export class TimeEntryService {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
     }
 
-    await this.assertTeamMember(task.card.teamId, userId);
+    await this.assertTeamReader(task.card.teamId, userId);
 
     const skip = (options.page - 1) * options.pageSize;
 
@@ -786,7 +796,7 @@ export class TimeEntryService {
     userId: string,
     options: { date?: string; page: number; pageSize: number },
   ): Promise<PaginatedTaskTimeEntries> {
-    await this.assertTeamMember(teamId, userId);
+    await this.assertTeamReader(teamId, userId);
 
     const card = await this.cardRepository.findActivityById(activityId);
 
@@ -967,7 +977,7 @@ export class TimeEntryService {
       activeOnly?: boolean;
     },
   ): Promise<PaginatedTeamTimeEntries> {
-    const membership = await this.assertTeamMember(teamId, userId);
+    const membership = await this.assertTeamReader(teamId, userId);
 
     if (membership.role !== TeamRole.ADMIN) {
       throw new AppError(403, MENSAGENS.PROIBIDO);
@@ -1117,7 +1127,7 @@ export class TimeEntryService {
     userId: string,
     date?: string,
   ): Promise<TeamDayDashboard> {
-    const membership = await this.assertTeamMember(teamId, userId);
+    const membership = await this.assertTeamReader(teamId, userId);
     assertTeamAdminOrFlag(
       membership.role,
       membership.team.membersCanViewTimeline,

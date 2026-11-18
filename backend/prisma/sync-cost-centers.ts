@@ -3,6 +3,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/client.js';
 import { externalApi, ExternalApiError } from '../src/lib/external-api.js';
 import { CostCenterRepository } from '../src/repositories/cost-center.repository.js';
+import { HierarchyRepository } from '../src/repositories/hierarchy.repository.js';
 import { CostCenterService } from '../src/services/cost-center.service.js';
 
 async function inspectExternal() {
@@ -53,9 +54,14 @@ async function main() {
   const prisma = new PrismaClient({ adapter });
 
   try {
-    const service = new CostCenterService(new CostCenterRepository(prisma));
+    const service = new CostCenterService(
+      new CostCenterRepository(prisma),
+      new HierarchyRepository(prisma),
+    );
     const result = await service.syncFromExternal();
-    console.log(`synced=${result.synced} total=${result.costCenters.length}`);
+    console.log(
+      `synced=${result.synced} total=${result.costCenters.length} promotedSupervisors=${result.promotedSupervisors}`,
+    );
   } finally {
     await prisma.$disconnect();
   }

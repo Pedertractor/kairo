@@ -20,7 +20,7 @@ export function HomePage() {
   const [startDialogOpen, setStartDialogOpen] = useState(false);
   const hasTeams = user?.hasTeams ?? false;
   const hasOwnedTeams = user?.hasOwnedTeams ?? false;
-  const isLeader = user?.role === 'LEADER';
+  const isLeader = user?.role === 'LEADER' || user?.role === 'SUPERVISOR';
   const showRecentActivities = !hasOwnedTeams && !isLeader;
   const {
     timelineBlocks,

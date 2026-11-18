@@ -3,7 +3,7 @@ export interface AdminDashboardUserOption {
   name: string;
   employeeId: string;
   unit: 'PEDERTRACTOR' | 'TRACTOR';
-  role: 'ADMIN' | 'LEADER' | 'USER';
+  role: 'ADMIN' | 'SUPERVISOR' | 'LEADER' | 'USER';
   active: boolean;
   absent: boolean;
 }
@@ -29,7 +29,7 @@ export interface AdminDailyUsage {
 export interface AdminUserUsage {
   userId: string;
   name: string;
-  role: 'ADMIN' | 'LEADER' | 'USER';
+  role: 'ADMIN' | 'SUPERVISOR' | 'LEADER' | 'USER';
   unit: 'PEDERTRACTOR' | 'TRACTOR';
   active: boolean;
   loggedSeconds: number;

@@ -1,4 +1,5 @@
 import type { PrismaClient } from '../generated/client.js';
+import type { CostCenterSyncItem } from '../utils/cost-center-hierarchy.js';
 
 export class CostCenterRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -27,21 +28,28 @@ export class CostCenterRepository {
     });
   }
 
-  upsertMany(
-    items: Array<{ costCenter: string; description: string }>,
-  ) {
+  upsertMany(items: CostCenterSyncItem[]) {
     return this.prisma.$transaction(
-      items.map((item) =>
+      items.map(({ costCenter, ...data }) =>
         this.prisma.costCenter.upsert({
-          where: { costCenter: item.costCenter },
-          update: { description: item.description },
-          create: {
-            costCenter: item.costCenter,
-            description: item.description,
-          },
+          where: { costCenter },
+          update: data,
+          create: { costCenter, ...data },
         }),
       ),
     );
+  }
+
+  getJob(name: string) {
+    return this.prisma.appJob.findUnique({ where: { name } });
+  }
+
+  upsertJob(name: string, lastRunAt: Date) {
+    return this.prisma.appJob.upsert({
+      where: { name },
+      create: { name, lastRunAt },
+      update: { lastRunAt },
+    });
   }
 
   replaceTeamCostCenters(teamId: string, costCenterIds: string[]) {

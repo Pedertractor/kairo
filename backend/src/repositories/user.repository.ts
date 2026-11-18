@@ -90,16 +90,33 @@ export class UserRepository {
   }
 
   findManagedByTeamAdmin(leaderUserId: string, options?: { active?: boolean }) {
+    return this.findManagedByTeamAdmins([leaderUserId], options);
+  }
+
+  /**
+   * Users in active teams administered by any of the given leaders. Admins and
+   * supervisors sit above leaders, so they are never part of a leader's scope
+   * even when they are members of the leader's teams.
+   */
+  findManagedByTeamAdmins(
+    leaderUserIds: string[],
+    options?: { active?: boolean },
+  ) {
+    if (leaderUserIds.length === 0) {
+      return Promise.resolve([]);
+    }
+
     return this.prisma.user.findMany({
       where: {
         ...(options?.active !== undefined ? { active: options.active } : {}),
+        role: { notIn: ['ADMIN', 'SUPERVISOR'] },
         memberships: {
           some: {
             team: {
               active: true,
               members: {
                 some: {
-                  userId: leaderUserId,
+                  userId: { in: leaderUserIds },
                   role: 'ADMIN',
                 },
               },
@@ -115,6 +132,7 @@ export class UserRepository {
     const shared = await this.prisma.teamMember.findFirst({
       where: {
         userId: targetUserId,
+        user: { role: { notIn: ['ADMIN', 'SUPERVISOR'] } },
         team: {
           active: true,
           members: {

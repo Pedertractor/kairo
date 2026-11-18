@@ -35,6 +35,7 @@ const LOOKUP_DEBOUNCE_MS = 500
 
 const ROLE_LABELS: Record<UserRole, string> = {
   ADMIN: 'Administrador',
+  SUPERVISOR: 'Supervisor',
   LEADER: 'Líder',
   USER: 'Usuário',
 }
@@ -51,7 +52,9 @@ export function CreateUserDialog({
   onCreated,
 }: CreateUserDialogProps) {
   const { user: currentUser } = useAuth()
-  const isLeader = currentUser?.role === 'LEADER'
+  // Supervisors keep leader powers over the teams they administer themselves.
+  const isLeader =
+    currentUser?.role === 'LEADER' || currentUser?.role === 'SUPERVISOR'
   const defaultUnit = currentUser?.unit ?? 'PEDERTRACTOR'
   const [cardNumber, setCardNumber] = useState('')
   const [unit, setUnit] = useState<UnitType>(defaultUnit)

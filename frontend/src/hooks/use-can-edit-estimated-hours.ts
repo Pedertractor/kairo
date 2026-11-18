@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 import { useAuth } from '@/hooks/use-auth'
 import { api } from '@/lib/api-handler'
+import { canManageTeam } from '@/lib/team-permissions'
 import type { TeamResponse } from '@/types/team'
 
 export function useCanEditEstimatedHours(
@@ -32,7 +33,7 @@ export function useCanEditEstimatedHours(
         })
 
         if (!cancelled) {
-          setCanEdit(data.team.role === 'ADMIN')
+          setCanEdit(canManageTeam(data.team))
         }
       } catch {
         if (!cancelled) {

@@ -34,6 +34,7 @@ const FILE_INPUT_ACCEPT = [...ACCEPTED_MIME_TYPES, ...ACCEPTED_EXTENSIONS].join(
 interface DocumentsSectionProps {
   documentsPath: string
   canDelete: boolean
+  canUpload?: boolean
 }
 
 function isAllowedFile(file: File): boolean {
@@ -60,6 +61,7 @@ function formatFileSize(bytes: number): string {
 export function DocumentsSection({
   documentsPath,
   canDelete,
+  canUpload = true,
 }: DocumentsSectionProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [documents, setDocuments] = useState<DocumentSummary[]>([])
@@ -140,6 +142,8 @@ export function DocumentsSection({
 
   return (
     <div className='flex flex-col gap-4'>
+      {canUpload ? (
+      <>
       <input
         ref={inputRef}
         type='file'
@@ -191,6 +195,8 @@ export function DocumentsSection({
           PDF, JPEG, PNG, WebP ou GIF · até 10 MB
         </p>
       </button>
+      </>
+      ) : null}
 
       {isLoading ? (
         <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>

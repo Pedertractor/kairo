@@ -5,7 +5,7 @@ export class InfractionLeaderRepository {
 
   async list() {
     const leaders = await this.prisma.user.findMany({
-      where: { role: 'LEADER', active: true },
+      where: { role: { in: ['LEADER', 'SUPERVISOR'] }, active: true },
       orderBy: [{ name: 'asc' }, { id: 'asc' }],
       select: {
         id: true, name: true,

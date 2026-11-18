@@ -32,6 +32,36 @@ export interface TeamSummary {
   membersCanDeleteTags: boolean
   membersCanDeleteCards: boolean
   createdAt: string
+  /** 'readonly' when access comes from the supervisor hierarchy (or system admin), not membership. */
+  viewerAccess?: 'member' | 'readonly'
+}
+
+export type TeamShift = 'DAY' | 'NIGHT'
+
+export interface SupervisorLeaderSummary {
+  /** Kairo user id; null when the leader has no Kairo account yet. */
+  userId: string | null
+  cardNumber: string
+  name: string
+  unit: UnitType | null
+  registered: boolean
+  shifts: TeamShift[]
+  costCenters: Array<{
+    costCenter: string
+    description: string
+    group: string | null
+  }>
+  teamCount: number
+  memberCount: number
+}
+
+export interface SupervisorLeadersResponse {
+  leaders: SupervisorLeaderSummary[]
+}
+
+export interface SupervisorLeaderTeamsResponse {
+  leader: SupervisorLeaderSummary
+  teams: TeamSummary[]
 }
 
 export interface TeamsListResponse {

@@ -25,6 +25,7 @@ import type { UpdateUserRoleInput, UserResponse } from '@/types/user'
 
 const ROLE_LABELS: Record<UserRole, string> = {
   ADMIN: 'Administrador',
+  SUPERVISOR: 'Supervisor',
   LEADER: 'Líder',
   USER: 'Usuário',
 }

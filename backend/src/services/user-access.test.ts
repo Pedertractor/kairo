@@ -243,3 +243,28 @@ it('switches login flows and rejects previous sessions and refresh tokens after 
   await patch({ role: 'USER', production: true });
   assert.equal((await app.inject({ url: '/api/auth/me', headers: productionHeaders })).statusCode, 401);
 });
+
+it('keeps supervisors above leaders: leaders cannot manage or grant SUPERVISOR', async () => {
+  state.users.target.role = 'SUPERVISOR';
+  assert.equal((await patch({ role: 'USER' }, 'leader')).statusCode, 403);
+  assert.equal(state.users.target.role, 'SUPERVISOR');
+
+  state.users.target.role = 'USER';
+  assert.equal((await patch({ role: 'SUPERVISOR' }, 'leader')).statusCode, 403);
+  assert.equal(state.users.target.role, 'USER');
+
+  assert.equal((await patch({ role: 'SUPERVISOR' })).statusCode, 200);
+  assert.equal(state.users.target.role, 'SUPERVISOR');
+});
+
+it('lets supervisors keep leader powers over their own teams, but never grant SUPERVISOR or ADMIN', async () => {
+  state.users.supervisor = makeUser('supervisor', 'SUPERVISOR');
+  assert.equal((await patch({ role: 'LEADER' }, 'supervisor')).statusCode, 200);
+  assert.equal(state.users.target.role, 'LEADER');
+  assert.equal((await patch({ role: 'SUPERVISOR' }, 'supervisor')).statusCode, 403);
+  assert.equal((await patch({ role: 'ADMIN' }, 'supervisor')).statusCode, 403);
+
+  canManage = false;
+  assert.equal((await patch({ role: 'USER' }, 'supervisor')).statusCode, 403);
+  assert.equal(state.users.target.role, 'LEADER');
+});

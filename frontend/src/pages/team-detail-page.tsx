@@ -18,7 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/lib/api-handler';
-import { canCreateTeamActivities, canCreateTeamProjects, canDeleteTeamTags, canEditTeamActivities, canEditTeamTags, canViewTeamTimeline } from '@/lib/team-permissions';
+import { canCreateTeamActivities, canCreateTeamProjects, canDeleteTeamTags, canEditTeamActivities, canEditTeamTags, canManageTeam, canViewTeamTimeline, isReadOnlyTeam } from '@/lib/team-permissions';
 import type { ProjectSummary, ProjectsListResponse } from '@/types/card';
 import type { TeamResponse, TeamSummary } from '@/types/team';
 
@@ -52,7 +52,7 @@ function parseTeamTab(value: string | null): TeamTab | null {
 function resolveTeamTab(tab: TeamTab | null, team: TeamSummary): TeamTab {
   const requested = tab ?? 'atividades';
 
-  if (requested === 'configuracoes' && team.role !== 'ADMIN') {
+  if (requested === 'configuracoes' && !canManageTeam(team)) {
     return 'atividades';
   }
 
@@ -183,7 +183,12 @@ export function TeamDetailPage() {
           <div className='flex flex-col gap-2'>
             <div className='flex min-w-0 items-center gap-2'>
               <h1 className='text-2xl font-bold'>{team.name}</h1>
-              {team.role === 'ADMIN' && team.active ? (
+              {isReadOnlyTeam(team) ? (
+                <span className='rounded-sm bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground'>
+                  Somente leitura
+                </span>
+              ) : null}
+              {canManageTeam(team) && team.active ? (
                 <Button
                   type='button'
                   variant='ghost'
@@ -204,7 +209,7 @@ export function TeamDetailPage() {
                   Esta equipe está inativa. Ela não aparece nas listagens nem no
                   analytics. Reative-a para voltar a usá-la.
                 </p>
-                {team.role === 'ADMIN' ? (
+                {canManageTeam(team) ? (
                   <Button
                     type='button'
                     className='w-fit'
@@ -312,7 +317,7 @@ export function TeamDetailPage() {
               >
                 Documentos
               </TabsTrigger>
-              {team.role === 'ADMIN' ? (
+              {canManageTeam(team) ? (
                 <TabsTrigger
                   value='configuracoes'
                   className='data-[state=active]:border-sidebar-primary data-[state=active]:text-sidebar-primary'
@@ -326,7 +331,7 @@ export function TeamDetailPage() {
               <TeamMembersSection
                 teamId={team.id}
                 members={team.members}
-                currentUserRole={team.role}
+                currentUserRole={canManageTeam(team) ? 'ADMIN' : 'MEMBER'}
                 onTeamUpdated={setTeam}
               />
             </TabsContent>
@@ -374,11 +379,12 @@ export function TeamDetailPage() {
             <TabsContent value='documentos'>
               <TeamDocumentsSection
                 teamId={team.id}
-                canDelete={team.role === 'ADMIN'}
+                canDelete={canManageTeam(team)}
+                canUpload={!isReadOnlyTeam(team)}
               />
             </TabsContent>
 
-            {team.role === 'ADMIN' ? (
+            {canManageTeam(team) ? (
               <TabsContent value='configuracoes'>
                 <TeamSettingsSection team={team} onTeamUpdated={setTeam} />
               </TabsContent>

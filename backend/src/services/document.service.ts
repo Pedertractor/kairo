@@ -66,12 +66,30 @@ export class DocumentService {
     return access;
   }
 
+  /** Read-only endpoints also accept supervisors and admins via the hierarchy. */
+  private async assertTeamReader(
+    teamId: string,
+    userId: string,
+    projectId: string | null = null,
+  ) {
+    const access = assertTeamMembership(
+      await this.teamRepository.findReadAccessByTeamAndUser(teamId, userId),
+    );
+    if (
+      projectId !== null &&
+      !(await this.documentRepository.findProject(projectId, teamId))
+    ) {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+    return access;
+  }
+
   async list(
     teamId: string,
     userId: string,
     projectId: string | null = null,
   ): Promise<DocumentSummary[]> {
-    await this.assertTeamMember(teamId, userId, projectId);
+    await this.assertTeamReader(teamId, userId, projectId);
 
     const documents = await this.documentRepository.findByTeamId(teamId, projectId);
     return documents.map(toDocumentSummary);
@@ -141,7 +159,7 @@ export class DocumentService {
     userId: string,
     projectId: string | null = null,
   ): Promise<DocumentFile> {
-    await this.assertTeamMember(teamId, userId, projectId);
+    await this.assertTeamReader(teamId, userId, projectId);
 
     const document = await this.documentRepository.findByIdAndTeamId(
       documentId,

@@ -13,6 +13,7 @@ import { HomePage } from '@/pages/home-page'
 import { LoginPage } from '@/pages/login-page'
 import { ActivityDetailPage } from '@/pages/activity-detail-page'
 import { TeamDetailPage } from '@/pages/team-detail-page'
+import { LeaderTeamsPage } from '@/pages/leader-teams-page'
 import { ProjectDetailPage } from '@/pages/project-detail-page'
 import { TaskDetailPage } from '@/pages/task-detail-page'
 import { ApontamentosPage } from '@/pages/apontamentos-page'
@@ -54,7 +55,8 @@ function ProtectedRoute({
   if (
     requireAdminOrLeader &&
     user?.role !== 'ADMIN' &&
-    user?.role !== 'LEADER'
+    user?.role !== 'LEADER' &&
+    user?.role !== 'SUPERVISOR'
   ) {
     return <Navigate to="/" replace />
   }
@@ -213,6 +215,14 @@ function App() {
         element={
           <ProtectedRoute key="projeto" title="Projeto">
             <ProjectDetailPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/equipes/lider/:leaderId"
+        element={
+          <ProtectedRoute key="equipes-lider" title="Equipes do líder">
+            <LeaderTeamsPage />
           </ProtectedRoute>
         }
       />

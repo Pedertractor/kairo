@@ -102,14 +102,17 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   const { pathname } = useLocation();
   const { count: unseenAbsencesCount } = useUnseenAbsencesCount();
 
+  const canSeeInfractionsAndUsers =
+    user?.role === 'ADMIN' ||
+    user?.role === 'LEADER' ||
+    user?.role === 'SUPERVISOR';
+
   const navItems = [
     ...baseNavItems,
     ...(user?.role === 'ADMIN' ? adminDashboardNavItems : []),
-    ...(user?.role === 'ADMIN' || user?.role === 'LEADER' ? infractionsNavItems : []),
+    ...(canSeeInfractionsAndUsers ? infractionsNavItems : []),
     ...(user?.hasOwnedTeams ? teamOwnerNavItems : []),
-    ...(user?.role === 'ADMIN' || user?.role === 'LEADER'
-      ? userManagementNavItems
-      : []),
+    ...(canSeeInfractionsAndUsers ? userManagementNavItems : []),
   ];
 
   const navMain = navItems.map((item) => ({
