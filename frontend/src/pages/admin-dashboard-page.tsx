@@ -325,7 +325,7 @@ export function AdminDashboardPage() {
             <MiniStat
               label="Disponibilidade"
               value={formatDuration(summary.availabilitySeconds)}
-              hint="8h 48min por dia, menos ausências"
+              hint="Turno (máx. 8h 48min por dia), menos ausências e almoço"
             />
           </div>
         </>

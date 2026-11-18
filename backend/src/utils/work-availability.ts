@@ -7,6 +7,23 @@ import {
 } from './app-timezone.js';
 
 export const DAILY_AVAILABILITY_SECONDS = 8 * 60 * 60 + 48 * 60;
+/** Presence beyond this requires a lunch break (no more than 6h without one). */
+export const LUNCH_THRESHOLD_SECONDS = 6 * 60 * 60;
+export const LUNCH_BREAK_SECONDS = 60 * 60;
+
+/**
+ * Net available seconds for a day with `presentSeconds` inside the shift.
+ * Lunch is deducted proportionally to the presence beyond 6h, up to 1h, so
+ * availability never drops below 6h because of lunch and has no step.
+ */
+export function netAvailableSeconds(presentSeconds: number): number {
+  if (presentSeconds <= 0) return 0;
+  const lunchSeconds = Math.min(
+    LUNCH_BREAK_SECONDS,
+    Math.max(0, presentSeconds - LUNCH_THRESHOLD_SECONDS),
+  );
+  return Math.min(DAILY_AVAILABILITY_SECONDS, presentSeconds - lunchSeconds);
+}
 
 export interface AbsenceInterval {
   startedAt: Date;
@@ -312,8 +329,10 @@ function sortShifts(shifts: ShiftPeriodInterval[]): ShiftPeriodInterval[] {
 }
 
 /**
- * Per-day open availability intervals after absences, with the daily 8h 48min
- * cap applied before report clipping or absences. Overnight occurrences belong
+ * Per-day open availability intervals after absences. With a shift, presence
+ * in its first 9h 48min minus lunch (up to 1h beyond 6h of presence), capped
+ * at 8h 48min and evaluated on the whole day before report clipping. Without a
+ * shift, absences reduce the 8h 48min budget. Overnight occurrences belong
  * to their starting weekday, including Friday continuations into Saturday.
  */
 export function getOpenAvailabilityIntervals(
@@ -387,23 +406,31 @@ export function getOpenAvailabilityIntervals(
       continue;
     }
 
-    const cappedWindows = trimIntervalsToCapacity(
+    // With a shift, the whole day is evaluated before report clipping.
+    // Presence is the first 9h 48min of the shift (8h 48min of work plus 1h
+    // of lunch) minus absences, so later hours never refill an absence. Lunch
+    // is then deducted from presence and the rest trimmed from the end.
+    const [workWindow] = trimIntervalsToCapacity(
       [capacity.window],
-      capacity.dailyCapacitySeconds,
+      DAILY_AVAILABILITY_SECONDS + LUNCH_BREAK_SECONDS,
+    );
+    if (!workWindow) continue;
+    const present = subtractIntervals(
+      workWindow,
+      mergeAbsenceIntervals(sortedAbsences, workWindow, nowMs),
+    );
+    const presentSeconds = present.reduce(
+      (total, interval) => total + intervalSeconds(interval),
+      0,
     );
 
-    for (const capped of cappedWindows) {
-      const window = {
-        start: Math.max(capped.start, periodStart.getTime()),
-        end: Math.min(capped.end, periodEndExclusive.getTime()),
-      };
-      if (window.start >= window.end) continue;
-      open.push(
-        ...subtractIntervals(
-          window,
-          mergeAbsenceIntervals(sortedAbsences, window, nowMs),
-        ),
-      );
+    for (const kept of trimIntervalsToCapacity(
+      present,
+      netAvailableSeconds(presentSeconds),
+    )) {
+      const start = Math.max(kept.start, periodStart.getTime());
+      const end = Math.min(kept.end, periodEndExclusive.getTime());
+      if (start < end) open.push({ start, end });
     }
   }
 
