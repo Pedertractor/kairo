@@ -22,7 +22,7 @@ function entry(startedAt: string, endedAt: string | null, userId = ana.id): Entr
   return { userId, startedAt: new Date(startedAt), endedAt: endedAt ? new Date(endedAt) : null };
 }
 
-function createService(entries: Entry[] = [], members: Member[] = [ana, bruno]) {
+function createService(entries: Entry[] = [], members: Member[] = [ana, bruno], shifts: unknown[] = []) {
   const queries: Array<{ userIds: string[]; periodStart: Date; periodEnd: Date }> = [];
   const repository = {
     findActiveNonLeaderMembers: async () => members,
@@ -31,7 +31,7 @@ function createService(entries: Entry[] = [], members: Member[] = [ana, bruno]) 
       return entries;
     },
   } as unknown as OccupationRepository;
-  return { service: new OccupationService(repository), queries };
+  return { service: new OccupationService(repository, { findOverlappingRange: async () => shifts } as never), queries };
 }
 
 function expectedDates(month: string, days: number): string[] {
@@ -97,8 +97,9 @@ describe('OccupationService daily logged hours', () => {
     assert.equal(Object.values(members[0].hoursByDate).reduce((total, hours) => total + hours, 0), 2);
     assert.deepEqual(queries[0], {
       userIds: ['ana', 'bruno'],
-      periodStart: new Date('2026-10-01T03:00:00Z'),
-      periodEnd: new Date('2026-11-01T03:00:00Z'),
+      // One day wider on each side for overnight work days.
+      periodStart: new Date('2026-09-30T03:00:00Z'),
+      periodEnd: new Date('2026-11-02T03:00:00Z'),
     });
   });
 
@@ -153,8 +154,8 @@ describe('OccupationService daily logged hours', () => {
   it('queries December across the year boundary', async () => {
     const { service, queries } = createService();
     await service.getMonthlyOccupation('2026-12');
-    assert.equal(queries[0].periodStart.toISOString(), '2026-12-01T03:00:00.000Z');
-    assert.equal(queries[0].periodEnd.toISOString(), '2027-01-01T03:00:00.000Z');
+    assert.equal(queries[0].periodStart.toISOString(), '2026-11-30T03:00:00.000Z');
+    assert.equal(queries[0].periodEnd.toISOString(), '2027-01-02T03:00:00.000Z');
   });
 });
 
@@ -232,5 +233,27 @@ describe('OccupationRepository member dates', () => {
       },
     } as never);
     assert.deepEqual(await repository.findActiveNonLeaderMembers(), [ana, bruno]);
+  });
+});
+
+describe('OccupationService overnight shifts', () => {
+  it('counts an 18:00-02:00 shift on the work day it started, including month edges', async () => {
+    const shift = {
+      userId: ana.id, startMinutes: 18 * 60, endMinutes: 2 * 60,
+      startedAt: new Date('2026-06-01T03:00:00Z'), endedAt: null,
+    };
+    const { service } = createService([
+      entry('2026-09-30T21:00:00Z', '2026-10-01T05:00:00Z'),
+      entry('2026-10-05T21:00:00Z', '2026-10-06T05:00:00Z'),
+      entry('2026-10-30T21:00:00Z', '2026-10-31T05:00:00Z'),
+      entry('2026-10-31T21:00:00Z', '2026-11-01T05:00:00Z'),
+    ], [ana], [shift]);
+    const { members } = await service.getMonthlyOccupation('2026-10');
+    assert.equal(members[0].hoursByDate['2026-10-01'], 0);
+    assert.equal(members[0].hoursByDate['2026-10-05'], 8);
+    assert.equal(members[0].hoursByDate['2026-10-06'], 0);
+    assert.equal(members[0].hoursByDate['2026-10-30'], 8);
+    assert.equal(members[0].hoursByDate['2026-10-31'], 8);
+    assert.equal(Object.values(members[0].hoursByDate).reduce((total, hours) => total + hours, 0), 24);
   });
 });

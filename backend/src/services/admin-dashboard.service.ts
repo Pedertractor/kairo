@@ -16,6 +16,7 @@ import {
 import { AppError } from '../utils/errors.js';
 import { MENSAGENS } from '../utils/response.js';
 import { calculateAvailabilitySeconds } from '../utils/work-availability.js';
+import { WorkDayCalendar, widenForWorkDays } from '../utils/work-day.js';
 
 const DEFAULT_PERIOD_DAYS = 30;
 
@@ -174,6 +175,9 @@ export class AdminDashboardService {
       options.startDate ?? shiftDateKey(todayKey, -(DEFAULT_PERIOD_DAYS - 1));
     const endDate = options.endDate ?? todayKey;
     const { periodStart, periodEnd } = getPeriodBounds(startDate, endDate);
+    // Time entries, absences and shifts are loaded one day wider: overnight
+    // workers count by work day, which can extend past calendar midnight.
+    const { queryStart, queryEnd } = widenForWorkDays(periodStart, periodEnd);
     const now = new Date();
 
     const [
@@ -201,9 +205,9 @@ export class AdminDashboardService {
         options.userId,
       ),
       this.repository.countCreatedTasks(periodStart, periodEnd, options.userId),
-      this.repository.findTimeEntries(periodStart, periodEnd, options.userId),
+      this.repository.findTimeEntries(queryStart, queryEnd, options.userId),
       this.repository.findRunningTimers(options.userId),
-      this.repository.findAbsences(periodStart, periodEnd, options.userId),
+      this.repository.findAbsences(queryStart, queryEnd, options.userId),
     ]);
 
     const selectedUser = options.userId
@@ -221,7 +225,7 @@ export class AdminDashboardService {
     const shiftPeriods = await this.shiftRepository.findOverlappingRange(
       scopedUserIds,
       periodStart,
-      periodEnd,
+      queryEnd,
     );
 
     const absencesByUser = new Map<
@@ -256,9 +260,35 @@ export class AdminDashboardService {
       shiftsByUser.set(period.userId, list);
     }
 
+    const dayBuckets = buildDayBuckets(startDate, endDate);
+    // Overnight workers count by work day (utils/work-day.ts): their bounds
+    // and day buckets differ, but buckets share the per-date usage totals.
+    const defaultBounds = { periodStart, periodEnd, buckets: dayBuckets };
+    const boundsByUser = new Map<string, typeof defaultBounds>();
+
+    for (const [userId, shifts] of shiftsByUser) {
+      const calendar = new WorkDayCalendar(shifts);
+
+      if (!calendar.isShifted) {
+        continue;
+      }
+
+      boundsByUser.set(userId, {
+        ...calendar.periodBounds(startDate, endDate),
+        buckets: dayBuckets.map((bucket) => {
+          const { start, end } = calendar.dayBounds(bucket.usage.date);
+          return { ...bucket, start, end };
+        }),
+      });
+    }
+
+    const boundsFor = (userId: string) =>
+      boundsByUser.get(userId) ?? defaultBounds;
+
     const availabilityByUser = new Map<string, number>();
 
     for (const userId of scopedUserIds) {
+      const bounds = boundsFor(userId);
       availabilityByUser.set(
         userId,
         calculateAvailabilitySeconds(
@@ -267,6 +297,7 @@ export class AdminDashboardService {
           periodEnd,
           now,
           shiftsByUser.get(userId) ?? [],
+          { start: bounds.periodStart.getTime(), end: bounds.periodEnd.getTime() },
         ),
       );
     }
@@ -283,15 +314,28 @@ export class AdminDashboardService {
       TIMER: { type: 'TIMER' as const, count: 0, loggedSeconds: 0 },
       MANUAL: { type: 'MANUAL' as const, count: 0, loggedSeconds: 0 },
     };
-    const dayBuckets = buildDayBuckets(startDate, endDate);
 
     let loggedSeconds = 0;
+    let timeEntryCount = 0;
 
     for (const entry of entries) {
-      const overlapStart = Math.max(entry.startedAt.getTime(), periodStart.getTime());
+      const bounds = boundsFor(entry.userId);
+
+      if (
+        entry.startedAt >= bounds.periodEnd ||
+        (entry.endedAt ?? now).getTime() <= bounds.periodStart.getTime()
+      ) {
+        continue;
+      }
+
+      timeEntryCount += 1;
+      const overlapStart = Math.max(
+        entry.startedAt.getTime(),
+        bounds.periodStart.getTime(),
+      );
       const overlapEnd = Math.min(
         (entry.endedAt ?? now).getTime(),
-        periodEnd.getTime(),
+        bounds.periodEnd.getTime(),
       );
       const seconds = Math.max(0, Math.floor((overlapEnd - overlapStart) / 1000));
 
@@ -321,11 +365,11 @@ export class AdminDashboardService {
       allocateEntryToDays(
         entry.startedAt,
         entry.endedAt,
-        periodStart,
-        periodEnd,
+        bounds.periodStart,
+        bounds.periodEnd,
         now,
         entry.userId,
-        dayBuckets,
+        bounds.buckets,
       );
     }
 
@@ -394,7 +438,6 @@ export class AdminDashboardService {
       0,
     );
     const remainingSeconds = Math.max(0, availabilitySeconds - loggedSeconds);
-    const timeEntryCount = entries.length;
 
     const roleCounts = new Map<string, number>();
     const unitCounts = new Map<string, number>();

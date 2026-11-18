@@ -115,7 +115,7 @@ function getPeriodDaySlices(
 // Share wall-clock conversions across users with the same schedule, as the
 // dashboard does for day boundaries. Bound the cache for long-lived processes.
 const shiftBoundaryCache = new Map<string, number>();
-function shiftBoundaryMs(dateKey: string, minutes: number): number {
+export function shiftBoundaryMs(dateKey: string, minutes: number): number {
   const key = dateKey + ':' + minutes;
   const cached = shiftBoundaryCache.get(key);
   if (cached !== undefined) return cached;
@@ -163,7 +163,7 @@ function buildDayCapacityWindow(
   return { window, dailyCapacitySeconds };
 }
 
-function resolveShiftForDay(
+export function resolveShiftForDay(
   shifts: ShiftPeriodInterval[],
   dayStartMs: number,
   dayEndMs: number,
@@ -319,7 +319,7 @@ function sortAbsences(absences: AbsenceInterval[]): AbsenceInterval[] {
     : absences;
 }
 
-function sortShifts(shifts: ShiftPeriodInterval[]): ShiftPeriodInterval[] {
+export function sortShifts(shifts: ShiftPeriodInterval[]): ShiftPeriodInterval[] {
   return shifts.length > 1
     ? [...shifts].sort(
         (left, right) =>
@@ -334,6 +334,9 @@ function sortShifts(shifts: ShiftPeriodInterval[]): ShiftPeriodInterval[] {
  * at 8h 48min and evaluated on the whole day before report clipping. Without a
  * shift, absences reduce the 8h 48min budget. Overnight occurrences belong
  * to their starting weekday, including Friday continuations into Saturday.
+ * `clip` replaces the calendar bounds for the final clipping; pass the
+ * collaborator's work-day bounds so an overnight occurrence stays whole on the
+ * day it started (see utils/work-day.ts).
  */
 export function getOpenAvailabilityIntervals(
   absences: AbsenceInterval[],
@@ -341,8 +344,11 @@ export function getOpenAvailabilityIntervals(
   periodEndExclusive: Date,
   now = new Date(),
   shifts: ShiftPeriodInterval[] = [],
+  clip?: TimeInterval,
 ): TimeInterval[] {
   if (periodStart >= periodEndExclusive) return [];
+  const clipStart = clip?.start ?? periodStart.getTime();
+  const clipEnd = clip?.end ?? periodEndExclusive.getTime();
   const previousDate = shiftDateKey(formatDateKey(periodStart), -1);
   const previousBounds = parseDayBounds(previousDate);
   const slices = [
@@ -428,8 +434,8 @@ export function getOpenAvailabilityIntervals(
       present,
       netAvailableSeconds(presentSeconds),
     )) {
-      const start = Math.max(kept.start, periodStart.getTime());
-      const end = Math.min(kept.end, periodEndExclusive.getTime());
+      const start = Math.max(kept.start, clipStart);
+      const end = Math.min(kept.end, clipEnd);
       if (start < end) open.push({ start, end });
     }
   }
@@ -451,6 +457,7 @@ export function calculateAvailabilitySeconds(
   periodEndExclusive: Date,
   now = new Date(),
   shifts: ShiftPeriodInterval[] = [],
+  clip?: TimeInterval,
 ): number {
   return getOpenAvailabilityIntervals(
     absences,
@@ -458,6 +465,7 @@ export function calculateAvailabilitySeconds(
     periodEndExclusive,
     now,
     shifts,
+    clip,
   ).reduce((total, interval) => total + intervalSeconds(interval), 0);
 }
 

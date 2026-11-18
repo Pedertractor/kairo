@@ -23,6 +23,7 @@ import {
   buildTeamAllocationSegments,
   getOpenAvailabilityIntervals,
 } from '../utils/work-availability.js';
+import { WorkDayCalendar, widenForWorkDays } from '../utils/work-day.js';
 
 function resolveEntryTeamId(entry: {
   card: { teamId: string } | null;
@@ -92,6 +93,18 @@ function getOverlapSeconds(
   const end = Math.min((endedAt ?? now).getTime(), periodEnd.getTime());
 
   return Math.max(0, Math.floor((end - start) / 1000));
+}
+
+function overlapsPeriod(
+  startedAt: Date,
+  endedAt: Date | null,
+  periodStart: Date,
+  periodEnd: Date,
+  now: Date,
+): boolean {
+  return (
+    startedAt < periodEnd && (endedAt ?? now).getTime() > periodStart.getTime()
+  );
 }
 
 export class AnalyticsService {
@@ -177,6 +190,9 @@ export class AnalyticsService {
     const startDate = options.startDate ?? todayKey;
     const endDate = options.endDate ?? todayKey;
     const { periodStart, periodEnd } = getPeriodBounds(startDate, endDate);
+    // Time entries, absences and shifts are loaded one day wider: overnight
+    // workers count by work day, which can extend past calendar midnight.
+    const { queryStart, queryEnd } = widenForWorkDays(periodStart, periodEnd);
     const scopedTeamIds = scopedTeams.map((team) => team.id);
     const employeeIds = [...employeesById.keys()];
     const [
@@ -196,8 +212,8 @@ export class AnalyticsService {
     ] = await Promise.all([
       this.repository.findEntriesForTeams(
         scopedTeamIds,
-        periodStart,
-        periodEnd,
+        queryStart,
+        queryEnd,
         selectedProject?.id,
       ),
       selectedProject
@@ -205,8 +221,8 @@ export class AnalyticsService {
         : Promise.resolve([]),
       this.repository.findActivityEntriesForTeams(
         scopedTeamIds,
-        periodStart,
-        periodEnd,
+        queryStart,
+        queryEnd,
         options.employeeId,
       ),
       this.repository.findActivitiesForClientAnalytics(
@@ -223,13 +239,13 @@ export class AnalyticsService {
       ),
       this.absenceRepository.findOverlappingRange(
         employeeIds,
-        periodStart,
-        periodEnd,
+        queryStart,
+        queryEnd,
       ),
       this.shiftRepository.findOverlappingRange(
         employeeIds,
         periodStart,
-        periodEnd,
+        queryEnd,
       ),
       this.repository.findCardsForStatusOverview(
         scopedTeamIds,
@@ -243,10 +259,10 @@ export class AnalyticsService {
       ),
       this.repository.findEntriesForUsers(
         employeeIds,
-        periodStart,
-        periodEnd,
+        queryStart,
+        queryEnd,
       ),
-      this.repository.findLastEntriesBefore(employeeIds, periodStart),
+      this.repository.findLastEntriesBefore(employeeIds, queryStart),
       this.repository.findFinishedActivitiesForPeriod(
         scopedTeamIds,
         periodStart,
@@ -293,6 +309,30 @@ export class AnalyticsService {
       shiftsByEmployee.set(period.userId, list);
     }
 
+    // Each collaborator's report bounds follow their work days, so an
+    // overnight shift counts whole on the day it started.
+    const defaultBounds = {
+      calendar: new WorkDayCalendar(),
+      periodStart,
+      periodEnd,
+    };
+    const boundsByEmployee = new Map<string, typeof defaultBounds>();
+
+    for (const employeeId of employeeIds) {
+      const calendar = new WorkDayCalendar(
+        shiftsByEmployee.get(employeeId) ?? [],
+      );
+      boundsByEmployee.set(
+        employeeId,
+        calendar.isShifted
+          ? { calendar, ...calendar.periodBounds(startDate, endDate) }
+          : defaultBounds,
+      );
+    }
+
+    const boundsFor = (userId: string) =>
+      boundsByEmployee.get(userId) ?? defaultBounds;
+
     const carryOverTeamByEmployee = new Map<string, string>();
 
     for (const entry of lastEntriesBefore) {
@@ -324,16 +364,18 @@ export class AnalyticsService {
     const availabilityByEmployee = new Map<string, number>();
 
     for (const employeeId of employeeIds) {
+      const bounds = boundsFor(employeeId);
       const openIntervals = getOpenAvailabilityIntervals(
         absencesByEmployee.get(employeeId) ?? [],
         periodStart,
         periodEnd,
         now,
         shiftsByEmployee.get(employeeId) ?? [],
+        { start: bounds.periodStart.getTime(), end: bounds.periodEnd.getTime() },
       );
       const segments = buildTeamAllocationSegments(
-        periodStart,
-        periodEnd,
+        bounds.periodStart,
+        bounds.periodEnd,
         carryOverTeamByEmployee.get(employeeId) ?? null,
         allocationEntriesByEmployee.get(employeeId) ?? [],
       );
@@ -362,6 +404,20 @@ export class AnalyticsService {
         continue;
       }
 
+      const bounds = boundsFor(entry.userId);
+
+      if (
+        !overlapsPeriod(
+          entry.startedAt,
+          entry.endedAt,
+          bounds.periodStart,
+          bounds.periodEnd,
+          now,
+        )
+      ) {
+        continue;
+      }
+
       const current = totalsByEmployee.get(entry.userId) ?? {
         loggedSeconds: 0,
         timeEntryCount: 0,
@@ -370,23 +426,23 @@ export class AnalyticsService {
       current.loggedSeconds += getOverlapSeconds(
         entry.startedAt,
         entry.endedAt,
-        periodStart,
-        periodEnd,
+        bounds.periodStart,
+        bounds.periodEnd,
         now,
       );
       current.timeEntryCount += 1;
 
       const overlapStartMs = Math.max(
         entry.startedAt.getTime(),
-        periodStart.getTime(),
+        bounds.periodStart.getTime(),
       );
       const overlapEndMs = Math.min(
         (entry.endedAt ?? now).getTime(),
-        periodEnd.getTime(),
+        bounds.periodEnd.getTime(),
       );
 
       if (overlapEndMs > overlapStartMs) {
-        const dateKey = formatDateKey(new Date(overlapEndMs - 1));
+        const dateKey = bounds.calendar.dateKeyOf(overlapEndMs - 1);
 
         if (!current.lastLoggedDate || dateKey > current.lastLoggedDate) {
           current.lastLoggedDate = dateKey;
@@ -438,11 +494,25 @@ export class AnalyticsService {
       const workItemId = isTaskEntry ? entry.taskId! : entry.cardId!;
       const bucketKey = tagId ?? NONE_TAG_KEY;
       const employee = employeesById.get(entry.userId)!;
+      const bounds = boundsFor(entry.userId);
+
+      if (
+        !overlapsPeriod(
+          entry.startedAt,
+          entry.endedAt,
+          bounds.periodStart,
+          bounds.periodEnd,
+          now,
+        )
+      ) {
+        continue;
+      }
+
       const overlapSeconds = getOverlapSeconds(
         entry.startedAt,
         entry.endedAt,
-        periodStart,
-        periodEnd,
+        bounds.periodStart,
+        bounds.periodEnd,
         now,
       );
 
@@ -937,11 +1007,25 @@ export class AnalyticsService {
         continue;
       }
 
+      const bounds = boundsFor(entry.userId);
+
+      if (
+        !overlapsPeriod(
+          entry.startedAt,
+          entry.endedAt,
+          bounds.periodStart,
+          bounds.periodEnd,
+          now,
+        )
+      ) {
+        continue;
+      }
+
       const overlapSeconds = getOverlapSeconds(
         entry.startedAt,
         entry.endedAt,
-        periodStart,
-        periodEnd,
+        bounds.periodStart,
+        bounds.periodEnd,
         now,
       );
       const bucket = ensureClientBucket(clientId, clientName);

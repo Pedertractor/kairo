@@ -73,6 +73,7 @@ export async function integrationRoutes(app: FastifyInstance) {
     ),
     new OccupationService(
       new OccupationRepository(app.prisma),
+      shiftRepository,
     ),
     new ClientService(clientRepository),
   );

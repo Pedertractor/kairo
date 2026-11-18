@@ -136,15 +136,30 @@ This applies on Analytics (`/analytics`). The admin Painel still counts each per
 
 An end earlier than the start means the next day: **20:00–02:00** is six hours. Equal bounds are invalid; the HR API's 00:00–00:00 placeholder remains ignored. Manual edits and HR imports follow the same rule.
 
-For a shift starting Monday 06/07/2026 at 20:00:
+### Work day ("dia da jornada")
 
-| Report window | Available time before absences |
+Everything from an overnight shift counts on the day the shift started, both logged time and availability. For collaborators on an overnight schedule, the day boundary is not midnight but the middle of the off-duty gap of the previous day's shift. With 18:00–02:00 the gap is 02:00–18:00, so Monday's work day runs from Monday 10:00 to Tuesday 10:00. Collaborators without an overnight shift keep calendar days.
+
+Shift 18:00–02:00 (8h of presence, 1h of lunch), entries Monday 18:00–Tuesday 02:00 and Tuesday 18:00–Wednesday 02:00:
+
+| Report | Logged | Available |
+| --- | --- | --- |
+| Monday | 8h | 7h |
+| Tuesday | 8h | 7h |
+
+A Monday–Friday report includes Friday night up to Saturday 02:00, and leaves out the previous Friday night.
+
+Before this rule, Monday showed 6h logged while Tuesday to Friday showed 8h, because each weekday received the previous night's hours after midnight and nobody works Sunday night.
+
+Analytics, the admin dashboard (per-day usage too) and the monthly occupation all apply this rule (`backend/src/utils/work-day.ts`). Queries load time entries, absences and shifts one day wider on each side to cover the hours past midnight. An overnight occurrence keeps the schedule it started with, so the previous day's shift decides the boundary.
+
+Raw availability by calendar window, for a shift starting Monday 06/07/2026 at 20:00 (used when no work-day bounds are given):
+
+| Calendar window | Available time before absences |
 | --- | --- |
-| Monday | 4 hours (20:00–24:00) |
+| Monday 00:00–24:00 | 4 hours (20:00–24:00) |
 | Tuesday 00:00–02:00 | 2 hours carried from Monday |
 | Monday 20:00–Tuesday 02:00 | 6 hours |
-
-A recurring Tuesday evening shift contributes its own hours to a full Tuesday report. Daily totals and combined-range totals count each instant once. Logged time stays on its actual calendar date, so occupation compares the same report window.
 
 The 9h 48min presence window, lunch and the 8h 48min cap apply once to the continuous occurrence, before clipping to the report. For 20:00–10:00, the window ends at 05:48 and capacity at 04:48 the next day. An absence from 23:00–01:00 leaves 7h 48min of presence, so 6h 48min is available; later hours do not refill it.
 
