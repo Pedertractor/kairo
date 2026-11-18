@@ -70,7 +70,7 @@ export const jwtPlugin = fp(async (app: FastifyInstance) => {
       }
       const user = await app.prisma.user.findUnique({
         where: { id: request.user.sub },
-        select: { active: true, production: true },
+        select: { active: true, production: true, authVersion: true },
       });
       if (!user?.active) throw new AppError(401, MENSAGENS.NAO_AUTORIZADO);
       if (user.production) {
@@ -81,6 +81,8 @@ export const jwtPlugin = fp(async (app: FastifyInstance) => {
           throw new AppError(403, MENSAGENS.PROIBIDO);
         }
       } else if (request.user.productionSessionId) {
+        throw new AppError(401, MENSAGENS.NAO_AUTORIZADO);
+      } else if ((request.user.authVersion ?? 0) !== (user.authVersion ?? 0)) {
         throw new AppError(401, MENSAGENS.NAO_AUTORIZADO);
       }
     },

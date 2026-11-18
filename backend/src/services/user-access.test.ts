@@ -26,7 +26,7 @@ const refreshToken = 'existing-refresh-token';
 const makeUser = (id: string, role: UserRole = 'USER'): User => ({
   id, employeeId: `TRACTOR-${id}`, name: id, unit: 'TRACTOR', cardNumber: id,
   role, production: false, active: true, firstLogin: true, passwordHash,
-  absent: false, absencesSeenAt: null, createdAt: new Date(), updatedAt: new Date(),
+  absent: false, absencesSeenAt: null, authVersion: 0, createdAt: new Date(), updatedAt: new Date(),
 });
 type Session = { id: string; userId: string; lastActivityAt: Date };
 type State = {
@@ -57,12 +57,15 @@ function models(getState: () => State) {
       count: async ({ where }: any) => Object.values(getState().users).filter((u) =>
         u.active && u.role === 'ADMIN' && u.id !== where.id?.not).length,
       update: async ({ where, data }: any) => {
-        const user = { ...getState().users[where.id], ...data };
+        const current = getState().users[where.id];
+        const user = { ...current, ...data, authVersion: data.authVersion?.increment !== undefined ? current.authVersion + data.authVersion.increment : current.authVersion };
         getState().users[where.id] = user;
         return user;
       },
     },
     userShiftPeriod: { findMany: async () => [] },
+    accountActionToken: { updateMany: async () => ({ count: 0 }) },
+    userEmail: { upsert: async () => ({}) },
     teamMember: { findFirst: async () => canManage ? { id: 'membership' } : null },
     productionSession: {
       deleteMany: async ({ where }: any) => {
@@ -145,14 +148,14 @@ it('converts in both directions, returns safe data and preserves unrelated accou
   assert.equal(response.json().dados.user.role, 'USER');
   assert.equal(response.json().dados.user.passwordHash, undefined);
   assert.match(response.json().mensagem, /Função e acesso/);
-  assert.deepEqual(state.users.target, { ...original, production: true });
+  assert.deepEqual(state.users.target, { ...original, production: true, authVersion: 1 });
   assert.equal(state.sessions.some((s) => s.userId === 'target'), false);
   assert.ok(state.tokens[0].revokedAt instanceof Date);
   assert.equal(state.tokens[1].revokedAt, null);
   assert.equal(state.sessions.some((s) => s.userId === 'other'), true);
   response = await patch({ role: 'LEADER', production: false });
   assert.equal(response.statusCode, 200, response.body);
-  assert.deepEqual(state.users.target, { ...original, role: 'LEADER' });
+  assert.deepEqual(state.users.target, { ...original, role: 'LEADER', authVersion: 2 });
   assert.equal(revocations, 2);
   const list = await app.inject({ url: '/api/users', headers: headers() });
   assert.equal(list.json().dados.users.find((u: User) => u.id === 'target').production, false);

@@ -13,10 +13,10 @@ import { MENSAGENS, sendSuccess } from '../utils/response.js';
 export class AuthController {
   constructor(private readonly service: AuthService) {}
 
-  private async issueTokenPair(reply: FastifyReply, userId: string) {
+  private async issueTokenPair(reply: FastifyReply, userId: string, authVersion: number) {
     const [token, refreshToken] = await Promise.all([
-      reply.jwtSign({ sub: userId }),
-      this.service.issueRefreshToken(userId),
+      reply.jwtSign({ sub: userId, authVersion }),
+      this.service.issueRefreshToken(userId, authVersion),
     ]);
 
     return { token, refreshToken };
@@ -30,7 +30,7 @@ export class AuthController {
         throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
       }
 
-      const user = await this.service.login(parsed.data);
+      const { authVersion, ...user } = await this.service.login(parsed.data);
 
       if (user.firstLogin) {
         return sendSuccess(
@@ -41,7 +41,7 @@ export class AuthController {
         );
       }
 
-      const tokens = await this.issueTokenPair(reply, user.id);
+      const tokens = await this.issueTokenPair(reply, user.id, authVersion);
 
       return sendSuccess(
         reply,
@@ -99,10 +99,10 @@ export class AuthController {
         throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
       }
 
-      const { user, refreshToken } = await this.service.rotateRefreshToken(
+      const { user, refreshToken, authVersion } = await this.service.rotateRefreshToken(
         parsed.data.refreshToken,
       );
-      const token = await reply.jwtSign({ sub: user.id });
+      const token = await reply.jwtSign({ sub: user.id, authVersion });
 
       return sendSuccess(reply, { token, refreshToken, user });
     } catch (error) {
@@ -146,13 +146,8 @@ export class AuthController {
         );
       }
 
-      const { user, passwordChanged } = await this.service.changePassword(parsed.data);
-
-      if (passwordChanged) {
-        await this.service.revokeAllUserTokens(user.id);
-      }
-
-      const tokens = await this.issueTokenPair(reply, user.id);
+      const { user, passwordChanged, authVersion } = await this.service.changePassword(parsed.data);
+      const tokens = await this.issueTokenPair(reply, user.id, authVersion);
 
       return sendSuccess(
         reply,

@@ -15,6 +15,8 @@ function makeUser(overrides: Partial<User> = {}): User {
     unit: 'TRACTOR',
     cardNumber: '100',
     passwordHash: 'hash',
+    authVersion: 0,
+    production: false,
     role: UserRole.USER,
     active: true,
     firstLogin: false,

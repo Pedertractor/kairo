@@ -1,4 +1,6 @@
-import type { PrismaClient, UnitType, UserRole } from '../generated/client.js';
+import type { Prisma, PrismaClient, UnitType, UserRole } from '../generated/client.js';
+import { AppError } from '../utils/errors.js';
+import { MENSAGENS } from '../utils/response.js';
 
 export class UserRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -53,11 +55,31 @@ export class UserRepository {
     });
   }
 
-  updatePassword(id: string, passwordHash: string) {
-    return this.prisma.user.update({
-      where: { id },
-      data: { passwordHash, firstLogin: false },
+  private async invalidateAccess(tx: Prisma.TransactionClient, userId: string) {
+    const now = new Date();
+    await tx.productionSession.deleteMany({ where: { userId } });
+    await tx.refreshToken.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: now } });
+    await tx.accountActionToken.updateMany({ where: { userId, usedAt: null }, data: { usedAt: now } });
+  }
+
+  private writePassword(id: string, passwordHash: string, firstLogin: boolean, authVersion?: number) {
+    return this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.update({
+        where: { id, ...(authVersion !== undefined ? { authVersion } : {}) },
+        data: { passwordHash, firstLogin, authVersion: { increment: 1 } },
+      });
+      await this.invalidateAccess(tx, id);
+      return user;
+    }).catch((error: unknown) => {
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'P2025') {
+        throw new AppError(401, MENSAGENS.NAO_AUTORIZADO);
+      }
+      throw error;
     });
+  }
+
+  updatePassword(id: string, passwordHash: string, authVersion?: number) {
+    return this.writePassword(id, passwordHash, false, authVersion);
   }
 
   findAll(options?: { active?: boolean }) {
@@ -127,7 +149,7 @@ export class UserRepository {
     } | null,
   ) {
     return this.prisma.$transaction(async (tx) => {
-      const user = await tx.user.create({ data });
+      const user = await tx.user.create({ data: { ...data, ...(!data.production ? { userEmail: { create: {} } } : {}) } });
 
       await tx.teamMember.create({
         data: {
@@ -162,14 +184,12 @@ export class UserRepository {
   ) {
     return this.prisma.$transaction(async (tx) => {
       const current = await tx.user.findUniqueOrThrow({ where: { id } });
-      const updated = await tx.user.update({ where: { id }, data });
+      const changed = data.production !== undefined && data.production !== current.production;
+      const updated = await tx.user.update({ where: { id }, data: { ...data, ...(changed ? { authVersion: { increment: 1 } } : {}) } });
 
       if (updated.production !== current.production) {
-        await tx.productionSession.deleteMany({ where: { userId: id } });
-        await tx.refreshToken.updateMany({
-          where: { userId: id, revokedAt: null },
-          data: { revokedAt: new Date() },
-        });
+        await this.invalidateAccess(tx, id);
+        if (!updated.production) await tx.userEmail.upsert({ where: { userId: id }, create: { userId: id }, update: {} });
       }
 
       return updated;
@@ -177,9 +197,10 @@ export class UserRepository {
   }
 
   setActive(id: string, active: boolean) {
-    return this.prisma.user.update({
-      where: { id },
-      data: { active },
+    return this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.update({ where: { id }, data: { active, authVersion: { increment: 1 } } });
+      await this.invalidateAccess(tx, id);
+      return user;
     });
   }
 
@@ -192,14 +213,20 @@ export class UserRepository {
       production?: boolean;
     },
   ) {
-    return this.prisma.user.update({
-      where: { id },
-      data: {
-        ...data,
-        active: true,
-        firstLogin: true,
-        absent: false,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.update({
+        where: { id },
+        data: {
+          ...data,
+          active: true,
+          firstLogin: true,
+          absent: false,
+          authVersion: { increment: 1 },
+        },
+      });
+      await this.invalidateAccess(tx, id);
+      if (!user.production) await tx.userEmail.upsert({ where: { userId: id }, create: { userId: id }, update: {} });
+      return user;
     });
   }
 
@@ -218,10 +245,7 @@ export class UserRepository {
   }
 
   resetPassword(id: string, passwordHash: string) {
-    return this.prisma.user.update({
-      where: { id },
-      data: { passwordHash, firstLogin: true },
-    });
+    return this.writePassword(id, passwordHash, true);
   }
 
   countActiveAdmins(excludeUserId?: string) {
@@ -251,11 +275,11 @@ export class UserRepository {
     } | null,
   ) {
     if (!initialShift) {
-      return this.prisma.user.create({ data });
+      return this.prisma.user.create({ data: { ...data, ...(!data.production ? { userEmail: { create: {} } } : {}) } });
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const user = await tx.user.create({ data });
+      const user = await tx.user.create({ data: { ...data, ...(!data.production ? { userEmail: { create: {} } } : {}) } });
 
       await tx.userShiftPeriod.create({
         data: {

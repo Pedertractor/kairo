@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Avatar,
   AvatarFallback,
@@ -28,11 +29,13 @@ import {
   LogOutIcon,
   SmartphoneIcon,
   UnplugIcon,
+  UserRoundIcon,
 } from 'lucide-react'
 
 export function NavUser() {
   const { user, logout } = useAuth()
-  const { isMobile } = useSidebar()
+  const { isMobile, setOpenMobile } = useSidebar()
+  const navigate = useNavigate()
   const [integrationsOpen, setIntegrationsOpen] = useState(false)
   const {
     canInstall,
@@ -86,6 +89,10 @@ export function NavUser() {
               </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => { navigate('/perfil'); if (isMobile) setOpenMobile(false) }}>
+              <UserRoundIcon />
+              Perfil
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setIntegrationsOpen(true)}>
               <UnplugIcon />
               Integrações
