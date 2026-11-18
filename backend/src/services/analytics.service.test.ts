@@ -313,3 +313,60 @@ describe('Analytics completion history queries', () => {
     assert.equal(queries[0].where.updatedAt, undefined);
   });
 });
+
+describe('Analytics overnight shifts count on the work day they started', () => {
+  const at = (day: string, hour: number) => new Date(`${day}T${String(hour).padStart(2, '0')}:00:00-03:00`);
+  // 18:00-02:00 every weekday; Monday 2026-07-06 and Tuesday 2026-07-07.
+  const shift = { userId: 'member-1', startMinutes: 18 * 60, endMinutes: 2 * 60, startedAt: new Date('2026-06-01T03:00:00Z'), endedAt: null };
+  const entries = [
+    { userId: 'member-1', startedAt: at('2026-07-03', 18), endedAt: at('2026-07-04', 2) },
+    { userId: 'member-1', startedAt: at('2026-07-06', 18), endedAt: at('2026-07-07', 2) },
+    { userId: 'member-1', startedAt: at('2026-07-07', 18), endedAt: at('2026-07-08', 2) },
+    { userId: 'member-1', startedAt: at('2026-07-10', 18), endedAt: at('2026-07-11', 2) },
+  ];
+  const teamEntry = (entry: typeof entries[number]) => ({ ...entry, card: { teamId: 'team-1' }, task: null });
+
+  function load(startDate: string, endDate: string) {
+    const overlapping = (start: Date, end: Date) =>
+      entries.filter((entry) => entry.startedAt < end && entry.endedAt > start);
+    const repository = {
+      findOwnedTeams: async () => [{ id: 'team-1', name: 'Team', members: [{ user: { id: 'member-1', name: 'Ana' } }] }],
+      findProjectsForTeams: async () => [],
+      findEntriesForTeams: async (_: unknown, start: Date, end: Date) => overlapping(start, end),
+      findActivityEntriesForTeams: async () => [],
+      findActivitiesForClientAnalytics: async () => [],
+      findTasksForClientAnalytics: async () => [],
+      findCardsForStatusOverview: async () => [],
+      findTasksForStatusOverview: async () => [],
+      findEntriesForUsers: async (_: unknown, start: Date, end: Date) =>
+        entries.filter((entry) => entry.startedAt >= start && entry.startedAt < end).map(teamEntry),
+      findLastEntriesBefore: async (_: unknown, before: Date) =>
+        entries.filter((entry) => entry.startedAt < before).slice(-1).map(teamEntry),
+      findFinishedActivitiesForPeriod: async () => [],
+      findFinishedTasksForPeriod: async () => [],
+    };
+    const service = new AnalyticsService(
+      repository as unknown as AnalyticsRepository,
+      { findOverlappingRange: async () => [] } as never,
+      { findOverlappingRange: async () => [shift] } as never,
+    );
+    return service.getDashboard('owner-1', { startDate, endDate }).then((result) => result.rows[0]);
+  }
+
+  it('gives Monday the same logged and available time as Tuesday', async () => {
+    const monday = await load('2026-07-06', '2026-07-06');
+    const tuesday = await load('2026-07-07', '2026-07-07');
+    assert.equal(monday.loggedSeconds, 8 * 3600);
+    assert.equal(monday.availabilitySeconds, 7 * 3600);
+    assert.equal(monday.lastLoggedDate, '2026-07-06');
+    assert.equal(tuesday.loggedSeconds, 8 * 3600);
+    assert.equal(tuesday.availabilitySeconds, 7 * 3600);
+  });
+
+  it('keeps Friday night inside a Monday-Friday report and excludes the previous Friday', async () => {
+    const week = await load('2026-07-06', '2026-07-10');
+    assert.equal(week.loggedSeconds, 3 * 8 * 3600);
+    assert.equal(week.timeEntryCount, 3);
+    assert.equal(week.lastLoggedDate, '2026-07-10');
+  });
+});

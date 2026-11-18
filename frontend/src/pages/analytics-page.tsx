@@ -600,8 +600,8 @@ export function AnalyticsPage() {
             </p>
             <p className='mt-1 text-xs opacity-60'>
               {periodDayCount === 1
-                ? '8h 48min menos ausências, alocada à equipe do último apontamento'
-                : `8h 48min × ${periodDayCount} dias menos ausências, alocada à equipe do último apontamento`}
+                ? 'Turno (máx. 8h 48min) menos ausências e almoço, alocada à equipe do último apontamento'
+                : `Turno (máx. 8h 48min) × ${periodDayCount} dias menos ausências e almoço, alocada à equipe do último apontamento`}
             </p>
           </div>
           <div className='rounded-2xl border border-cyan-200 bg-cyan-50 p-5 text-cyan-950 dark:border-cyan-900 dark:bg-cyan-950/40 dark:text-cyan-100'>

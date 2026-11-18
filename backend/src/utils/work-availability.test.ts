@@ -8,6 +8,8 @@ import {
   calculateAvailabilitySeconds,
   DAILY_AVAILABILITY_SECONDS,
   getOpenAvailabilityIntervals,
+  LUNCH_BREAK_SECONDS,
+  netAvailableSeconds,
   type ShiftPeriodInterval,
 } from './work-availability.js';
 
@@ -15,6 +17,8 @@ import {
 const DAY = '2026-07-10';
 const SHIFT_START_MINUTES = 6 * 60 + 15;
 const SHIFT_END_MINUTES = 15 * 60 + 3;
+/** The 06:15–15:03 shift is 8h 48min of presence, so 1h of lunch is deducted. */
+const NET_SHIFT_SECONDS = DAILY_AVAILABILITY_SECONDS - LUNCH_BREAK_SECONDS;
 
 function at(hour: number, minute: number, second = 0): Date {
   return zonedDateTimeToUtc(DAY, hour, minute, second);
@@ -54,7 +58,7 @@ describe('calculateAvailabilitySeconds — late start and absences', () => {
       shiftForDay(),
     );
 
-    assert.equal(availabilitySeconds, DAILY_AVAILABILITY_SECONDS);
+    assert.equal(availabilitySeconds, NET_SHIFT_SECONDS);
   });
 
   it('counts idle shift time as available when nobody marked an absence', () => {
@@ -68,7 +72,7 @@ describe('calculateAvailabilitySeconds — late start and absences', () => {
     );
     const loggedSeconds = Math.floor((now.getTime() - at(9, 15).getTime()) / 1000);
 
-    assert.equal(availabilitySeconds, DAILY_AVAILABILITY_SECONDS);
+    assert.equal(availabilitySeconds, NET_SHIFT_SECONDS);
     assert.equal(loggedSeconds, 2 * 3600 + 45 * 60);
     assert.ok(
       occupationPercent(loggedSeconds, availabilitySeconds) < 50,
@@ -85,15 +89,9 @@ describe('calculateAvailabilitySeconds — late start and absences', () => {
       now,
       shiftForDay(),
     );
-    const withoutAbsence = calculateAvailabilitySeconds(
-      [],
-      at(0, 0),
-      zonedDateTimeToUtc('2026-07-11'),
-      now,
-      shiftForDay(),
-    );
 
-    assert.equal(availabilitySeconds, withoutAbsence - (2 * 3600 + 59 * 60));
+    // 09:14–15:03 = 5h 49min of presence: no lunch is due under 6h.
+    assert.equal(availabilitySeconds, 5 * 3600 + 49 * 60);
   });
 
   it('uses the clipped absence end when the person starts a time entry early', () => {
@@ -106,10 +104,8 @@ describe('calculateAvailabilitySeconds — late start and absences', () => {
       shiftForDay(),
     );
 
-    assert.equal(
-      availabilitySeconds,
-      DAILY_AVAILABILITY_SECONDS - (2 * 3600 + 45 * 60),
-    );
+    // 09:00–15:03 = 6h 03min of presence: 3min of lunch is deducted.
+    assert.equal(availabilitySeconds, 6 * 3600);
   });
 
   it('does not keep the original 10:00 end after an early return at 09:00', () => {
@@ -169,7 +165,7 @@ describe('calculateAvailabilitySeconds — late start and absences', () => {
       shiftForDay(),
     );
 
-    assert.equal(availabilitySeconds, DAILY_AVAILABILITY_SECONDS - 15 * 60);
+    assert.equal(availabilitySeconds, NET_SHIFT_SECONDS - 15 * 60);
   });
 
   it('discounts a 15min absence on a longer shift instead of backfilling later hours', () => {
@@ -247,10 +243,10 @@ describe('team-scoped availability allocation', () => {
     const forA = allocateAvailabilitySeconds(open, segments, [TEAM_A]);
     const forB = allocateAvailabilitySeconds(open, segments, [TEAM_B]);
 
-    // 06:15–13:00 = 6h 45min; 13:00–15:03 = 2h 03min
+    // Lunch trims the end: 06:15–13:00 = 6h 45min; 13:00–14:03 = 1h 03min
     assert.equal(forA, 6 * 3600 + 45 * 60);
-    assert.equal(forB, 2 * 3600 + 3 * 60);
-    assert.equal(forA + forB, DAILY_AVAILABILITY_SECONDS);
+    assert.equal(forB, 1 * 3600 + 3 * 60);
+    assert.equal(forA + forB, NET_SHIFT_SECONDS);
   });
 
   it('switches ownership at the new entry startedAt', () => {
@@ -265,8 +261,8 @@ describe('team-scoped availability allocation', () => {
     ]);
 
     const forB = allocateAvailabilitySeconds(open, segments, [TEAM_B]);
-    // 10:00–15:03 = 5h 03min
-    assert.equal(forB, 5 * 3600 + 3 * 60);
+    // 10:00–14:03 = 4h 03min (lunch trimmed from the end)
+    assert.equal(forB, 4 * 3600 + 3 * 60);
   });
 
   it('gives zero availability when the person never pointed', () => {
@@ -291,7 +287,7 @@ describe('team-scoped availability allocation', () => {
 
     assert.equal(
       allocateAvailabilitySeconds(open, segments, [TEAM_A]),
-      DAILY_AVAILABILITY_SECONDS,
+      NET_SHIFT_SECONDS,
     );
     assert.equal(allocateAvailabilitySeconds(open, segments, [TEAM_B]), 0);
   });
@@ -302,10 +298,10 @@ describe('team-scoped availability allocation', () => {
       { startedAt: at(11, 0), teamId: TEAM_A },
     ]);
 
-    // Morning idle is unowned; only 11:00–15:03 belongs to Team A
+    // Morning idle is unowned; only 11:00–14:03 belongs to Team A
     assert.equal(
       allocateAvailabilitySeconds(open, segments, [TEAM_A]),
-      4 * 3600 + 3 * 60,
+      3 * 3600 + 3 * 60,
     );
   });
 
@@ -320,8 +316,8 @@ describe('team-scoped availability allocation', () => {
 
     // Team A owns 06:15–13:00 minus absence 06:15–09:00 → 09:00–13:00 = 4h
     assert.equal(forA, 4 * 3600);
-    // Team B still gets 13:00–15:03
-    assert.equal(forB, 2 * 3600 + 3 * 60);
+    // 6h 03min of presence loses 3min of lunch: Team B gets 13:00–15:00
+    assert.equal(forB, 2 * 3600);
   });
 
   it('allocates across a multi-day period with one switch', () => {
@@ -350,11 +346,11 @@ describe('team-scoped availability allocation', () => {
     const forA = allocateAvailabilitySeconds(open, segments, [TEAM_A]);
     const forB = allocateAvailabilitySeconds(open, segments, [TEAM_B]);
 
-    // Day 1 full (8h48) for A; day 2 from 08:00–15:03 for B (7h 03min)
+    // Day 1 full (7h48) for A; day 2 from 08:00–14:03 for B (6h 03min)
     // Day 2 morning 06:15–08:00 still A (1h 45min)
-    assert.equal(forA, DAILY_AVAILABILITY_SECONDS + (1 * 3600 + 45 * 60));
-    assert.equal(forB, 7 * 3600 + 3 * 60);
-    assert.equal(forA + forB, DAILY_AVAILABILITY_SECONDS * 2);
+    assert.equal(forA, NET_SHIFT_SECONDS + (1 * 3600 + 45 * 60));
+    assert.equal(forB, 6 * 3600 + 3 * 60);
+    assert.equal(forA + forB, NET_SHIFT_SECONDS * 2);
   });
 
   it('caps long shifts once so total across teams never exceeds 8h 48min', () => {
@@ -380,7 +376,7 @@ describe('team-scoped availability allocation', () => {
 
     assert.equal(
       allocateAvailabilitySeconds(open, segments, [TEAM_A]),
-      DAILY_AVAILABILITY_SECONDS - 15 * 60,
+      NET_SHIFT_SECONDS - 15 * 60,
     );
   });
 
@@ -446,7 +442,7 @@ describe('weekends do not count toward availability', () => {
       weekendShift(zonedDateTimeToUtc('2026-07-10')),
     );
 
-    assert.equal(availabilitySeconds, DAILY_AVAILABILITY_SECONDS * 2);
+    assert.equal(availabilitySeconds, NET_SHIFT_SECONDS * 2);
   });
 
   it('does not let a Saturday absence reduce weekday availability', () => {
@@ -463,7 +459,7 @@ describe('weekends do not count toward availability', () => {
       weekendShift(zonedDateTimeToUtc('2026-07-10')),
     );
 
-    assert.equal(withWeekendAbsence, DAILY_AVAILABILITY_SECONDS);
+    assert.equal(withWeekendAbsence, NET_SHIFT_SECONDS);
   });
 });
 
@@ -565,5 +561,81 @@ describe('overnight transition boundaries', () => {
     const start = date('2026-07-06', 20), midnight = date('2026-07-07'), end = date('2026-07-07', 2);
     assert.equal(calculateAvailabilitySeconds([], start, midnight, end, periods), 4 * 3600);
     assert.equal(calculateAvailabilitySeconds([], midnight, end, end, periods), 0);
+  });
+});
+
+describe('lunch deduction', () => {
+  const H = 3600;
+  const M = 60;
+  const fullShift = () => shiftForDay(8 * 60, 17 * 60 + 48); // 9h 48min
+  const day = (absences: Parameters<typeof calculateAvailabilitySeconds>[0] = [],
+    start = at(0, 0), end = zonedDateTimeToUtc('2026-07-11')) =>
+    calculateAvailabilitySeconds(absences, start, end, at(23, 0), fullShift());
+
+  it('deducts lunch proportionally beyond 6h of presence, up to 1h', () => {
+    assert.equal(netAvailableSeconds(0), 0);
+    assert.equal(netAvailableSeconds(5 * H), 5 * H);
+    assert.equal(netAvailableSeconds(6 * H), 6 * H);
+    assert.equal(netAvailableSeconds(6 * H + 30 * M), 6 * H);
+    assert.equal(netAvailableSeconds(7 * H), 6 * H);
+    assert.equal(netAvailableSeconds(8 * H), 7 * H);
+    assert.equal(netAvailableSeconds(12 * H), DAILY_AVAILABILITY_SECONDS);
+  });
+
+  it('keeps 8h 48min for a full 9h 48min shift', () => {
+    assert.equal(day(), DAILY_AVAILABILITY_SECONDS);
+  });
+
+  it('still deducts lunch when the absence covers the end of the shift', () => {
+    // 08:00–16:00 = 8h of presence → 7h, not 8h.
+    assert.equal(day([{ startedAt: at(16, 0), endedAt: at(17, 48) }]), 7 * H);
+  });
+
+  it('does not deduct lunch at or below 6h of presence', () => {
+    assert.equal(day([{ startedAt: at(14, 0), endedAt: at(17, 48) }]), 6 * H);
+    // Arriving at 12:00: 12:00–17:48 = 5h 48min, no lunch due.
+    assert.equal(day([{ startedAt: at(8, 0), endedAt: at(12, 0) }]), 5 * H + 48 * M);
+  });
+
+  it('never drops below 6h because of lunch', () => {
+    assert.equal(day([{ startedAt: at(14, 30), endedAt: at(17, 48) }]), 6 * H);
+    assert.equal(day([{ startedAt: at(15, 0), endedAt: at(17, 48) }]), 6 * H);
+  });
+
+  it('deducts lunch on presence split by a mid-day absence', () => {
+    // 8h 48min of presence in two blocks → 7h 48min.
+    assert.equal(day([{ startedAt: at(10, 0), endedAt: at(11, 0) }]), 7 * H + 48 * M);
+  });
+
+  it('evaluates lunch on the whole day when the report clips it', () => {
+    const absence = [{ startedAt: at(16, 0), endedAt: at(17, 48) }];
+    const morning = day(absence, at(0, 0), at(13, 0));
+    const afternoon = day(absence, at(13, 0), zonedDateTimeToUtc('2026-07-11'));
+    assert.equal(morning, 5 * H);
+    assert.equal(afternoon, 2 * H);
+    assert.equal(morning + afternoon, day(absence));
+  });
+
+  it('deducts lunch on an overnight shift with a partial absence', () => {
+    const shifts: ShiftPeriodInterval[] = [{
+      startMinutes: 20 * 60, endMinutes: 6 * 60,
+      startedAt: zonedDateTimeToUtc('2026-07-01'), endedAt: null,
+    }];
+    const start = zonedDateTimeToUtc('2026-07-06', 20);
+    const end = zonedDateTimeToUtc('2026-07-07', 6);
+    const absences = [{ startedAt: zonedDateTimeToUtc('2026-07-07', 3), endedAt: end }];
+    // 20:00–03:00 = 7h of presence → 6h.
+    assert.equal(calculateAvailabilitySeconds(absences, start, end, end, shifts), 6 * H);
+  });
+
+  it('allocates the lunch-adjusted total across teams', () => {
+    const absences = [{ startedAt: at(16, 0), endedAt: at(17, 48) }];
+    const start = at(0, 0), end = zonedDateTimeToUtc('2026-07-11');
+    const open = getOpenAvailabilityIntervals(absences, start, end, at(23, 0), fullShift());
+    const segments = buildTeamAllocationSegments(start, end, 'a', [
+      { startedAt: at(12, 0), teamId: 'b' },
+    ]);
+    assert.equal(allocateAvailabilitySeconds(open, segments, ['a']), 4 * H);
+    assert.equal(allocateAvailabilitySeconds(open, segments, ['b']), 3 * H);
   });
 });

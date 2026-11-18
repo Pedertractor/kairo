@@ -126,7 +126,8 @@ export function EditShiftDialog({
             <span className="font-medium text-foreground">
               {target?.name ?? 'membro'}
             </span>
-            . O intervalo de almoço não é considerado.
+            , incluindo o almoço. Acima de 6h de presença, até 1h de almoço é
+            descontada da disponibilidade.
           </DialogDescription>
         </DialogHeader>
 
