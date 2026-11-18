@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { UserController } from '../controllers/user.controller.js';
 import { createRequireAdmin } from '../middleware/require-admin.js';
 import { createRequireAdminOrLeader } from '../middleware/require-admin-or-leader.js';
+import { HierarchyRepository } from '../repositories/hierarchy.repository.js';
 import { CardRepository } from '../repositories/card.repository.js';
 import { RefreshTokenRepository } from '../repositories/refresh-token.repository.js';
 import { ShiftRepository } from '../repositories/shift.repository.js';
@@ -28,6 +29,7 @@ export async function userRoutes(app: FastifyInstance) {
       new TaskRepository(app.prisma),
       new CardRepository(app.prisma),
       shiftService,
+      new HierarchyRepository(app.prisma),
     ),
   );
 

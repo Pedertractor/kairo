@@ -13,7 +13,10 @@ interface NoTeamMessageProps {
 
 export function NoTeamMessage({ onCreateTeam, onCreated }: NoTeamMessageProps) {
   const { user, refreshUser } = useAuth()
-  const canCreateTeam = user?.role === 'ADMIN' || user?.role === 'LEADER'
+  const canCreateTeam =
+    user?.role === 'ADMIN' ||
+    user?.role === 'LEADER' ||
+    user?.role === 'SUPERVISOR'
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
 
   function handleCreateClick() {

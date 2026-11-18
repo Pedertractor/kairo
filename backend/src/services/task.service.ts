@@ -135,6 +135,21 @@ export class TaskService {
     return card;
   }
 
+  /** Read-only endpoints also accept supervisors and admins via the hierarchy. */
+  private async assertProjectReadAccess(projectId: string, userId: string) {
+    const card = await this.cardRepository.findProjectById(projectId);
+
+    if (!card || card.type !== 'PROJECT') {
+      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
+    }
+
+    assertTeamMembership(
+      await this.teamRepository.findReadAccessByTeamAndUser(card.teamId, userId),
+    );
+
+    return card;
+  }
+
   private async getFavoriteTaskIdSet(userId: string, taskIds: string[]) {
     const favorites = await this.favoriteRepository.findFavoriteTaskIds(
       userId,
@@ -149,7 +164,7 @@ export class TaskService {
   }
 
   async listTasks(projectId: string, userId: string): Promise<TaskSummary[]> {
-    await this.assertProjectAccess(projectId, userId);
+    await this.assertProjectReadAccess(projectId, userId);
 
     const tasks = await this.taskRepository.findByProjectId(projectId);
     const favoriteIds = await this.getFavoriteTaskIdSet(
@@ -206,7 +221,7 @@ export class TaskService {
     taskId: string,
     userId: string,
   ): Promise<TaskDetail> {
-    const project = await this.assertProjectAccess(projectId, userId);
+    const project = await this.assertProjectReadAccess(projectId, userId);
 
     const task = await this.taskRepository.findById(taskId);
 

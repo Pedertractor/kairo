@@ -7,6 +7,7 @@ import {
   Plus,
   Search,
   Shield,
+  ShieldCheck,
   UserCheck,
   UserX,
 } from 'lucide-react'
@@ -41,6 +42,7 @@ const UNIT_LABELS: Record<UnitType, string> = {
 
 const ROLE_LABELS: Record<UserRole, string> = {
   ADMIN: 'Administrador',
+  SUPERVISOR: 'Supervisor',
   LEADER: 'Líder',
   USER: 'Usuário',
 }
@@ -127,9 +129,12 @@ export function UsuariosPage() {
   }
 
   const isCurrentUser = (user: User) => user.id === currentUser?.id
-  const isLeader = currentUser?.role === 'LEADER'
+  const isLeader =
+    currentUser?.role === 'LEADER' || currentUser?.role === 'SUPERVISOR'
+  // Supervisors also see their leaders' people, read-only (managedByViewer: false).
   const canManageUser = (user: User) =>
-    !isLeader || user.role !== 'ADMIN'
+    user.managedByViewer !== false &&
+    (!isLeader || (user.role !== 'ADMIN' && user.role !== 'SUPERVISOR'))
 
   return (
     <div className="flex flex-1 flex-col gap-6">
@@ -268,6 +273,12 @@ export function UsuariosPage() {
                               <Crown
                                 className="size-3.5 shrink-0 text-sidebar-primary"
                                 aria-label="Administrador"
+                              />
+                            ) : null}
+                            {user.role === 'SUPERVISOR' ? (
+                              <ShieldCheck
+                                className="size-3.5 shrink-0 text-sidebar-primary"
+                                aria-label="Supervisor"
                               />
                             ) : null}
                             {user.role === 'LEADER' ? (

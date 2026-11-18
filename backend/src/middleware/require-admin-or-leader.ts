@@ -11,7 +11,10 @@ export function createRequireAdminOrLeader(userRepository: UserRepository) {
     if (
       !user ||
       !user.active ||
-      (user.role !== UserRole.ADMIN && user.role !== UserRole.LEADER)
+      (user.role !== UserRole.ADMIN &&
+        user.role !== UserRole.LEADER &&
+        // Supervisors keep leader powers over the teams they administer themselves.
+        user.role !== UserRole.SUPERVISOR)
     ) {
       throw new AppError(403, MENSAGENS.PROIBIDO);
     }

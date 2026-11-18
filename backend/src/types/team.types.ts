@@ -37,4 +37,6 @@ export interface TeamSummary {
   membersCanDeleteTags: boolean;
   membersCanDeleteCards: boolean;
   createdAt: string;
+  /** 'readonly' when access comes from the supervisor hierarchy (or system admin) instead of membership. */
+  viewerAccess?: 'member' | 'readonly';
 }

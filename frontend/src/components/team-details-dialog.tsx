@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/lib/api-handler'
+import { canManageTeam } from '@/lib/team-permissions'
 import type { TeamResponse, TeamSummary, UpdateTeamInput } from '@/types/team'
 
 interface TeamDetailsDialogProps {
@@ -49,7 +50,7 @@ export function TeamDetailsDialog({
   const [costCenterIds, setCostCenterIds] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const canEdit = team?.role === 'ADMIN' && team.active
+  const canEdit = team ? canManageTeam(team) && team.active : false
 
   useEffect(() => {
     if (open && team) {

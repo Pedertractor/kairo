@@ -23,6 +23,7 @@ import { useCanEditEstimatedHours } from '@/hooks/use-can-edit-estimated-hours'
 import { api } from '@/lib/api-handler'
 import { CardTimeBudget } from '@/components/card-time-budget'
 import { canFinishStatus } from '@/lib/card-status'
+import { canManageTeam } from '@/lib/team-permissions'
 import { getIntegrationSourceLabel } from '@/lib/integration-source'
 import type { ProjectResponse, ProjectSummary } from '@/types/card'
 
@@ -83,7 +84,7 @@ export function ProjectDetailPage() {
       const teamId = project.teamId
       void api<TeamResponse>(`/teams/${teamId}`, { toastOnError: false })
         .then(({ team }) => {
-          if (!cancelled && team.role === 'ADMIN') setAdminTeamId(teamId)
+          if (!cancelled && canManageTeam(team)) setAdminTeamId(teamId)
         })
         .catch(() => {})
     }

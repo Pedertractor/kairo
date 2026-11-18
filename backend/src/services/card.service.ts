@@ -159,8 +159,18 @@ export class CardService {
     return assertTeamMembership(membership);
   }
 
+  /** Read-only endpoints also accept supervisors and admins via the hierarchy. */
+  private async assertTeamReader(teamId: string, userId: string) {
+    const access = await this.teamRepository.findReadAccessByTeamAndUser(
+      teamId,
+      userId,
+    );
+
+    return assertTeamMembership(access);
+  }
+
   async getIndicatorActivities(teamId: string, userId: string, start: Date, end: Date) {
-    await this.assertTeamMember(teamId, userId);
+    await this.assertTeamReader(teamId, userId);
     return this.cardRepository.findIndicatorActivities(teamId, start, end);
   }
 
@@ -234,7 +244,7 @@ export class CardService {
     teamId: string,
     userId: string,
   ): Promise<ActivitySummary[]> {
-    await this.assertTeamMember(teamId, userId);
+    await this.assertTeamReader(teamId, userId);
 
     const cards = await this.cardRepository.findActivitiesByTeamId(teamId);
     const cardIds = cards.map((card) => card.id);
@@ -275,7 +285,7 @@ export class CardService {
     activityId: string,
     userId: string,
   ): Promise<ActivitySummary> {
-    await this.assertTeamMember(teamId, userId);
+    await this.assertTeamReader(teamId, userId);
 
     const card = await this.cardRepository.findActivityById(activityId);
 
@@ -300,7 +310,7 @@ export class CardService {
     activityId: string,
     userId: string,
   ): Promise<ActivitySummary> {
-    await this.assertTeamMember(teamId, userId);
+    await this.assertTeamReader(teamId, userId);
 
     const card =
       await this.cardRepository.findActivityByIdIncludingDeleted(activityId);
@@ -542,7 +552,7 @@ export class CardService {
     activityId: string,
     userId: string,
   ): Promise<ActivityHistoryEvent[]> {
-    await this.assertTeamMember(teamId, userId);
+    await this.assertTeamReader(teamId, userId);
 
     const card = await this.cardRepository.findActivityById(activityId);
 
@@ -573,7 +583,7 @@ export class CardService {
     teamId: string,
     userId: string,
   ): Promise<ProjectSummary[]> {
-    await this.assertTeamMember(teamId, userId);
+    await this.assertTeamReader(teamId, userId);
 
     const cards = await this.cardRepository.findProjectsByTeamId(teamId);
     const loggedByProject =
@@ -607,7 +617,7 @@ export class CardService {
     projectId: string,
     userId: string,
   ): Promise<ProjectSummary> {
-    await this.assertTeamMember(teamId, userId);
+    await this.assertTeamReader(teamId, userId);
 
     const card = await this.cardRepository.findProjectById(projectId);
 
@@ -630,7 +640,7 @@ export class CardService {
     projectId: string,
     userId: string,
   ): Promise<ProjectSummary> {
-    await this.assertTeamMember(teamId, userId);
+    await this.assertTeamReader(teamId, userId);
 
     const card =
       await this.cardRepository.findProjectByIdIncludingDeleted(projectId);
@@ -660,7 +670,7 @@ export class CardService {
       throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
     }
 
-    await this.assertTeamMember(card.teamId, userId);
+    await this.assertTeamReader(card.teamId, userId);
 
     const loggedByProject =
       await this.timeEntryRepository.getLoggedSecondsByProjectIds([projectId]);

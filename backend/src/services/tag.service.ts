@@ -34,8 +34,18 @@ export class TagService {
     return assertTeamMembership(membership);
   }
 
+  /** Read-only endpoints also accept supervisors and admins via the hierarchy. */
+  private async assertTeamReader(teamId: string, userId: string) {
+    const access = await this.teamRepository.findReadAccessByTeamAndUser(
+      teamId,
+      userId,
+    );
+
+    return assertTeamMembership(access);
+  }
+
   async list(teamId: string, userId: string): Promise<TagSummary[]> {
-    await this.assertTeamMember(teamId, userId);
+    await this.assertTeamReader(teamId, userId);
 
     const tags = await this.tagRepository.findByTeamId(teamId);
     return tags.map(toTagSummary);

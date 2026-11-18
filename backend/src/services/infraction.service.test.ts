@@ -54,12 +54,13 @@ app.decorate('prisma', {
       if (options.where.memberships) {
         assert.deepEqual(options.where, {
           active: true,
-          memberships: { some: { team: { active: true, members: { some: { userId: 'leader', role: 'ADMIN' } } } } },
+          role: { notIn: ['ADMIN', 'SUPERVISOR'] },
+          memberships: { some: { team: { active: true, members: { some: { userId: { in: ['leader'] }, role: 'ADMIN' } } } } },
         });
         if (membershipError) throw new Error('membership lookup failed');
         return managedCards.map((cardNumber) => ({ unit: 'TRACTOR', cardNumber }));
       }
-      assert.deepEqual(options.where, { role: 'LEADER', active: true });
+      assert.deepEqual(options.where, { role: { in: ['LEADER', 'SUPERVISOR'] }, active: true });
       assert.deepEqual(options.select.memberships.where, { role: 'ADMIN', team: { active: true } });
       assert.deepEqual(options.select.memberships.select.team.select.members.where, { user: { active: true } });
       const tractor = { user: { unit: 'TRACTOR', cardNumber: '1234' } };

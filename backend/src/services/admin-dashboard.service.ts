@@ -22,6 +22,7 @@ const DEFAULT_PERIOD_DAYS = 30;
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: 'Administrador',
+  SUPERVISOR: 'Supervisor',
   LEADER: 'Líder',
   USER: 'Usuário',
 };
@@ -447,7 +448,7 @@ export class AdminDashboardService {
       unitCounts.set(user.unit, (unitCounts.get(user.unit) ?? 0) + 1);
     }
 
-    const usersByRole: AdminNamedCount[] = ['ADMIN', 'LEADER', 'USER'].map(
+    const usersByRole: AdminNamedCount[] = ['ADMIN', 'SUPERVISOR', 'LEADER', 'USER'].map(
       (role) => ({
         key: role,
         label: ROLE_LABELS[role],

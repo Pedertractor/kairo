@@ -39,6 +39,7 @@ function fixture(options: { role?: 'ADMIN' | 'MEMBER'; member?: boolean; active?
     teamMember: { findUnique: async () => options.member === false ? null : {
       role: options.role ?? 'ADMIN', team: { active: options.active ?? true },
     } },
+    user: { findUnique: async () => ({ role: 'USER', active: true, cardNumber: '1' }) },
     card: { findFirst: async ({ where }: { where: object }) => projects.find(p => matches(p, where)) ?? null },
     teamDocument: {
       findMany: async ({ where }: { where: object }) => documents.filter(d => matches(d, where)),
@@ -55,9 +56,13 @@ function fixture(options: { role?: 'ADMIN' | 'MEMBER'; member?: boolean; active?
       delete: async ({ where }: { where: { id: string } }) => documents.splice(documents.findIndex(d => d.id === where.id), 1)[0],
     },
   } as unknown as PrismaClient;
-  const teamRepository = { findMembershipByTeamAndUser: async () => options.member === false ? null : {
+  const membership = async () => options.member === false ? null : {
     role: options.role ?? 'ADMIN', team: { active: options.active ?? true },
-  } } as unknown as TeamRepository;
+  };
+  const teamRepository = {
+    findMembershipByTeamAndUser: membership,
+    findReadAccessByTeamAndUser: membership,
+  } as unknown as TeamRepository;
   return { service: new DocumentService(new DocumentRepository(prisma), teamRepository), documents, prisma, teamRepository };
 }
 

@@ -17,6 +17,8 @@ export interface SafeUser {
   shiftEnd: string | null;
   hasOwnedTeams: boolean;
   hasTeams: boolean;
+  /** Only in a supervisor's user list: false for users seen read-only through the hierarchy. */
+  managedByViewer?: boolean;
 }
 
 export interface LoginInput {

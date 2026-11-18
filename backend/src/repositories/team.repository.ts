@@ -1,4 +1,5 @@
-import type { PrismaClient, TeamRole } from '../generated/client.js';
+import { TeamRole, UserRole, type PrismaClient } from '../generated/client.js';
+import { HierarchyRepository } from './hierarchy.repository.js';
 
 const memberInclude = {
   members: {
@@ -17,6 +18,12 @@ const memberInclude = {
   },
   _count: { select: { members: true } },
 };
+
+type TeamMembershipWithTeam = NonNullable<
+  Awaited<ReturnType<TeamRepository['findMembershipByTeamAndUser']>>
+>;
+
+export type TeamReadAccess = TeamMembershipWithTeam & { readOnly: boolean };
 
 export class TeamRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -51,6 +58,71 @@ export class TeamRepository {
         },
       },
     });
+  }
+
+  /**
+   * Access for read-only endpoints: the caller's real membership when there is
+   * one; otherwise a synthetic, read-only ADMIN-level view for system admins and
+   * for supervisors of one of the team's admins (leaders). Write paths must keep
+   * using `findMembershipByTeamAndUser`, so this view can never edit anything.
+   */
+  async findReadAccessByTeamAndUser(
+    teamId: string,
+    userId: string,
+  ): Promise<TeamReadAccess | null> {
+    const membership = await this.findMembershipByTeamAndUser(teamId, userId);
+
+    if (membership) {
+      return { ...membership, readOnly: false };
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true, active: true, cardNumber: true, unit: true },
+    });
+
+    if (
+      !user?.active ||
+      (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPERVISOR)
+    ) {
+      return null;
+    }
+
+    const team = await this.prisma.team.findUnique({
+      where: { id: teamId },
+      include: memberInclude,
+    });
+
+    if (!team) {
+      return null;
+    }
+
+    if (user.role === UserRole.SUPERVISOR) {
+      const hierarchy = new HierarchyRepository(this.prisma);
+      const leaderIds = new Set(
+        await hierarchy.findLeaderUserIdsOfSupervisor({
+          unit: user.unit,
+          card: user.cardNumber,
+        }),
+      );
+      const supervisesTeam = team.members.some(
+        (member) => member.role === TeamRole.ADMIN && leaderIds.has(member.userId),
+      );
+
+      if (!supervisesTeam) {
+        return null;
+      }
+    }
+
+    return {
+      id: `readonly:${teamId}:${userId}`,
+      teamId,
+      userId,
+      role: TeamRole.ADMIN,
+      joinedAt: team.createdAt,
+      team,
+      readOnly: true,
+    };
   }
 
   findById(teamId: string) {

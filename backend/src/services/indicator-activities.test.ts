@@ -24,7 +24,7 @@ for (const allowed of [true, false]) it(`enforces team membership before reading
     { findIndicatorActivities: async (teamId: string, from: Date, to: Date) => {
       queried = true; assert.equal(teamId, 'engineering'); assert.equal(from, start); assert.equal(to, end); return [];
     } },
-    { findMembershipByTeamAndUser: async () => allowed ? { role: 'MEMBER', team: { active: true } } : null },
+    { findReadAccessByTeamAndUser: async () => allowed ? { role: 'MEMBER', team: { active: true } } : null },
     {}, {}, {}, {}, {}, {}, {},
   ] as unknown as ConstructorParameters<typeof CardService>);
   if (allowed) assert.deepEqual(await service.getIndicatorActivities('engineering', 'user', start, end), []);
