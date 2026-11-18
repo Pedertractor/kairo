@@ -1,4 +1,6 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { ProfilePage } from '@/pages/profile-page'
+import { AccountActionPage } from '@/pages/account-action-page'
 
 import { AppLayout } from '@/components/app-layout'
 import { useAuth } from '@/hooks/use-auth'
@@ -84,8 +86,10 @@ function GuestRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
   const { isAuthenticated, isLoading, pendingPasswordChange } = useAuth()
+  const { pathname } = useLocation()
+  const publicAction = pathname === '/confirmar-email' || pathname === '/redefinir-senha'
 
-  if (isLoading) {
+  if (isLoading && !publicAction) {
     return (
       <div className="flex min-h-svh items-center justify-center">
         <p className="text-sm text-muted-foreground">Carregando...</p>
@@ -93,12 +97,15 @@ function App() {
     )
   }
 
-  if (pendingPasswordChange) {
+  if (pendingPasswordChange && !publicAction) {
     return <ChangePasswordPage />
   }
 
   return (
     <Routes>
+      <Route path="/confirmar-email" element={<AccountActionPage key="confirm" mode="confirm" />} />
+      <Route path="/redefinir-senha" element={<AccountActionPage key="reset" mode="reset" />} />
+      <Route path="/perfil" element={<ProtectedRoute key="perfil" title="Perfil"><ProfilePage /></ProtectedRoute>} />
       <Route path="/producao" element={<GuestRoute><LoginPage production /></GuestRoute>} />
       <Route path="/producao/atividades" element={<ProductionPage />} />
       <Route

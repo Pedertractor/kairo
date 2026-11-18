@@ -87,6 +87,7 @@ model User {
   unit         UnitType
   cardNumber   String
   passwordHash String
+  authVersion  Int      @default(0)
   role       UserRole
   active     Boolean  @default(true)
   firstLogin Boolean  @default(true)
@@ -115,6 +116,8 @@ model User {
   acceptedInvites TeamInvite[] @relation("InviteAcceptedBy")
 
   refreshTokens RefreshToken[]
+  userEmail UserEmail?
+  accountActionTokens AccountActionToken[]
   productionSessions ProductionSession[]
   documents     TeamDocument[]
 
@@ -208,6 +211,7 @@ model RefreshToken {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   tokenHash String @unique
+  authVersion Int @default(0)
 
   expiresAt   DateTime
   revokedAt   DateTime?
@@ -218,6 +222,39 @@ model RefreshToken {
   @@index([userId])
   @@index([expiresAt])
   @@map("refresh_tokens")
+}
+
+enum AccountActionPurpose {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
+model UserEmail {
+  userId       String    @id
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email        String?   @db.VarChar(254)
+  verifiedAt   DateTime?
+  pendingEmail String?   @db.VarChar(254)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@map("user_emails")
+}
+
+model AccountActionToken {
+  id          String               @id @default(cuid())
+  userId      String
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose     AccountActionPurpose
+  targetEmail String               @db.VarChar(254)
+  tokenHash   String               @unique
+  authVersion Int
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime             @default(now())
+
+  @@index([userId, createdAt])
+  @@map("account_action_tokens")
 }
 
 model Team {

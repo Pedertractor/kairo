@@ -45,5 +45,6 @@ export interface ChangePasswordInput {
 
 export interface JwtPayload {
   sub: string;
+  authVersion?: number;
   productionSessionId?: string;
 }

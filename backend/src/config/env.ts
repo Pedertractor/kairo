@@ -22,6 +22,11 @@ const envSchema = z.object({
     .string()
     .min(1, 'API_BASE_NAME_APPLICATION é obrigatório'),
   UPLOAD_DIR: z.string().min(1).default('uploads'),
+  CORREIO: z.preprocess((value) => value === '' ? undefined : value, z.string().min(1).optional()),
+  PORT_CORREIO: z.coerce.number().int().min(1).max(65535).default(587),
+  EMAIL_AUTOMACAO: z.preprocess((value) => value === '' ? undefined : value, z.email().optional()),
+  PASSWORD_AUTOMACAO: z.preprocess((value) => value === '' ? undefined : value, z.string().min(1).optional()),
+  PUBLIC_FRONTEND_URL: z.preprocess((value) => value === '' ? undefined : value, z.url().optional()),
   ORION_URL: z.string().url('ORION_URL deve ser uma URL válida').optional(),
   ORION_APP_TOKEN: z.string().min(1).optional(),
   P5_INFRACTIONS_API_URL: z.string().url().optional(),
@@ -34,6 +39,16 @@ const envSchema = z.object({
 }).refine((value) => Boolean(value.P5_INFRACTIONS_API_URL) === Boolean(value.P5_INFRACTIONS_API_KEY), {
   message: 'Configure P5_INFRACTIONS_API_URL e P5_INFRACTIONS_API_KEY juntos',
   path: ['P5_INFRACTIONS_API_URL'],
+}).refine((value) => {
+  const supplied = [value.CORREIO, value.EMAIL_AUTOMACAO, value.PASSWORD_AUTOMACAO];
+  return supplied.every(Boolean) || supplied.every((item) => !item);
+}, {
+  message: 'Configure CORREIO, EMAIL_AUTOMACAO e PASSWORD_AUTOMACAO juntos',
+  path: ['CORREIO'],
+}).refine((value) => value.NODE_ENV !== 'production' || !value.CORREIO ||
+  Boolean(value.PUBLIC_FRONTEND_URL?.startsWith('https://')), {
+  message: 'Configure PUBLIC_FRONTEND_URL com a URL HTTPS do Kairo em produção',
+  path: ['PUBLIC_FRONTEND_URL'],
 });
 
 const parsed = envSchema.safeParse(process.env);

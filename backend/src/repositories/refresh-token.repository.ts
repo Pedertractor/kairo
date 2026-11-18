@@ -3,7 +3,7 @@ import type { PrismaClient } from '../generated/client.js';
 export class RefreshTokenRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  create(data: { userId: string; tokenHash: string; expiresAt: Date }) {
+  create(data: { userId: string; tokenHash: string; expiresAt: Date; authVersion: number }) {
     return this.prisma.refreshToken.create({ data });
   }
 

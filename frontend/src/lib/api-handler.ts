@@ -153,6 +153,9 @@ const AUTH_PATHS_WITHOUT_REFRESH = new Set([
   '/production/login',
   '/auth/refresh',
   '/auth/change-password',
+  '/auth/forgot-password',
+  '/auth/verify-email',
+  '/auth/reset-password',
 ])
 
 let refreshInFlight: Promise<boolean> | null = null

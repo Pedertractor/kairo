@@ -72,7 +72,7 @@ export class AuthService {
       throw new AppError(401, MENSAGENS.CREDENCIAIS_INVALIDAS);
     }
 
-    return this.toAuthenticatedUser(user);
+    return { ...await this.toAuthenticatedUser(user), authVersion: user.authVersion };
   }
 
   async changePassword(input: ChangePasswordInput) {
@@ -99,6 +99,7 @@ export class AuthService {
       return {
         user: await this.toAuthenticatedUser(user),
         passwordChanged: false,
+        authVersion: user.authVersion,
       };
     }
 
@@ -110,11 +111,13 @@ export class AuthService {
     const updated = await this.userRepository.updatePassword(
       user.id,
       passwordHash,
+      user.authVersion,
     );
 
     return {
       user: await this.toAuthenticatedUser(updated),
       passwordChanged: true,
+      authVersion: updated.authVersion,
     };
   }
 
@@ -149,9 +152,9 @@ export class AuthService {
     return this.toAuthenticatedUser(user);
   }
 
-  async issueRefreshToken(userId: string): Promise<string> {
+  async issueRefreshToken(userId: string, authVersion: number): Promise<string> {
     const user = await this.userRepository.findById(userId);
-    if (!user || !user.active || user.production) {
+    if (!user || !user.active || user.production || user.authVersion !== authVersion) {
       throw new AppError(401, MENSAGENS.NAO_AUTORIZADO);
     }
     const plainToken = generateRefreshToken();
@@ -162,6 +165,7 @@ export class AuthService {
       userId,
       tokenHash,
       expiresAt,
+      authVersion,
     });
 
     return plainToken;
@@ -186,7 +190,8 @@ export class AuthService {
       throw new AppError(401, MENSAGENS.REFRESH_TOKEN_INVALIDO);
     }
 
-    if (!existing.user.active || existing.user.production) {
+    if (!existing.user.active || existing.user.production ||
+      (existing.authVersion ?? 0) !== (existing.user.authVersion ?? 0)) {
       await this.refreshTokenRepository.revokeAllForUser(existing.userId);
       throw new AppError(401, MENSAGENS.NAO_AUTORIZADO);
     }
@@ -199,6 +204,7 @@ export class AuthService {
       userId: existing.userId,
       tokenHash: nextHash,
       expiresAt,
+      authVersion: existing.user.authVersion,
     });
 
     await this.refreshTokenRepository.revoke(existing.id, created.id);
@@ -206,6 +212,7 @@ export class AuthService {
     return {
       user: await this.toAuthenticatedUser(existing.user),
       refreshToken: nextPlainToken,
+      authVersion: existing.user.authVersion,
     };
   }
 

@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { absenceRoutes } from './absence.route.js';
+import { accountRoutes } from './account.route.js';
 import { adminDashboardRoutes } from './admin-dashboard.route.js';
 import { analyticsRoutes } from './analytics.route.js';
 import { apiKeyRoutes } from './api-key.route.js';
@@ -23,6 +24,7 @@ import { productionRoutes } from './production.route.js';
 export async function registerRoutes(app: FastifyInstance) {
   await app.register(healthRoutes, { prefix: '/api' });
   await app.register(authRoutes, { prefix: '/api' });
+  await app.register(accountRoutes, { prefix: '/api' });
   await app.register(productionRoutes, { prefix: '/api' });
   await app.register(absenceRoutes, { prefix: '/api' });
   await app.register(apiKeyRoutes, { prefix: '/api' });

@@ -59,6 +59,7 @@ async function main() {
         passwordHash,
         role: UserRole.ADMIN,
         firstLogin: true,
+        userEmail: { create: {} },
       },
     });
 

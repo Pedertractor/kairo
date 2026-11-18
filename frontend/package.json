@@ -14,7 +14,8 @@
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "test:infractions:browser": "node tests/infractions.browser.cjs",
-    "test:user-access:browser": "node tests/user-access.browser.cjs"
+    "test:user-access:browser": "node tests/user-access.browser.cjs",
+    "test:account:browser": "node tests/account.browser.cjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

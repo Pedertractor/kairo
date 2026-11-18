@@ -23,6 +23,7 @@ type UserRecord = {
   unit: EmployeeLookupResult['unit'];
   cardNumber: string;
   passwordHash: string;
+  authVersion: number;
   role: UserRole;
   active: boolean;
   firstLogin: boolean;
