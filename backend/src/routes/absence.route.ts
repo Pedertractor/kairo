@@ -3,6 +3,7 @@ import { AbsenceController } from '../controllers/absence.controller.js';
 import { createRequireAdmin } from '../middleware/require-admin.js';
 import { AbsenceRepository } from '../repositories/absence.repository.js';
 import { CardRepository } from '../repositories/card.repository.js';
+import { HierarchyRepository } from '../repositories/hierarchy.repository.js';
 import { TaskRepository } from '../repositories/task.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
 import { UserRepository } from '../repositories/user.repository.js';
@@ -18,6 +19,7 @@ export async function absenceRoutes(app: FastifyInstance) {
       new TimeEntryRepository(app.prisma),
       new TaskRepository(app.prisma),
       new CardRepository(app.prisma),
+      new HierarchyRepository(app.prisma),
     ),
   );
   const auth = { preHandler: [app.authenticate] };
@@ -30,5 +32,6 @@ export async function absenceRoutes(app: FastifyInstance) {
   app.post('/absences', auth, controller.create);
   app.patch('/absences/admin/:id', adminAuth, controller.updateAdmin);
   app.delete('/absences/admin/:id', adminAuth, controller.deleteAdmin);
+  app.delete('/absences/team/:id', auth, controller.deleteForSubordinate);
   app.delete('/absences/:id', auth, controller.cancel);
 }

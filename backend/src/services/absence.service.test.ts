@@ -51,6 +51,8 @@ function createService(options?: {
   actor?: User;
   canLeaderManageUser?: boolean;
   managedUsers?: User[];
+  supervisedLeaderIds?: string[];
+  hierarchyMembers?: User[];
   users?: User[];
   unseenCount?: number;
   periods?: PeriodRecord[];
@@ -104,6 +106,7 @@ function createService(options?: {
       return [...knownUsers.values()].filter((known) => known.active);
     },
     findManagedByTeamAdmin: async () => options?.managedUsers ?? [],
+    findManagedByTeamAdmins: async () => options?.hierarchyMembers ?? [],
     markAbsencesSeen: async (id: string, at: Date) => {
       markedSeenAt = at;
       const target = knownUsers.get(id) ?? user;
@@ -210,7 +213,15 @@ function createService(options?: {
           }
         : null;
     },
-    findVisible: async () => [],
+    findVisible: async (userIds: string[]) =>
+      [...periods.values()]
+        .filter((period) => userIds.includes(period.userId))
+        .map((period) => ({
+          ...period,
+          createdAt: period.createdAt ?? period.startedAt,
+          user: { id: period.userId, name: knownUsers.get(period.userId)?.name ?? 'Unknown' },
+          createdBy: { id: period.createdById, name: knownUsers.get(period.createdById)?.name ?? 'Unknown' },
+        })),
     findAllFiltered: async (filters: Record<string, unknown>) => {
       findAllFilteredCalls.push(filters);
       return [...periods.values()].map((period) => {
@@ -250,6 +261,10 @@ function createService(options?: {
     timeEntryRepository as never,
     {} as never,
     {} as never,
+    {
+      findLeaderUserIdsOfSupervisor: async () =>
+        options?.supervisedLeaderIds ?? [],
+    },
   );
 
   return {
@@ -773,5 +788,191 @@ describe('AbsenceService unseen count', () => {
     assert.ok(marked.getTime() >= before);
     assert.ok(marked.getTime() <= after);
     assert.equal(result.absencesSeenAt, marked.toISOString());
+  });
+});
+
+describe('AbsenceService leader deletion', () => {
+  const leader = makeUser({ id: 'leader-1', name: 'Lia', role: UserRole.LEADER });
+  const member = makeUser({ id: 'member-1', name: 'Bruno' });
+  const otherMember = makeUser({ id: 'member-2', name: 'Carla' });
+  const admin = makeUser({ id: 'admin-1', name: 'Admin', role: UserRole.ADMIN });
+  const outsider = makeUser({ id: 'outsider-1', name: 'Davi' });
+  const past = {
+    startedAt: new Date('2026-01-01T10:00:00.000Z'),
+    endedAt: new Date('2026-01-01T12:00:00.000Z'),
+  };
+
+  function setup(periods: PeriodRecord[], actor: User = leader) {
+    return createService({
+      actor,
+      managedUsers: [member, otherMember],
+      users: [admin, outsider],
+      periods,
+    });
+  }
+
+  function assertForbidden(error: unknown) {
+    assert.ok(error instanceof AppError);
+    assert.equal(error.statusCode, 403);
+    return true;
+  }
+
+  it('deletes a past absence of a member that the leader created', async () => {
+    const { service, deleted, getAbsentFlags } = setup([
+      { id: 'a1', userId: member.id, createdById: leader.id, ...past },
+    ]);
+
+    await service.deleteForSubordinate(leader.id, 'a1');
+
+    assert.deepEqual(deleted, ['a1']);
+    assert.equal(getAbsentFlags().get(member.id), false);
+  });
+
+  it('deletes an absence a managed member created', async () => {
+    const { service, deleted } = setup([
+      { id: 'a1', userId: member.id, createdById: member.id, ...past },
+      { id: 'a2', userId: member.id, createdById: otherMember.id, ...past },
+    ]);
+
+    await service.deleteForSubordinate(leader.id, 'a1');
+    await service.deleteForSubordinate(leader.id, 'a2');
+
+    assert.deepEqual(deleted, ['a1', 'a2']);
+  });
+
+  it('rejects absences created by someone outside the leader scope', async () => {
+    const { service, deleted } = setup([
+      { id: 'a1', userId: member.id, createdById: admin.id, ...past },
+    ]);
+
+    await assert.rejects(() => service.deleteForSubordinate(leader.id, 'a1'), assertForbidden);
+    assert.deepEqual(deleted, []);
+  });
+
+  it('rejects absences of users the leader does not manage, or their own', async () => {
+    const { service, deleted } = setup([
+      { id: 'a1', userId: outsider.id, createdById: leader.id, ...past },
+      { id: 'a2', userId: leader.id, createdById: leader.id, ...past },
+    ]);
+
+    await assert.rejects(() => service.deleteForSubordinate(leader.id, 'a1'), assertForbidden);
+    await assert.rejects(() => service.deleteForSubordinate(leader.id, 'a2'), assertForbidden);
+    assert.deepEqual(deleted, []);
+  });
+
+  it('rejects actors without the leader role', async () => {
+    const plainUser = makeUser({ id: 'leader-1', role: UserRole.USER });
+    const { service, deleted } = setup(
+      [{ id: 'a1', userId: member.id, createdById: member.id, ...past }],
+      plainUser,
+    );
+
+    await assert.rejects(() => service.deleteForSubordinate(plainUser.id, 'a1'), assertForbidden);
+    assert.deepEqual(deleted, []);
+  });
+
+  it('returns 404 for an unknown absence', async () => {
+    const { service } = setup([]);
+
+    await assert.rejects(
+      () => service.deleteForSubordinate(leader.id, 'missing'),
+      (error: unknown) => {
+        assert.ok(error instanceof AppError);
+        assert.equal(error.statusCode, 404);
+        return true;
+      },
+    );
+  });
+
+  it('flags which listed absences the leader can delete', async () => {
+    const { service } = setup([
+      { id: 'by-leader', userId: member.id, createdById: leader.id, ...past },
+      { id: 'by-member', userId: member.id, createdById: otherMember.id, ...past },
+      { id: 'by-admin', userId: member.id, createdById: admin.id, ...past },
+      { id: 'own', userId: leader.id, createdById: leader.id, ...past },
+    ]);
+
+    const { absences } = await service.listForActor(leader.id);
+    const canDelete = Object.fromEntries(absences.map((a) => [a.id, a.canDelete]));
+
+    assert.deepEqual(canDelete, {
+      'by-leader': true,
+      'by-member': true,
+      'by-admin': false,
+      own: false,
+    });
+  });
+});
+
+describe('AbsenceService supervisor deletion', () => {
+  const supervisor = makeUser({ id: 'sup-1', name: 'Sofia', role: UserRole.SUPERVISOR });
+  const leader = makeUser({ id: 'leader-1', name: 'Lia', role: UserRole.LEADER });
+  const member = makeUser({ id: 'member-1', name: 'Bruno' });
+  const admin = makeUser({ id: 'admin-1', name: 'Admin', role: UserRole.ADMIN });
+  const outsider = makeUser({ id: 'outsider-1', name: 'Davi' });
+  const past = {
+    startedAt: new Date('2026-01-01T10:00:00.000Z'),
+    endedAt: new Date('2026-01-01T12:00:00.000Z'),
+  };
+
+  function setup(periods: PeriodRecord[]) {
+    return createService({
+      actor: supervisor,
+      supervisedLeaderIds: [leader.id],
+      hierarchyMembers: [member],
+      users: [leader, member, admin, outsider],
+      periods,
+    });
+  }
+
+  function assertForbidden(error: unknown) {
+    assert.ok(error instanceof AppError);
+    assert.equal(error.statusCode, 403);
+    return true;
+  }
+
+  it('deletes absences of hierarchy leaders and their team members', async () => {
+    const { service, deleted } = setup([
+      { id: 'a1', userId: leader.id, createdById: leader.id, ...past },
+      { id: 'a2', userId: member.id, createdById: leader.id, ...past },
+      { id: 'a3', userId: member.id, createdById: supervisor.id, ...past },
+    ]);
+
+    await service.deleteForSubordinate(supervisor.id, 'a1');
+    await service.deleteForSubordinate(supervisor.id, 'a2');
+    await service.deleteForSubordinate(supervisor.id, 'a3');
+
+    assert.deepEqual(deleted, ['a1', 'a2', 'a3']);
+  });
+
+  it('rejects absences created by admins or of users outside the hierarchy', async () => {
+    const { service, deleted } = setup([
+      { id: 'a1', userId: member.id, createdById: admin.id, ...past },
+      { id: 'a2', userId: outsider.id, createdById: supervisor.id, ...past },
+      { id: 'a3', userId: supervisor.id, createdById: supervisor.id, ...past },
+    ]);
+
+    for (const id of ['a1', 'a2', 'a3']) {
+      await assert.rejects(
+        () => service.deleteForSubordinate(supervisor.id, id),
+        assertForbidden,
+      );
+    }
+    assert.deepEqual(deleted, []);
+  });
+
+  it('lists hierarchy absences with the right canDelete flags', async () => {
+    const { service } = setup([
+      { id: 'by-leader', userId: member.id, createdById: leader.id, ...past },
+      { id: 'by-admin', userId: leader.id, createdById: admin.id, ...past },
+      { id: 'outsider', userId: outsider.id, createdById: outsider.id, ...past },
+    ]);
+
+    const { absences, users } = await service.listForActor(supervisor.id);
+    const canDelete = Object.fromEntries(absences.map((a) => [a.id, a.canDelete]));
+
+    assert.deepEqual(canDelete, { 'by-leader': true, 'by-admin': false });
+    // The create dialog's user list is unchanged: supervisors still only pick themselves.
+    assert.deepEqual(users.map((user) => user.id), [supervisor.id]);
   });
 });

@@ -13,6 +13,7 @@ export interface AbsenceListItem {
   endedAt: string | null
   createdAt: string
   canCancel: boolean
+  canDelete: boolean
 }
 
 export interface AbsenceListResponse {

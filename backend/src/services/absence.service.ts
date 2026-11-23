@@ -1,4 +1,8 @@
 import { AbsenceRepository } from '../repositories/absence.repository.js';
+import {
+  toHierarchyPerson,
+  type HierarchyRepository,
+} from '../repositories/hierarchy.repository.js';
 import { CardRepository } from '../repositories/card.repository.js';
 import { TaskRepository } from '../repositories/task.repository.js';
 import { TimeEntryRepository } from '../repositories/time-entry.repository.js';
@@ -26,6 +30,7 @@ export interface AbsenceListItem {
   endedAt: string | null;
   createdAt: string;
   canCancel: boolean;
+  canDelete: boolean;
 }
 
 export interface AdminAbsenceFilters {
@@ -53,6 +58,10 @@ export class AbsenceService {
     private readonly timeEntryRepository: TimeEntryRepository,
     private readonly taskRepository: TaskRepository,
     private readonly cardRepository: CardRepository,
+    private readonly hierarchyRepository?: Pick<
+      HierarchyRepository,
+      'findLeaderUserIdsOfSupervisor'
+    >,
   ) {}
 
   getCurrentPeriod(userId: string, now = new Date()) {
@@ -101,11 +110,15 @@ export class AbsenceService {
     const usersById = new Map(
       [actor, ...visibleUsers].map((user) => [user.id, user]),
     );
-    const visibleUserIds = [...usersById.keys()];
     const users = [...usersById.values()]
       .filter((user) => user.active)
       .sort((left, right) => left.name.localeCompare(right.name))
       .map((user) => ({ id: user.id, name: user.name }));
+    const deletionScope = await this.findDeletionScope(actor);
+    // Supervisors also see their hierarchy's absences, so they can delete them.
+    const visibleUserIds = [
+      ...new Set([...usersById.keys(), ...deletionScope]),
+    ];
     const periods = await this.absenceRepository.findVisible(visibleUserIds);
     const nowMs = Date.now();
 
@@ -121,6 +134,7 @@ export class AbsenceService {
         endedAt: period.endedAt?.toISOString() ?? null,
         createdAt: period.createdAt.toISOString(),
         canCancel: period.startedAt.getTime() > nowMs,
+        canDelete: this.canDeleteInScope(actor, deletionScope, period),
       })),
     };
   }
@@ -242,6 +256,7 @@ export class AbsenceService {
         endedAt: period.endedAt?.toISOString() ?? null,
         createdAt: period.createdAt.toISOString(),
         canCancel: period.startedAt.getTime() > nowMs,
+        canDelete: true,
       })),
     };
   }
@@ -319,6 +334,37 @@ export class AbsenceService {
     const userId = period.userId;
     await this.absenceRepository.delete(absenceId);
     await this.syncAbsentFlag(userId);
+  }
+
+  /**
+   * Leaders and supervisors may delete any absence (past, ongoing or
+   * scheduled) of their subordinates, as long as it was created by the actor
+   * or by one of those subordinates. Anything else stays admin-only.
+   */
+  async deleteForSubordinate(
+    actorUserId: string,
+    absenceId: string,
+  ): Promise<void> {
+    const actor = await this.getActiveUser(actorUserId);
+
+    if (actor.role !== UserRole.LEADER && actor.role !== UserRole.SUPERVISOR) {
+      throw new AppError(403, MENSAGENS.PROIBIDO);
+    }
+
+    const period = await this.absenceRepository.findById(absenceId);
+
+    if (!period) {
+      throw new AppError(404, MENSAGENS.AUSENCIA_NAO_ENCONTRADA);
+    }
+
+    const scope = await this.findDeletionScope(actor);
+
+    if (!this.canDeleteInScope(actor, scope, period)) {
+      throw new AppError(403, MENSAGENS.PROIBIDO);
+    }
+
+    await this.absenceRepository.delete(absenceId);
+    await this.syncAbsentFlag(period.userId);
   }
 
   async setAbsent(
@@ -419,6 +465,47 @@ export class AbsenceService {
     }
 
     return this.userRepository.canLeaderManageUser(actorUserId, targetUserId);
+  }
+
+  /**
+   * Who answers to the actor: a leader's team members; a supervisor's leaders
+   * from the cost center hierarchy plus the members of those leaders' teams.
+   */
+  private async findDeletionScope(actor: User): Promise<Set<string>> {
+    if (actor.role === UserRole.LEADER) {
+      const managed = await this.userRepository.findManagedByTeamAdmin(
+        actor.id,
+      );
+      return new Set(managed.map((user) => user.id));
+    }
+
+    if (actor.role !== UserRole.SUPERVISOR || !this.hierarchyRepository) {
+      return new Set();
+    }
+
+    const leaderIds = (
+      await this.hierarchyRepository.findLeaderUserIdsOfSupervisor(
+        toHierarchyPerson(actor),
+      )
+    ).filter((id) => id !== actor.id);
+    const members = await this.userRepository.findManagedByTeamAdmins([
+      actor.id,
+      ...leaderIds,
+    ]);
+
+    return new Set([...leaderIds, ...members.map((user) => user.id)]);
+  }
+
+  private canDeleteInScope(
+    actor: User,
+    scope: Set<string>,
+    period: { userId: string; createdById: string },
+  ): boolean {
+    if (period.userId === actor.id || !scope.has(period.userId)) {
+      return false;
+    }
+
+    return period.createdById === actor.id || scope.has(period.createdById);
   }
 
   private async requireAdmin(actorUserId: string): Promise<User> {

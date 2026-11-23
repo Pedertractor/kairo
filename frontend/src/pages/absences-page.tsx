@@ -102,6 +102,7 @@ function toRangeEndIso(date: Date | undefined) {
 export function AbsencesPage() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'ADMIN'
+  const isSupervisor = user?.role === 'SUPERVISOR'
   const [absences, setAbsences] = useState<AbsenceListItem[]>([])
   const [users, setUsers] = useState<AbsenceUserOption[]>([])
   const [createUsers, setCreateUsers] = useState<AbsenceUserOption[]>([])
@@ -271,7 +272,9 @@ export function AbsencesPage() {
 
   const subtitle = isAdmin
     ? 'Consulte, edite ou exclua todas as ausências da plataforma.'
-    : user?.hasOwnedTeams
+    : isSupervisor
+      ? 'Consulte e exclua ausências dos líderes e equipes sob sua supervisão.'
+      : user?.hasOwnedTeams
       ? 'Consulte e agende ausências dos membros das suas equipes.'
       : 'Agende e consulte os seus períodos de ausência.'
 
@@ -446,7 +449,7 @@ export function AbsencesPage() {
             </Button>
           ) : null}
         </div>
-      ) : users.length > 1 ? (
+      ) : users.length > 1 || isSupervisor ? (
         <div className='relative max-w-md'>
           <Search className='absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
           <Input
@@ -596,7 +599,17 @@ export function AbsencesPage() {
                   </p>
                 </div>
 
-                {absence.canCancel ? (
+                {absence.canDelete ? (
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    aria-label={`Excluir ausência de ${absence.userName}`}
+                    onClick={() => setToDelete(absence)}
+                  >
+                    <Trash2 className='size-4' />
+                    Excluir
+                  </Button>
+                ) : absence.canCancel ? (
                   <Button
                     variant='outline'
                     size='sm'
@@ -639,32 +652,35 @@ export function AbsencesPage() {
         }}
       />
       {isAdmin ? (
-        <>
-          <EditAbsenceDialog
-            absence={toEdit}
-            users={users}
-            open={toEdit !== null}
-            onOpenChange={(open) => {
-              if (!open) setToEdit(null)
-            }}
-            onUpdated={() => {
-              setToEdit(null)
-              void load({ silent: true })
-            }}
-          />
-          <DeleteAbsenceDialog
-            absence={toDelete}
-            open={toDelete !== null}
-            onOpenChange={(open) => {
-              if (!open) setToDelete(null)
-            }}
-            onDeleted={() => {
-              setToDelete(null)
-              void load({ silent: true })
-            }}
-          />
-        </>
+        <EditAbsenceDialog
+          absence={toEdit}
+          users={users}
+          open={toEdit !== null}
+          onOpenChange={(open) => {
+            if (!open) setToEdit(null)
+          }}
+          onUpdated={() => {
+            setToEdit(null)
+            void load({ silent: true })
+          }}
+        />
       ) : null}
+      <DeleteAbsenceDialog
+        absence={toDelete}
+        scope={isAdmin ? 'admin' : 'team'}
+        open={toDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setToDelete(null)
+        }}
+        onDeleted={(data) => {
+          setToDelete(null)
+          if (isAdmin) {
+            void load({ silent: true })
+            return
+          }
+          applyData(data)
+        }}
+      />
     </div>
   )
 }
