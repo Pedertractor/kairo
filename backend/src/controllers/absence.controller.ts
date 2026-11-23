@@ -152,4 +152,25 @@ export class AbsenceController {
       return handleControllerError(error, reply);
     }
   };
+
+  deleteForSubordinate = async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const params = absenceIdParamSchema.safeParse(request.params);
+
+      if (!params.success) {
+        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
+      }
+
+      await this.service.deleteForSubordinate(request.user.sub, params.data.id);
+
+      return sendSuccess(
+        reply,
+        await this.service.listForActor(request.user.sub),
+        200,
+        MENSAGENS.AUSENCIA_EXCLUIDA_SUCESSO,
+      );
+    } catch (error) {
+      return handleControllerError(error, reply);
+    }
+  };
 }

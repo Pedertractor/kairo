@@ -17,6 +17,8 @@ interface DeleteAbsenceDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onDeleted: (data: AbsenceListResponse) => void
+  /** `admin` deletes any absence; `team` lets a leader delete a member's. */
+  scope?: 'admin' | 'team'
 }
 
 export function DeleteAbsenceDialog({
@@ -24,6 +26,7 @@ export function DeleteAbsenceDialog({
   open,
   onOpenChange,
   onDeleted,
+  scope = 'admin',
 }: DeleteAbsenceDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -33,7 +36,7 @@ export function DeleteAbsenceDialog({
     setIsSubmitting(true)
     try {
       const data = await api<AbsenceListResponse>(
-        `/absences/admin/${absence.id}`,
+        `/absences/${scope}/${absence.id}`,
         { method: 'DELETE' },
       )
       onDeleted(data)
