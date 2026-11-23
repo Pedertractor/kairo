@@ -21,6 +21,8 @@ interface DatePickerProps {
   placeholder?: string
   displayFormat?: string
   className?: string
+  /** Days after this one cannot be picked. */
+  maxDate?: Date
 }
 
 export function DatePicker({
@@ -31,6 +33,7 @@ export function DatePicker({
   placeholder = 'Selecionar data',
   displayFormat = 'PPP',
   className,
+  maxDate,
 }: DatePickerProps) {
   const [open, setOpen] = useState(false)
 
@@ -75,6 +78,8 @@ export function DatePicker({
         <Calendar
           mode="single"
           selected={date}
+          defaultMonth={date}
+          disabled={maxDate ? { after: maxDate } : undefined}
           onSelect={(selectedDate) => {
             onDateChange(selectedDate)
             setOpen(false)

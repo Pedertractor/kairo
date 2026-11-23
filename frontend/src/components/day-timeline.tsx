@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { TimelineAbsenceBand } from '@/components/timeline-absence-band'
+import { TimelineDateFilter } from '@/components/timeline-date-filter'
 import {
   TimelineBlock,
   getTimelineBlockDisplayTitle,
@@ -73,37 +74,10 @@ interface DayTimelineProps {
   isLoading: boolean
 }
 
-interface DateOption {
-  key: string
-  label: string
-}
-
 interface TimelineTick {
   minutes: number
   major: boolean
   label: string | null
-}
-
-function buildDateOptions(): DateOption[] {
-  const today = new Date()
-
-  return Array.from({ length: 4 }, (_, index) => {
-    const date = new Date(today)
-    date.setDate(date.getDate() - index)
-
-    const key = toDateKey(date)
-    let label: string
-
-    if (index === 0) {
-      label = 'Hoje'
-    } else if (index === 1) {
-      label = 'Ontem'
-    } else {
-      label = dayjs(date).format('ddd')
-    }
-
-    return { key, label }
-  })
 }
 
 function clampZoom(value: number) {
@@ -214,7 +188,6 @@ export function DayTimeline({
   onDateChange,
   isLoading,
 }: DayTimelineProps) {
-  const dateOptions = useMemo(() => buildDateOptions(), [])
   const isToday = selectedDate === toDateKey(new Date())
   const [now, setNow] = useState(() => new Date())
   const [zoom, setZoom] = useState(MIN_ZOOM)
@@ -463,27 +436,7 @@ export function DayTimeline({
           </Select>
         </div>
 
-        <div className="flex shrink-0 rounded-full bg-muted p-1">
-          {dateOptions.map((option) => {
-            const isActive = option.key === selectedDate
-
-            return (
-              <button
-                key={option.key}
-                type="button"
-                onClick={() => onDateChange(option.key)}
-                className={cn(
-                  'rounded-full px-3 py-1 text-xs font-medium capitalize transition-colors',
-                  isActive
-                    ? 'bg-card text-primary shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                {option.label}
-              </button>
-            )
-          })}
-        </div>
+        <TimelineDateFilter value={selectedDate} onChange={onDateChange} />
       </CardHeader>
 
       <CardContent className="px-5">

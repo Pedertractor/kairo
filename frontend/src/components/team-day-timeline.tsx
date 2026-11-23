@@ -5,6 +5,7 @@ import { Minus, Plus } from 'lucide-react';
 
 import { TeamTimelineBlock } from '@/components/team-timeline-block';
 import { TimelineAbsenceBand } from '@/components/timeline-absence-band';
+import { TimelineDateFilter } from '@/components/timeline-date-filter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -57,47 +58,10 @@ interface TeamDayTimelineProps {
   headerExtra?: ReactNode;
 }
 
-interface DateOption {
-  key: string;
-  label: string;
-}
-
 interface TimelineTick {
   minutes: number;
   major: boolean;
   label: string | null;
-}
-
-function buildDateOptions(extraDate?: string): DateOption[] {
-  const today = new Date();
-
-  const options = Array.from({ length: 4 }, (_, index) => {
-    const date = new Date(today);
-    date.setDate(date.getDate() - index);
-
-    const key = toDateKey(date);
-    let label: string;
-
-    if (index === 0) {
-      label = 'Hoje';
-    } else if (index === 1) {
-      label = 'Ontem';
-    } else {
-      label = dayjs(date).format('ddd');
-    }
-
-    return { key, label };
-  });
-
-  if (extraDate && !options.some((option) => option.key === extraDate)) {
-    options.push({
-      key: extraDate,
-      label: dayjs(extraDate).format('DD/MM'),
-    });
-    options.sort((left, right) => right.key.localeCompare(left.key));
-  }
-
-  return options;
 }
 
 function clampZoom(value: number) {
@@ -169,10 +133,6 @@ export function TeamDayTimeline({
   title = 'Timeline do Dia',
   headerExtra,
 }: TeamDayTimelineProps) {
-  const dateOptions = useMemo(
-    () => buildDateOptions(selectedDate),
-    [selectedDate],
-  );
   const isToday = selectedDate === toDateKey(new Date());
   const [now, setNow] = useState(() => new Date());
   const [zoom, setZoom] = useState(MIN_ZOOM);
@@ -480,27 +440,7 @@ export function TeamDayTimeline({
         </div>
 
         {showDateOptions ? (
-          <div className='flex shrink-0 rounded-full bg-muted p-1'>
-            {dateOptions.map((option) => {
-              const isActive = option.key === selectedDate;
-
-              return (
-                <button
-                  key={option.key}
-                  type='button'
-                  onClick={() => onDateChange(option.key)}
-                  className={cn(
-                    'rounded-full px-3 py-1 text-xs font-medium capitalize transition-colors',
-                    isActive
-                      ? 'bg-card text-primary shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
-          </div>
+          <TimelineDateFilter value={selectedDate} onChange={onDateChange} />
         ) : null}
       </CardHeader>
 
