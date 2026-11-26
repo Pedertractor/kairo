@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { absenceRoutes } from './absence.route.js';
 import { accountRoutes } from './account.route.js';
 import { adminDashboardRoutes } from './admin-dashboard.route.js';
+import { adminTimeEntryRoutes } from './admin-time-entry.route.js';
 import { analyticsRoutes } from './analytics.route.js';
 import { apiKeyRoutes } from './api-key.route.js';
 import { authRoutes } from './auth.route.js';
@@ -33,6 +34,7 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(infractionRoutes, { prefix: '/api' });
   await app.register(analyticsRoutes, { prefix: '/api' });
   await app.register(adminDashboardRoutes, { prefix: '/api' });
+  await app.register(adminTimeEntryRoutes, { prefix: '/api' });
   await app.register(teamRoutes, { prefix: '/api' });
   await app.register(supervisorRoutes, { prefix: '/api' });
   await app.register(cardRoutes, { prefix: '/api' });

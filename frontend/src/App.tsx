@@ -5,6 +5,7 @@ import { AccountActionPage } from '@/pages/account-action-page'
 import { AppLayout } from '@/components/app-layout'
 import { useAuth } from '@/hooks/use-auth'
 import { AdminDashboardPage } from '@/pages/admin-dashboard-page'
+import { GestaoApontamentosPage } from '@/pages/gestao-apontamentos-page'
 import { AbsencesPage } from '@/pages/absences-page'
 import { InfractionsPage } from '@/pages/infractions-page'
 import { AnalyticsPage } from '@/pages/analytics-page'
@@ -171,6 +172,18 @@ function App() {
         element={
           <ProtectedRoute key="painel" title="Painel" requireAdmin>
             <AdminDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/gestao-apontamentos"
+        element={
+          <ProtectedRoute
+            key="gestao-apontamentos"
+            title="Gestão de apontamentos"
+            requireAdmin
+          >
+            <GestaoApontamentosPage />
           </ProtectedRoute>
         }
       />

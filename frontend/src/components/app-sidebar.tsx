@@ -18,6 +18,7 @@ import {
   ChartNoAxesCombinedIcon,
   ShieldAlertIcon,
   CalendarOffIcon,
+  ClockAlertIcon,
   ClockIcon,
   ClipboardListIcon,
   FolderKanbanIcon,
@@ -78,6 +79,11 @@ const adminDashboardNavItems = [
     title: 'Painel',
     url: '/painel',
     icon: <LayoutDashboardIcon />,
+  },
+  {
+    title: 'Gestão de apontamentos',
+    url: '/gestao-apontamentos',
+    icon: <ClockAlertIcon />,
   },
 ];
 
