@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 import { useActiveTimer, useElapsedSeconds } from '@/hooks/use-active-timer'
 import { formatElapsed } from '@/lib/format-elapsed'
+import { serverNow } from '@/lib/server-clock'
 import { formatLoggedDuration } from '@/lib/format-duration'
 
 function useElapsedSince(startedAt: string, enabled: boolean): number {
@@ -15,7 +16,7 @@ function useElapsedSince(startedAt: string, enabled: boolean): number {
     function updateElapsed() {
       const startedAtMs = new Date(startedAt).getTime()
       setElapsedSeconds(
-        Math.max(0, Math.floor((Date.now() - startedAtMs) / 1000)),
+        Math.max(0, Math.floor((serverNow() - startedAtMs) / 1000)),
       )
     }
 
