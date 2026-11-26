@@ -7,6 +7,7 @@ import {
   isStoredProductionSession,
   setStoredSession,
 } from '@/lib/auth-storage'
+import { syncServerClock } from '@/lib/server-clock'
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? '/api'
 
@@ -115,6 +116,7 @@ async function executeApiRequest(
         ...init.headers,
       },
     })
+    syncServerClock(response.headers.get('Date'))
   } catch {
     const mensagem =
       'Não foi possível contactar o servidor. Verifique a ligação e tente novamente.'

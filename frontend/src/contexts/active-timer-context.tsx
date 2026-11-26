@@ -20,6 +20,7 @@ import {
   writePausedTimerTarget,
 } from '@/lib/paused-timer-storage';
 import { invalidateTaskData } from '@/lib/task-data-invalidation';
+import { serverNow } from '@/lib/server-clock';
 import type {
   ActiveTimer,
   ActiveTimerResponse,
@@ -148,7 +149,7 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
 
     const updateElapsed = () => {
       elapsedStore.setElapsed(
-        Math.max(0, Math.floor((Date.now() - startedAt) / 1000)),
+        Math.max(0, Math.floor((serverNow() - startedAt) / 1000)),
       );
     };
 

@@ -19,6 +19,8 @@ export async function buildApp() {
     origin: true,
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Api-Key'],
+    // The frontend reads Date to correct running timers on devices whose clock is off.
+    exposedHeaders: ['Date'],
   });
 
   await app.register(multipart, {
