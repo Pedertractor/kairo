@@ -1,13 +1,14 @@
 import type { FastifyInstance } from 'fastify';
 import { CostCenterController } from '../controllers/cost-center.controller.js';
-import { createRequireAdminOrLeader } from '../middleware/require-admin-or-leader.js';
+import { createRequireAdmin } from '../middleware/require-admin.js';
 import { CostCenterRepository } from '../repositories/cost-center.repository.js';
 import { HierarchyRepository } from '../repositories/hierarchy.repository.js';
 import { UserRepository } from '../repositories/user.repository.js';
 import { CostCenterService } from '../services/cost-center.service.js';
 
 export async function costCenterRoutes(app: FastifyInstance) {
-  const requireAdminOrLeader = createRequireAdminOrLeader(
+  // Sync can promote people to SUPERVISOR in bulk, so only admins may run it.
+  const requireAdmin = createRequireAdmin(
     new UserRepository(app.prisma),
   );
   const controller = new CostCenterController(
@@ -24,7 +25,7 @@ export async function costCenterRoutes(app: FastifyInstance) {
   );
   app.post(
     '/cost-centers/sync',
-    { preHandler: [app.authenticate, requireAdminOrLeader] },
+    { preHandler: [app.authenticate, requireAdmin] },
     controller.sync,
   );
 }

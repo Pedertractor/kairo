@@ -18,6 +18,13 @@ process.env.API_BASE_NAME_APPLICATION ??= 'test';
 
 const { userRoutes } = await import('../routes/user.route.js');
 const { productionRoutes } = await import('../routes/production.route.js');
+const { costCenterRoutes } = await import('../routes/cost-center.route.js');
+const { EmployeeService } = await import('./employee.service.js');
+
+// The HR lookup is external; every card number resolves to an active employee.
+EmployeeService.prototype.getByCardNumberAndUnit = async (cardNumber, unit) => ({
+  name: `Employee ${cardNumber}`, unit, cardNumber, shift: null,
+} as Awaited<ReturnType<InstanceType<typeof EmployeeService>['getByCardNumberAndUnit']>>);
 const { jwtPlugin } = await import('../plugins/jwt.plugin.js');
 const { AuthService } = await import('./auth.service.js');
 const password = 'existing-password';
@@ -129,6 +136,7 @@ beforeEach(async () => {
   await app.register(jwtPlugin);
   await app.register(userRoutes, { prefix: '/api' });
   await app.register(productionRoutes, { prefix: '/api' });
+  await app.register(costCenterRoutes, { prefix: '/api' });
   app.get('/api/auth/me', { preHandler: [app.authenticate] }, async () => ({ ok: true }));
   await app.ready();
 });
@@ -267,4 +275,73 @@ it('lets supervisors keep leader powers over their own teams, but never grant SU
   canManage = false;
   assert.equal((await patch({ role: 'USER' }, 'supervisor')).statusCode, 403);
   assert.equal(state.users.target.role, 'LEADER');
+});
+
+const createUser = (payload: Record<string, unknown>, actor: string) => app.inject({
+  method: 'POST', url: '/api/users', headers: headers(actor),
+  payload: { unit: 'TRACTOR', ...payload },
+});
+
+it('only admins can create or restore ADMIN and SUPERVISOR accounts', async () => {
+  state.users.supervisor = makeUser('supervisor', 'SUPERVISOR');
+  state.users.oldAdmin = { ...makeUser('oldAdmin', 'ADMIN'), active: false };
+  const before = structuredClone(state.users);
+
+  for (const actor of ['leader', 'supervisor']) {
+    for (const role of ['ADMIN', 'SUPERVISOR', 'LEADER']) {
+      const response = await createUser({ cardNumber: 'brand-new', role }, actor);
+      assert.equal(response.statusCode, 403, `${actor} creating ${role}: ${response.body}`);
+    }
+    // Restoring a former admin, even as a plain USER, is reserved to admins.
+    const restore = await createUser({ cardNumber: 'oldAdmin', role: 'USER' }, actor);
+    assert.equal(restore.statusCode, 403, `${actor} restoring an admin: ${restore.body}`);
+  }
+  assert.deepEqual(state.users, before);
+
+  const response = await createUser({ cardNumber: 'oldAdmin', role: 'ADMIN' }, 'admin');
+  assert.ok(response.statusCode < 300, response.body);
+  assert.equal(state.users.oldAdmin.active, true);
+  assert.equal(state.users.oldAdmin.role, 'ADMIN');
+});
+
+it('leaders and supervisors cannot manage an existing ADMIN in any way', async () => {
+  state.users.supervisor = makeUser('supervisor', 'SUPERVISOR');
+  const before = structuredClone(state.users);
+
+  for (const actor of ['leader', 'supervisor']) {
+    const requests = [
+      { method: 'PATCH' as const, url: '/api/users/admin/role', payload: { role: 'USER' } },
+      { method: 'PATCH' as const, url: '/api/users/admin/shift', payload: { start: '07:00', end: '16:00' } },
+      { method: 'POST' as const, url: '/api/users/admin/reset-password' },
+      { method: 'PATCH' as const, url: '/api/users/admin/deactivate' },
+    ];
+    for (const request of requests) {
+      const response = await app.inject({ ...request, headers: headers(actor) });
+      assert.equal(response.statusCode, 403, `${actor} ${request.method} ${request.url}: ${response.body}`);
+    }
+  }
+  assert.deepEqual(state.users, before);
+  assert.equal(transactions, 0);
+});
+
+it('gaining or losing ADMIN ends the open sessions of that user', async () => {
+  const oldSession = headers('target');
+  assert.equal((await patch({ role: 'ADMIN' })).statusCode, 200);
+  assert.equal(state.users.target.authVersion, 1);
+  assert.equal((await app.inject({ url: '/api/auth/me', headers: oldSession })).statusCode, 401);
+
+  assert.equal((await patch({ role: 'LEADER' })).statusCode, 200);
+  assert.equal(state.users.target.authVersion, 2);
+
+  // Changes that do not involve ADMIN keep sessions alive.
+  assert.equal((await patch({ role: 'USER' })).statusCode, 200);
+  assert.equal(state.users.target.authVersion, 2);
+});
+
+it('only admins can run the cost-center sync that promotes supervisors', async () => {
+  state.users.supervisor = makeUser('supervisor', 'SUPERVISOR');
+  for (const actor of ['leader', 'supervisor', 'target']) {
+    const response = await app.inject({ method: 'POST', url: '/api/cost-centers/sync', headers: headers(actor) });
+    assert.equal(response.statusCode, 403, `${actor}: ${response.body}`);
+  }
 });
