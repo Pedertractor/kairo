@@ -23,3 +23,12 @@ export const adminDashboardQuerySchema = z
       query.startDate <= query.endDate,
     { message: 'startDate deve ser anterior ou igual a endDate' },
   );
+
+export const adminLeaderParamSchema = z.object({
+  leaderId: z.string().min(1),
+});
+
+export const adminLeaderDayQuerySchema = z.object({
+  date: dateKeySchema.optional(),
+  userId: z.string().min(1).optional(),
+});

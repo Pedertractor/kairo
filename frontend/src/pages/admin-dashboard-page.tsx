@@ -13,6 +13,7 @@ import {
   Users,
 } from 'lucide-react'
 
+import { AdminLeaderDayTimeline } from '@/components/admin-leader-day-timeline'
 import {
   UsageBarList,
   UsageDonut,
@@ -40,13 +41,25 @@ import { STATUS_LABELS } from '@/lib/card-status'
 import { TASK_STATUS_LABELS } from '@/lib/task-status'
 import { formatDateTime, formatDuration } from '@/lib/time-format'
 import { cn } from '@/lib/utils'
-import type { AdminDashboard } from '@/types/admin-dashboard'
+import type {
+  AdminDashboard,
+  AdminDashboardLeader,
+} from '@/types/admin-dashboard'
 import type { CardStatus } from '@/types/card'
 import type { TaskStatus } from '@/types/task'
 
 type UserFilterOption = {
   value: string
   label: string
+}
+
+type LeaderFilterOption = UserFilterOption & {
+  leader: AdminDashboardLeader
+}
+
+const LEADER_ROLE_LABELS: Record<AdminDashboardLeader['role'], string> = {
+  LEADER: 'Líder',
+  SUPERVISOR: 'Supervisor',
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -124,6 +137,9 @@ export function AdminDashboardPage() {
   const [startDate, setStartDate] = useState(defaultStartDate)
   const [endDate, setEndDate] = useState(() => toDateKey(new Date()))
   const [selectedUser, setSelectedUser] = useState<UserFilterOption | null>(null)
+  const [leaders, setLeaders] = useState<AdminDashboardLeader[]>([])
+  const [selectedLeader, setSelectedLeader] =
+    useState<LeaderFilterOption | null>(null)
   const [dashboard, setDashboard] = useState<AdminDashboard | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [timeByPersonOpen, setTimeByPersonOpen] = useState(false)
@@ -152,25 +168,60 @@ export function AdminDashboardPage() {
     void loadDashboard()
   }, [loadDashboard])
 
+  useEffect(() => {
+    let cancelled = false
+
+    api<{ leaders: AdminDashboardLeader[] }>('/admin/dashboard/leaders', {
+      toastOnSuccess: false,
+    })
+      .then((data) => {
+        if (!cancelled) setLeaders(data.leaders)
+      })
+      .catch(() => undefined)
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const leaderOptions = useMemo<LeaderFilterOption[]>(
+    () =>
+      leaders.map((leader) => ({
+        value: leader.id,
+        label: leader.name,
+        leader,
+      })),
+    [leaders],
+  )
+
+  // With a leader / supervisor picked, only the collaborators of their teams can be picked.
   const userOptions = useMemo<UserFilterOption[]>(
     () =>
-      (dashboard?.users ?? []).map((user) => ({
-        value: user.id,
-        label: user.name,
-      })),
-    [dashboard?.users],
+      selectedLeader
+        ? selectedLeader.leader.members.map((member) => ({
+            value: member.id,
+            label: member.name,
+          }))
+        : (dashboard?.users ?? []).map((user) => ({
+            value: user.id,
+            label: user.name,
+          })),
+    [dashboard?.users, selectedLeader],
   )
 
   useEffect(() => {
-    if (!selectedUser || !dashboard) return
+    if (!selectedUser) return
 
-    const stillExists = dashboard.users.some(
-      (user) => user.id === selectedUser.value,
-    )
+    const stillExists = selectedLeader
+      ? selectedLeader.leader.members.some(
+          (member) => member.id === selectedUser.value,
+        )
+      : !dashboard ||
+        dashboard.users.some((user) => user.id === selectedUser.value)
     if (!stillExists) {
       setSelectedUser(null)
     }
-  }, [dashboard, selectedUser])
+  }, [dashboard, selectedLeader, selectedUser])
 
   const summary = dashboard?.summary
   const dailyPoints = (dashboard?.daily ?? []).map((day) => ({
@@ -181,7 +232,7 @@ export function AdminDashboardPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-6 pb-4">
-      <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-slate-900 via-indigo-800 to-cyan-500 p-4 text-white shadow-xl shadow-indigo-500/15 sm:p-6">
+      <section className="relative overflow-clip rounded-3xl bg-linear-to-br from-slate-900 via-indigo-800 to-cyan-500 p-4 text-white shadow-xl shadow-indigo-500/15 sm:p-6">
         <div className="absolute -top-16 -right-12 size-52 rounded-full bg-sky-300/20 blur-2xl" />
         <div className="absolute -bottom-24 left-1/3 size-64 rounded-full bg-indigo-300/20 blur-3xl" />
         <div className="relative flex flex-col gap-6">
@@ -196,7 +247,7 @@ export function AdminDashboardPage() {
             </p>
           </div>
 
-          <div className="grid w-full min-w-0 gap-3 sm:grid-cols-2">
+          <div className="grid w-full min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div className="min-w-0">
               <Label className="text-white/80">Período</Label>
               <DateRangePicker
@@ -215,6 +266,44 @@ export function AdminDashboardPage() {
               />
             </div>
             <div className="min-w-0">
+              <Label htmlFor="admin-leader-filter" className="text-white/80">
+                Líder / supervisor
+              </Label>
+              <Combobox
+                items={leaderOptions}
+                value={selectedLeader}
+                onValueChange={setSelectedLeader}
+                itemToStringLabel={(item) => item.label}
+                isItemEqualToValue={(a, b) => a.value === b.value}
+              >
+                <ComboboxInput
+                  id="admin-leader-filter"
+                  className="mt-1 w-full border-white/30 bg-white/95 text-foreground"
+                  placeholder="Buscar líder ou supervisor..."
+                  showClear
+                />
+                <ComboboxContent>
+                  <ComboboxEmpty>Nenhum líder ou supervisor encontrado.</ComboboxEmpty>
+                  <ComboboxList>
+                    {(item: LeaderFilterOption) => (
+                      <ComboboxItem key={item.value} value={item}>
+                        <span className="flex min-w-0 flex-1 flex-col">
+                          <span className="truncate">{item.label}</span>
+                          <span className="truncate text-xs text-muted-foreground">
+                            {LEADER_ROLE_LABELS[item.leader.role]} ·{' '}
+                            {item.leader.members.length}{' '}
+                            {item.leader.members.length === 1
+                              ? 'colaborador'
+                              : 'colaboradores'}
+                          </span>
+                        </span>
+                      </ComboboxItem>
+                    )}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+            </div>
+            <div className="min-w-0 sm:col-span-2 lg:col-span-1">
               <Label htmlFor="admin-user-filter" className="text-white/80">
                 Filtrar por nome
               </Label>
@@ -228,11 +317,19 @@ export function AdminDashboardPage() {
                 <ComboboxInput
                   id="admin-user-filter"
                   className="mt-1 w-full border-white/30 bg-white/95 text-foreground"
-                  placeholder="Buscar usuário..."
+                  placeholder={
+                    selectedLeader
+                      ? 'Buscar colaborador...'
+                      : 'Buscar usuário...'
+                  }
                   showClear
                 />
                 <ComboboxContent>
-                  <ComboboxEmpty>Nenhum usuário encontrado.</ComboboxEmpty>
+                  <ComboboxEmpty>
+                    {selectedLeader
+                      ? 'Nenhum colaborador nas equipes deste líder.'
+                      : 'Nenhum usuário encontrado.'}
+                  </ComboboxEmpty>
                   <ComboboxList>
                     {(item) => (
                       <ComboboxItem key={item.value} value={item}>
@@ -246,6 +343,18 @@ export function AdminDashboardPage() {
           </div>
         </div>
       </section>
+
+      {selectedLeader ? (
+        <AdminLeaderDayTimeline
+          leaderId={selectedLeader.value}
+          userId={selectedUser?.value}
+          title={
+            selectedUser
+              ? `Timeline de ${selectedUser.label}`
+              : `Timeline da equipe de ${selectedLeader.label}`
+          }
+        />
+      ) : null}
 
       {isLoading || !summary ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
