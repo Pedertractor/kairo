@@ -107,3 +107,17 @@ export interface AdminDashboard {
   entryTypes: AdminEntryTypeUsage[];
   runningTimers: AdminRunningTimer[];
 }
+
+export interface AdminDashboardLeaderMember {
+  id: string;
+  name: string;
+}
+
+/** A leader or supervisor and the collaborators of the teams they admin. */
+export interface AdminDashboardLeader {
+  id: string;
+  name: string;
+  role: 'LEADER' | 'SUPERVISOR';
+  teamCount: number;
+  members: AdminDashboardLeaderMember[];
+}

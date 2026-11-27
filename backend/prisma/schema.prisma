@@ -58,6 +58,12 @@ enum TimeEntryType {
   MANUAL
 }
 
+enum TimeEntryAuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
 enum ComplexityLevel {
   BAIXA
   MEDIA
@@ -128,6 +134,9 @@ model User {
   shiftPeriods UserShiftPeriod[]
 
   apiKeys ApiKey[]
+
+  timeEntryAuditLogsAsTarget TimeEntryAuditLog[] @relation("TimeEntryAuditTarget")
+  timeEntryAuditLogsAsActor  TimeEntryAuditLog[] @relation("TimeEntryAuditActor")
 
   @@unique([unit, cardNumber])
   @@index([active])
@@ -618,6 +627,32 @@ model TimeEntry {
   @@index([userId, startedAt])
   @@index([endedAt, type])
   @@map("time_entries")
+}
+
+// Append-only trail of every change an administrator makes to someone's time
+// entries. timeEntryId has no FK on purpose so the trail survives deletions.
+model TimeEntryAuditLog {
+  id String @id @default(cuid())
+
+  timeEntryId String
+
+  targetUserId String
+  targetUser   User   @relation("TimeEntryAuditTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  actorId String
+  actor   User   @relation("TimeEntryAuditActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  action TimeEntryAuditAction
+
+  before Json?
+  after  Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([timeEntryId, createdAt])
+  @@index([targetUserId, createdAt])
+  @@index([actorId])
+  @@map("time_entry_audit_logs")
 }
 
 model UserFavorite {

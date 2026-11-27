@@ -1,4 +1,4 @@
-import type { PrismaClient } from '../generated/client.js';
+import { TeamRole, UserRole, type PrismaClient } from '../generated/client.js';
 
 export class AdminDashboardRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -164,6 +164,45 @@ export class AdminDashboardRepository {
         userId: true,
         startedAt: true,
         endedAt: true,
+      },
+    });
+  }
+
+  /**
+   * Active leaders and supervisors that are team admins of at least one active
+   * team, with every member of those teams. Pass `userId` to fetch just one.
+   */
+  findTeamLeaders(userId?: string) {
+    const ownedTeams = { role: TeamRole.ADMIN, team: { active: true } };
+
+    return this.prisma.user.findMany({
+      where: {
+        ...(userId ? { id: userId } : {}),
+        active: true,
+        role: { in: [UserRole.LEADER, UserRole.SUPERVISOR] },
+        memberships: { some: ownedTeams },
+      },
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        role: true,
+        memberships: {
+          where: ownedTeams,
+          select: {
+            team: {
+              select: {
+                id: true,
+                members: {
+                  select: {
+                    role: true,
+                    user: { select: { id: true, name: true } },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     });
   }
