@@ -45,6 +45,8 @@ export const adminTimeEntryListQuerySchema = z
 
 export const adminWorkItemsQuerySchema = z
   .object({
+    /** Collaborator the entry is for: only items from their teams are listed. */
+    userId: idSchema,
     search: z.string().trim().max(100).optional(),
     teamId: idSchema.optional(),
   })

@@ -209,8 +209,18 @@ export class AdminTimeEntryService {
 
     const search = query.search || undefined;
     const [activities, tasks] = await Promise.all([
-      this.store.searchActivities(search, query.teamId, WORK_ITEM_SEARCH_LIMIT),
-      this.store.searchTasks(search, query.teamId, WORK_ITEM_SEARCH_LIMIT),
+      this.store.searchActivities(
+        query.userId,
+        search,
+        query.teamId,
+        WORK_ITEM_SEARCH_LIMIT,
+      ),
+      this.store.searchTasks(
+        query.userId,
+        search,
+        query.teamId,
+        WORK_ITEM_SEARCH_LIMIT,
+      ),
     ]);
 
     return {
@@ -272,7 +282,7 @@ export class AdminTimeEntryService {
     };
 
     this.assertValidInterval(data.startedAt, data.endedAt);
-    await this.assertWorkItemExists(data);
+    await this.assertWorkItemLoggable(data, target.id);
 
     const created = await this.store.inUserTransaction(target.id, async (tx) => {
       await this.assertActorStillAdmin(tx, actorId);
@@ -340,7 +350,7 @@ export class AdminTimeEntryService {
 
         this.assertValidInterval(data.startedAt, data.endedAt);
         if (itemChanged) {
-          await this.assertWorkItemExists(data, tx);
+          await this.assertWorkItemLoggable(data, existing.userId, tx);
         }
 
         const before = snapshot(existing);
@@ -474,18 +484,27 @@ export class AdminTimeEntryService {
     }
   }
 
-  private async assertWorkItemExists(
+  /**
+   * The item must exist and belong to an active team the collaborator is a
+   * member of — the same rule the collaborator's own timer applies.
+   */
+  private async assertWorkItemLoggable(
     data: Pick<TimeEntryWriteData, 'cardId' | 'taskId'>,
+    userId: string,
     store: Pick<AdminTimeEntryStore, 'findActivity' | 'findTask'> = this.store,
   ): Promise<void> {
     const found = data.taskId
-      ? await store.findTask(data.taskId)
+      ? await store.findTask(data.taskId, userId)
       : data.cardId
-        ? await store.findActivity(data.cardId)
+        ? await store.findActivity(data.cardId, userId)
         : null;
 
     if (!found) {
       throw new AppError(404, MENSAGENS.APONTAMENTO_ITEM_NAO_ENCONTRADO);
+    }
+
+    if (!found.userCanLog) {
+      throw new AppError(400, MENSAGENS.APONTAMENTO_ITEM_FORA_DA_EQUIPE);
     }
   }
 
