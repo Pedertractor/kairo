@@ -108,14 +108,20 @@ export function AdminTimeEntryFormDialog({
     setSearch('')
   }, [entry, open])
 
+  // Only items from the collaborator's own teams can be logged, so the list
+  // depends on who the entry is for.
   useEffect(() => {
     if (!open) return
+    if (!userId) {
+      setWorkItems([])
+      return
+    }
 
     let cancelled = false
     const timeout = window.setTimeout(async () => {
       setIsSearching(true)
       try {
-        const params = new URLSearchParams()
+        const params = new URLSearchParams({ userId })
         if (search.trim()) params.set('search', search.trim())
         const data = await api<AdminWorkItemsResponse>(
           `/admin/time-entries/work-items?${params.toString()}`,
@@ -133,7 +139,7 @@ export function AdminTimeEntryFormDialog({
       cancelled = true
       window.clearTimeout(timeout)
     }
-  }, [open, search])
+  }, [open, search, userId])
 
   const userOptions = useMemo<UserOption[]>(
     () =>
@@ -243,7 +249,15 @@ export function AdminTimeEntryFormDialog({
             <Combobox
               items={userOptions}
               value={selectedUser}
-              onValueChange={(option) => setUserId(option?.value ?? '')}
+              onValueChange={(option) => {
+                const nextUserId = option?.value ?? ''
+                if (nextUserId !== userId) {
+                  // The chosen item may not belong to the new collaborator's teams.
+                  setWorkItem(null)
+                  setSearch('')
+                }
+                setUserId(nextUserId)
+              }}
               itemToStringLabel={(item) => item.label}
               isItemEqualToValue={(a, b) => a.value === b.value}
               disabled={isEdit || isSubmitting}
@@ -284,17 +298,21 @@ export function AdminTimeEntryFormDialog({
               }}
               itemToStringLabel={workItemLabel}
               isItemEqualToValue={(a, b) => a.kind === b.kind && a.id === b.id}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !userId}
             >
               <ComboboxInput
                 id='admin-entry-item'
                 className='w-full'
-                placeholder='Buscar por título'
-                disabled={isSubmitting}
+                placeholder={
+                  userId ? 'Buscar por título' : 'Selecione o colaborador primeiro'
+                }
+                disabled={isSubmitting || !userId}
               />
               <ComboboxContent>
                 <ComboboxEmpty>
-                  {isSearching ? 'Buscando...' : 'Nenhum item encontrado.'}
+                  {isSearching
+                    ? 'Buscando...'
+                    : 'Nenhum item das equipes deste colaborador.'}
                 </ComboboxEmpty>
                 <ComboboxList>
                   {(item: AdminWorkItem) => (

@@ -26,6 +26,10 @@ let released: { cardId: string | null; taskId: string | null }[];
 let transactions: number;
 let failAudit: boolean;
 let service: AdminTimeEntryService;
+let searchedFor: string[];
+
+const canLog = (itemId: string, userId: string) =>
+  Boolean(userId) && !itemId.includes('Foreign');
 
 function record(
   id: string,
@@ -87,10 +91,19 @@ function makeStore(): AdminTimeEntryStore {
     findEntryById: async (id: string) => entries.get(id) ?? null,
     list: async () => [...entries.values()],
     count: async () => entries.size,
-    findActivity: async (id: string) => (id.startsWith('card') ? { id } : null),
-    findTask: async (id: string) => (id.startsWith('task') ? { id } : null),
-    searchActivities: async () => [],
-    searchTasks: async () => [],
+    // Items whose id contains "Foreign" belong to a team the collaborator is not in.
+    findActivity: async (id: string, userId: string) =>
+      id.startsWith('card') ? { id, userCanLog: canLog(id, userId) } : null,
+    findTask: async (id: string, userId: string) =>
+      id.startsWith('task') ? { id, userCanLog: canLog(id, userId) } : null,
+    searchActivities: async (userId: string) => {
+      searchedFor.push(userId);
+      return [];
+    },
+    searchTasks: async (userId: string) => {
+      searchedFor.push(userId);
+      return [];
+    },
     findOverlapping: async (userId: string, start: Date, end: Date | null, excludeId?: string) =>
       [...entries.values()].find(
         (e) =>
@@ -143,6 +156,7 @@ beforeEach(() => {
   released = [];
   transactions = 0;
   failAudit = false;
+  searchedFor = [];
   service = new AdminTimeEntryService(
     { findById: async (id) => actors[id] ?? null },
     makeStore(),
@@ -175,7 +189,7 @@ describe('AdminTimeEntryService authorization (service layer)', () => {
       const before = new Map(entries);
       await rejectsWith(service.list(actor, { page: 1, pageSize: 20, activeOnly: false }), 403);
       await rejectsWith(service.listUsers(actor), 403);
-      await rejectsWith(service.searchWorkItems(actor, {}), 403);
+      await rejectsWith(service.searchWorkItems(actor, { userId: 'target' }), 403);
       await rejectsWith(service.getAudit(actor, 'closed'), 403);
       await rejectsWith(service.create(actor, createInput), 403);
       await rejectsWith(service.update(actor, 'closed', { note: 'x' }), 403);
@@ -257,6 +271,30 @@ describe('AdminTimeEntryService rules', () => {
     await rejectsWith(service.create('admin', { ...createInput, cardId: 'nope' }), 404);
     await rejectsWith(service.update('admin', 'closed', { taskId: 'nope' }), 404);
     await rejectsWith(service.update('admin', 'missing', { note: 'x' }), 404);
+  });
+
+  it("only offers and accepts work items from the collaborator's teams", async () => {
+    await service.searchWorkItems('admin', { userId: 'target' });
+    assert.deepEqual(searchedFor, ['target', 'target']);
+
+    const before = new Map(entries);
+    const outside = MENSAGENS.APONTAMENTO_ITEM_FORA_DA_EQUIPE;
+    await rejectsWith(
+      service.create('admin', { ...createInput, cardId: 'cardForeign' }),
+      400,
+      outside,
+    );
+    await rejectsWith(
+      service.update('admin', 'closed', { taskId: 'taskForeign' }),
+      400,
+      outside,
+    );
+    assert.deepEqual(entries, before);
+    assert.equal(audits.length, 0);
+
+    // Item left unchanged: other fields can still be edited without a team check.
+    await service.update('admin', 'closed', { note: 'ajuste' });
+    assert.equal(entries.get('closed')!.note, 'ajuste');
   });
 
   it('does not reopen a closed entry', async () => {

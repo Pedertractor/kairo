@@ -108,6 +108,8 @@ export const MENSAGENS = {
   APONTAMENTO_REABERTURA_PROIBIDA:
     'Não é possível reabrir um apontamento já encerrado',
   APONTAMENTO_ITEM_NAO_ENCONTRADO: 'Atividade ou tarefa não encontrada',
+  APONTAMENTO_ITEM_FORA_DA_EQUIPE:
+    'O colaborador não faz parte da equipe desta atividade ou tarefa',
   USUARIO_ROLE_ATUALIZADO_SUCESSO: 'Função e acesso do usuário atualizados com sucesso',
   USUARIO_SENHA_REPOSTA_SUCESSO: 'Senha resetada com sucesso',
   USUARIO_DESATIVADO_SUCESSO: 'Usuário removido da aplicação com sucesso',

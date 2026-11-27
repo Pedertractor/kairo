@@ -881,61 +881,6 @@ export class TimeEntryService {
     return toTaskTimeEntrySummary(updated);
   }
 
-  async updateUserTimeEntry(
-    timeEntryId: string,
-    userId: string,
-    startedAt: string,
-    endedAt: string | null,
-  ): Promise<UserTimeEntrySummary> {
-    const entry =
-      await this.timeEntryRepository.findByIdWithRelations(timeEntryId);
-
-    if (!entry || entry.userId !== userId) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
-
-    const teamId = entry.task?.card?.teamId ?? entry.card?.teamId;
-
-    if (!teamId) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
-
-    await this.assertTeamMember(teamId, userId);
-
-    const startedAtDate = new Date(startedAt);
-    const endedAtDate = endedAt ? new Date(endedAt) : null;
-
-    if (
-      endedAtDate &&
-      startedAtDate.getTime() >= endedAtDate.getTime()
-    ) {
-      throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
-    }
-
-    await this.timeEntryRepository.updateDates(
-      timeEntryId,
-      startedAtDate,
-      endedAtDate,
-    );
-
-    await this.pauseWorkForStoppedEntry(entry.taskId, entry.cardId, userId);
-
-    const updated =
-      await this.timeEntryRepository.findByIdWithRelations(timeEntryId);
-
-    if (!updated) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
-
-    const mapped = mapUserTimeEntry(updated);
-
-    if (!mapped) {
-      throw new AppError(404, MENSAGENS.NAO_ENCONTRADO);
-    }
-
-    return mapped;
-  }
-
   async listUserTimeEntries(
     userId: string,
     options: { date?: string; page: number; pageSize: number },

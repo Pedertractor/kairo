@@ -35,6 +35,23 @@ export interface TimeEntryAuditWrite {
   after: Prisma.InputJsonValue | null;
 }
 
+export interface WorkItemAccess {
+  id: string;
+  /** The collaborator is a member of the item's team and the team is active. */
+  userCanLog: boolean;
+}
+
+function teamAccessSelect(userId: string) {
+  return {
+    active: true,
+    members: { where: { userId }, select: { userId: true }, take: 1 },
+  } as const;
+}
+
+function canLog(team: { active: boolean; members: unknown[] }) {
+  return team.active && team.members.length > 0;
+}
+
 const entryInclude = {
   user: { select: { id: true, name: true } },
   card: {
@@ -148,30 +165,45 @@ export class AdminTimeEntryRepository {
     return this.db.timeEntry.count({ where: this.buildWhere(filters) });
   }
 
-  findActivity(cardId: string) {
-    return this.db.card.findFirst({
+  /**
+   * The activity plus whether `userId` could log time on it, i.e. belongs to
+   * its (active) team — the same rule the regular timer applies.
+   */
+  async findActivity(cardId: string, userId: string): Promise<WorkItemAccess | null> {
+    const card = await this.db.card.findFirst({
       where: { id: cardId, type: 'ACTIVITY', deletedAt: null },
-      select: { id: true },
+      select: { id: true, team: { select: teamAccessSelect(userId) } },
     });
+    return card ? { id: card.id, userCanLog: canLog(card.team) } : null;
   }
 
-  findTask(taskId: string) {
-    return this.db.task.findFirst({
+  async findTask(taskId: string, userId: string): Promise<WorkItemAccess | null> {
+    const task = await this.db.task.findFirst({
       where: {
         id: taskId,
         deletedAt: null,
         card: { type: 'PROJECT', deletedAt: null },
       },
-      select: { id: true },
+      select: {
+        id: true,
+        card: { select: { team: { select: teamAccessSelect(userId) } } },
+      },
     });
+    return task ? { id: task.id, userCanLog: canLog(task.card.team) } : null;
   }
 
-  searchActivities(search: string | undefined, teamId: string | undefined, take: number) {
+  /** Activities of active teams `userId` is a member of. */
+  searchActivities(
+    userId: string,
+    search: string | undefined,
+    teamId: string | undefined,
+    take: number,
+  ) {
     return this.db.card.findMany({
       where: {
         type: 'ACTIVITY',
         deletedAt: null,
-        team: { active: true },
+        team: { active: true, members: { some: { userId } } },
         ...(teamId ? { teamId } : {}),
         ...(search ? { title: { contains: search, mode: 'insensitive' } } : {}),
       },
@@ -187,14 +219,20 @@ export class AdminTimeEntryRepository {
     });
   }
 
-  searchTasks(search: string | undefined, teamId: string | undefined, take: number) {
+  /** Tasks of projects in active teams `userId` is a member of. */
+  searchTasks(
+    userId: string,
+    search: string | undefined,
+    teamId: string | undefined,
+    take: number,
+  ) {
     return this.db.task.findMany({
       where: {
         deletedAt: null,
         card: {
           type: 'PROJECT',
           deletedAt: null,
-          team: { active: true },
+          team: { active: true, members: { some: { userId } } },
           ...(teamId ? { teamId } : {}),
         },
         ...(search
