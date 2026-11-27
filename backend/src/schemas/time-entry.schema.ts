@@ -18,10 +18,6 @@ export const taskTimeEntryParamSchema = z.object({
   timeEntryId: z.string().min(1),
 });
 
-export const timeEntryIdParamSchema = z.object({
-  timeEntryId: z.string().min(1),
-});
-
 export const listTaskTimeEntriesQuerySchema = z.object({
   date: z
     .string()
@@ -68,4 +64,3 @@ export const updateTaskTimeEntrySchema = z
     { message: 'A data de início deve ser anterior à data de fim' },
   );
 
-export const updateTimeEntrySchema = updateTaskTimeEntrySchema;

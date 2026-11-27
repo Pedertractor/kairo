@@ -175,3 +175,31 @@ describe('admin time entry routes access control', () => {
     assert.deepEqual(dataTouches, []);
   });
 });
+
+describe('collaborator time entry routes', () => {
+  it('offers no way to edit an entry outside the admin routes', async () => {
+    const { timeEntryRoutes } = await import('./time-entry.route.js');
+    const userApp = Fastify();
+    userApp.decorate('prisma', {} as PrismaClient);
+    await userApp.register(jwtPlugin);
+    await userApp.register(timeEntryRoutes, { prefix: '/api' });
+    await userApp.ready();
+
+    try {
+      // Used to let any collaborator rewrite their own entries with no checks or audit.
+      assert.equal(
+        userApp.hasRoute({ method: 'PATCH', url: '/api/time-entries/:timeEntryId' }),
+        false,
+      );
+      const response = await userApp.inject({
+        method: 'PATCH',
+        url: '/api/time-entries/entry1',
+        headers: { authorization: `Bearer ${userApp.jwt.sign({ sub: 'user' })}` },
+        payload: { startedAt: '2026-11-20T11:00:00.000Z', endedAt: null },
+      });
+      assert.equal(response.statusCode, 404, response.body);
+    } finally {
+      await userApp.close();
+    }
+  });
+});

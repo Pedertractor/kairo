@@ -60,11 +60,8 @@ export async function timeEntryRoutes(app: FastifyInstance) {
     { preHandler: [app.authenticate] },
     controller.getTeamDayDashboard,
   );
-  app.patch(
-    '/time-entries/:timeEntryId',
-    { preHandler: [app.authenticate] },
-    controller.updateUserTimeEntry,
-  );
+  // No route lets collaborators edit their own entries: corrections go through
+  // /admin/time-entries, which validates overlaps and writes an audit log.
   app.get(
     '/time-entries/admin-teams/day',
     { preHandler: [app.authenticate] },

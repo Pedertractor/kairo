@@ -10,9 +10,7 @@ import {
   listTeamTimeEntriesQuerySchema,
   listUserTimeEntriesQuerySchema,
   taskTimeEntryParamSchema,
-  timeEntryIdParamSchema,
   updateTaskTimeEntrySchema,
-  updateTimeEntrySchema,
 } from '../schemas/time-entry.schema.js';
 import { TimeEntryService } from '../services/time-entry.service.js';
 import { AppError, handleControllerError } from '../utils/errors.js';
@@ -224,33 +222,6 @@ export class TimeEntryController {
       );
 
       return sendSuccess(reply, result);
-    } catch (error) {
-      return handleControllerError(error, reply);
-    }
-  };
-
-  updateUserTimeEntry = async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const params = timeEntryIdParamSchema.safeParse(request.params);
-      const body = updateTimeEntrySchema.safeParse(request.body);
-
-      if (!params.success || !body.success) {
-        throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
-      }
-
-      const timeEntry = await this.service.updateUserTimeEntry(
-        params.data.timeEntryId,
-        request.user.sub,
-        body.data.startedAt,
-        body.data.endedAt,
-      );
-
-      return sendSuccess(
-        reply,
-        { timeEntry },
-        200,
-        MENSAGENS.APONTAMENTO_ATUALIZADO_SUCESSO,
-      );
     } catch (error) {
       return handleControllerError(error, reply);
     }
