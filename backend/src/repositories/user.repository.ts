@@ -202,7 +202,11 @@ export class UserRepository {
   ) {
     return this.prisma.$transaction(async (tx) => {
       const current = await tx.user.findUniqueOrThrow({ where: { id } });
-      const changed = data.production !== undefined && data.production !== current.production;
+      const productionChanged = data.production !== undefined && data.production !== current.production;
+      // Gaining or losing ADMIN also ends open sessions, so nobody keeps a
+      // token (or UI) from before the change.
+      const adminChanged = data.role !== current.role && (data.role === 'ADMIN' || current.role === 'ADMIN');
+      const changed = productionChanged || adminChanged;
       const updated = await tx.user.update({ where: { id }, data: { ...data, ...(changed ? { authVersion: { increment: 1 } } : {}) } });
 
       if (updated.production !== current.production) {

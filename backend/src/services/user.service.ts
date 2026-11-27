@@ -67,6 +67,30 @@ export class UserService {
     return actor;
   }
 
+  /**
+   * Single gate for handing out a role. Only an active ADMIN may grant ADMIN
+   * (or SUPERVISOR); leaders and supervisors may only grant the roles listed
+   * for the operation they are performing.
+   */
+  private assertCanAssignRole(
+    actor: { role: UserRole },
+    role: UserRole,
+    allowedForTeamManagers: readonly UserRole[],
+  ): void {
+    if (actor.role === UserRole.ADMIN) {
+      return;
+    }
+
+    if (
+      !isTeamManagerRole(actor.role) ||
+      role === UserRole.ADMIN ||
+      role === UserRole.SUPERVISOR ||
+      !allowedForTeamManagers.includes(role)
+    ) {
+      throw new AppError(403, MENSAGENS.PROIBIDO);
+    }
+  }
+
   private async assertLeaderCanManage(
     actorUserId: string,
     targetUserId: string,
@@ -147,14 +171,9 @@ export class UserService {
 
     const actorIsTeamManager = isTeamManagerRole(actor.role);
 
-    if (
-      (actor.role !== UserRole.ADMIN && !actorIsTeamManager) ||
-      (production && role !== UserRole.USER)
-    ) {
-      throw new AppError(403, MENSAGENS.PROIBIDO);
-    }
+    this.assertCanAssignRole(actor, role, [UserRole.USER]);
 
-    if (actorIsTeamManager && role !== UserRole.USER) {
+    if (production && role !== UserRole.USER) {
       throw new AppError(403, MENSAGENS.PROIBIDO);
     }
 
@@ -327,12 +346,7 @@ export class UserService {
       throw new AppError(400, MENSAGENS.REQUISICAO_INVALIDA);
     }
 
-    if (
-      isTeamManagerRole(actor.role) &&
-      (role === UserRole.ADMIN || role === UserRole.SUPERVISOR)
-    ) {
-      throw new AppError(403, MENSAGENS.PROIBIDO);
-    }
+    this.assertCanAssignRole(actor, role, [UserRole.LEADER, UserRole.USER]);
 
     if (
       targetUserId === actorUserId &&

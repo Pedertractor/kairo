@@ -97,6 +97,17 @@ export const MENSAGENS = {
   AUSENCIA_EDITADA_SUCESSO: 'Ausência atualizada com sucesso',
   AUSENCIA_EXCLUIDA_SUCESSO: 'Ausência excluída com sucesso',
   APONTAMENTO_ATUALIZADO_SUCESSO: 'Apontamento atualizado com sucesso',
+  APONTAMENTO_CRIADO_SUCESSO: 'Apontamento criado com sucesso',
+  APONTAMENTO_EXCLUIDO_SUCESSO: 'Apontamento excluído com sucesso',
+  APONTAMENTO_SOBREPOSTO:
+    'O período informado se sobrepõe a outro apontamento do colaborador',
+  APONTAMENTO_DATA_FUTURA: 'O apontamento não pode estar no futuro',
+  APONTAMENTO_INTERVALO_INVALIDO:
+    'A data de início deve ser anterior à data de fim',
+  APONTAMENTO_DURACAO_EXCEDIDA: 'O apontamento não pode passar de 24 horas',
+  APONTAMENTO_REABERTURA_PROIBIDA:
+    'Não é possível reabrir um apontamento já encerrado',
+  APONTAMENTO_ITEM_NAO_ENCONTRADO: 'Atividade ou tarefa não encontrada',
   USUARIO_ROLE_ATUALIZADO_SUCESSO: 'Função e acesso do usuário atualizados com sucesso',
   USUARIO_SENHA_REPOSTA_SUCESSO: 'Senha resetada com sucesso',
   USUARIO_DESATIVADO_SUCESSO: 'Usuário removido da aplicação com sucesso',
