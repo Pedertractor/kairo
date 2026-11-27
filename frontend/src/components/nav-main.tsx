@@ -10,8 +10,10 @@ import {
 } from '@/components/ui/sidebar'
 
 export function NavMain({
+  label,
   items,
 }: {
+  label: string
   items: {
     title: string
     url: string
@@ -21,8 +23,10 @@ export function NavMain({
   }[]
 }) {
   return (
-    <SidebarGroup>
-      <SidebarGroupLabel>Plataforma</SidebarGroupLabel>
+    <SidebarGroup className='[&+&]:mt-2 [&+&]:border-t [&+&]:border-sidebar-border [&+&]:pt-4 group-data-[collapsible=icon]:[&+&]:mt-1 group-data-[collapsible=icon]:[&+&]:pt-2'>
+      <SidebarGroupLabel className='text-[11px] font-semibold tracking-wide uppercase'>
+        {label}
+      </SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {
           const showBadge = typeof item.badge === 'number' && item.badge > 0

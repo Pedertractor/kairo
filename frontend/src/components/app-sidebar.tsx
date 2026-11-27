@@ -113,15 +113,14 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
     user?.role === 'LEADER' ||
     user?.role === 'SUPERVISOR';
 
-  const navItems = [
-    ...baseNavItems,
+  const managementNavItems = [
     ...(user?.role === 'ADMIN' ? adminDashboardNavItems : []),
     ...(canSeeInfractionsAndUsers ? infractionsNavItems : []),
     ...(user?.hasOwnedTeams ? teamOwnerNavItems : []),
     ...(canSeeInfractionsAndUsers ? userManagementNavItems : []),
   ];
 
-  const navMain = navItems.map((item) => ({
+  const withNavigationState = (items: typeof baseNavItems) => items.map((item) => ({
     ...item,
     isActive:
       item.url === '/'
@@ -141,7 +140,10 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
         ) : null}
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={navMain} />
+        <NavMain label='Plataforma' items={withNavigationState(baseNavItems)} />
+        {managementNavItems.length > 0 ? (
+          <NavMain label='Gestão' items={withNavigationState(managementNavItems)} />
+        ) : null}
       </SidebarContent>
       <SidebarFooter>
         <NavUser />
